@@ -1,0 +1,86 @@
+import { NavLink } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { cn } from '@/lib/utils';
+import {
+  LayoutDashboard,
+  MapPin,
+  Users,
+  Package,
+  Settings,
+  LogOut,
+  Truck,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
+const navItems = [
+  { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
+  { to: '/admin/stops', icon: Package, label: 'Paradas' },
+  { to: '/admin/drivers', icon: Users, label: 'Repartidores' },
+  { to: '/admin/map', icon: MapPin, label: 'Mapa' },
+];
+
+export function AdminSidebar() {
+  const { profile, signOut } = useAuth();
+
+  return (
+    <aside className="w-64 bg-sidebar text-sidebar-foreground flex flex-col h-screen">
+      {/* Logo */}
+      <div className="p-6 border-b border-sidebar-border">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center">
+            <Truck className="w-5 h-5 text-sidebar-primary-foreground" />
+          </div>
+          <div>
+            <h1 className="font-bold text-lg">RutaExpress</h1>
+            <p className="text-xs text-sidebar-foreground/60">Admin Panel</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 p-4 space-y-1">
+        {navItems.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-3 px-4 py-3 rounded-lg transition-colors',
+                isActive
+                  ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+                  : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+              )
+            }
+          >
+            <item.icon className="w-5 h-5" />
+            <span className="font-medium">{item.label}</span>
+          </NavLink>
+        ))}
+      </nav>
+
+      {/* User & Logout */}
+      <div className="p-4 border-t border-sidebar-border">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-full bg-sidebar-accent flex items-center justify-center">
+            <span className="text-sm font-semibold">
+              {profile?.full_name?.charAt(0).toUpperCase() || 'A'}
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-sm truncate">{profile?.full_name}</p>
+            <p className="text-xs text-sidebar-foreground/60">Administrador</p>
+          </div>
+        </div>
+        <Button
+          variant="ghost"
+          className="w-full justify-start text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+          onClick={signOut}
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          Cerrar sesión
+        </Button>
+      </div>
+    </aside>
+  );
+}
