@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { cn } from "@/lib/utils";
 import type { StopStatus } from "@/lib/supabase-types";
 import { Package, CheckCircle, Truck } from "lucide-react";
@@ -29,20 +30,25 @@ const statusConfig: Record<StopStatus, {
   },
 };
 
-export function StatusBadge({ status, className }: StatusBadgeProps) {
-  const config = statusConfig[status];
-  const Icon = config.icon;
+export const StatusBadge = forwardRef<HTMLSpanElement, StatusBadgeProps>(
+  ({ status, className }, ref) => {
+    const config = statusConfig[status];
+    const Icon = config.icon;
 
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold",
-        config.className,
-        className
-      )}
-    >
-      <Icon className="w-3 h-3" />
-      {config.label}
-    </span>
-  );
-}
+    return (
+      <span
+        ref={ref}
+        className={cn(
+          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold",
+          config.className,
+          className
+        )}
+      >
+        <Icon className="w-3 h-3" />
+        {config.label}
+      </span>
+    );
+  }
+);
+
+StatusBadge.displayName = "StatusBadge";

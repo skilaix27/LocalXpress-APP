@@ -5,6 +5,7 @@ import { z } from 'zod';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -29,7 +30,8 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Profile } from '@/lib/supabase-types';
-import { MapPin, User, Phone, FileText } from 'lucide-react';
+import { MapPin, User, Phone, FileText, Loader2, Search } from 'lucide-react';
+import { useGeocoding } from '@/hooks/useGeocoding';
 
 const stopSchema = z.object({
   pickup_address: z.string().min(1, 'Dirección de recogida requerida'),
@@ -46,18 +48,6 @@ const stopSchema = z.object({
 
 type StopFormData = z.infer<typeof stopSchema>;
 
-// Barcelona sample coordinates for demo
-const BARCELONA_LOCATIONS = [
-  { address: 'Plaça Catalunya, Barcelona', lat: 41.3870, lng: 2.1700 },
-  { address: 'La Rambla, 91, Barcelona', lat: 41.3797, lng: 2.1746 },
-  { address: 'Passeig de Gràcia, 92, Barcelona', lat: 41.3954, lng: 2.1630 },
-  { address: 'Carrer de Balmes, 145, Barcelona', lat: 41.3961, lng: 2.1513 },
-  { address: 'Avinguda Diagonal, 211, Barcelona', lat: 41.3914, lng: 2.1556 },
-  { address: 'Carrer de Mallorca, 401, Barcelona', lat: 41.4052, lng: 2.1749 },
-  { address: 'Carrer de Provença, 261, Barcelona', lat: 41.3993, lng: 2.1620 },
-  { address: 'Carrer d\'Aragó, 255, Barcelona', lat: 41.3909, lng: 2.1614 },
-];
-
 interface CreateStopDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -72,6 +62,9 @@ export function CreateStopDialog({
   onSuccess,
 }: CreateStopDialogProps) {
   const [loading, setLoading] = useState(false);
+  const [pickupResolved, setPickupResolved] = useState(false);
+  const [deliveryResolved, setDeliveryResolved] = useState(false);
+  const { geocodeAddress, loading: geocoding } = useGeocoding();
 
   const form = useForm<StopFormData>({
     resolver: zodResolver(stopSchema),
@@ -89,7 +82,38 @@ export function CreateStopDialog({
     },
   });
 
+  const resolveAddress = async (type: 'pickup' | 'delivery') => {
+    const address = form.getValues(type === 'pickup' ? 'pickup_address' : 'delivery_address');
+    if (!address) {
+      toast.error('Introduce una dirección primero');
+      return;
+    }
+
+    const result = await geocodeAddress(address);
+    if (result) {
+      if (type === 'pickup') {
+        form.setValue('pickup_lat', result.lat);
+        form.setValue('pickup_lng', result.lng);
+        setPickupResolved(true);
+      } else {
+        form.setValue('delivery_lat', result.lat);
+        form.setValue('delivery_lng', result.lng);
+        setDeliveryResolved(true);
+      }
+      toast.success(`Dirección localizada`, { description: result.displayName.split(',').slice(0, 3).join(',') });
+    } else {
+      toast.error('No se encontró la dirección', { description: 'Intenta con más detalle, ej: "Carrer de Balmes 145, Barcelona"' });
+    }
+  };
+
   const onSubmit = async (data: StopFormData) => {
+    if (!pickupResolved || !deliveryResolved) {
+      toast.error('Busca las direcciones primero', {
+        description: 'Pulsa el botón de búsqueda para localizar las direcciones en el mapa',
+      });
+      return;
+    }
+
     setLoading(true);
     
     try {
@@ -110,6 +134,8 @@ export function CreateStopDialog({
 
       toast.success('Parada creada correctamente');
       form.reset();
+      setPickupResolved(false);
+      setDeliveryResolved(false);
       onOpenChange(false);
       onSuccess?.();
     } catch (error: any) {
@@ -121,20 +147,6 @@ export function CreateStopDialog({
     }
   };
 
-  // Helper to set random Barcelona location
-  const setRandomLocation = (type: 'pickup' | 'delivery') => {
-    const loc = BARCELONA_LOCATIONS[Math.floor(Math.random() * BARCELONA_LOCATIONS.length)];
-    if (type === 'pickup') {
-      form.setValue('pickup_address', loc.address);
-      form.setValue('pickup_lat', loc.lat);
-      form.setValue('pickup_lng', loc.lng);
-    } else {
-      form.setValue('delivery_address', loc.address);
-      form.setValue('delivery_lat', loc.lat);
-      form.setValue('delivery_lng', loc.lng);
-    }
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -143,6 +155,9 @@ export function CreateStopDialog({
             <MapPin className="w-5 h-5 text-primary" />
             Nueva Parada
           </DialogTitle>
+          <DialogDescription>
+            Introduce las direcciones y pulsa buscar para localizarlas en el mapa.
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -159,17 +174,29 @@ export function CreateStopDialog({
                   </FormLabel>
                   <FormControl>
                     <div className="flex gap-2">
-                      <Input placeholder="Ej: Carrer de Balmes, 145" {...field} />
+                      <Input 
+                        placeholder="Ej: Carrer de Balmes 145, Barcelona" 
+                        {...field} 
+                        onChange={(e) => {
+                          field.onChange(e);
+                          setPickupResolved(false);
+                        }}
+                      />
                       <Button 
                         type="button" 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => setRandomLocation('pickup')}
+                        variant={pickupResolved ? "default" : "outline"}
+                        size="icon"
+                        onClick={() => resolveAddress('pickup')}
+                        disabled={geocoding}
+                        title="Buscar dirección"
                       >
-                        Demo
+                        {geocoding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                       </Button>
                     </div>
                   </FormControl>
+                  {pickupResolved && (
+                    <p className="text-xs text-status-delivered">✓ Dirección localizada en el mapa</p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -187,17 +214,29 @@ export function CreateStopDialog({
                   </FormLabel>
                   <FormControl>
                     <div className="flex gap-2">
-                      <Input placeholder="Ej: Passeig de Gràcia, 92" {...field} />
+                      <Input 
+                        placeholder="Ej: Passeig de Gràcia 92, Barcelona" 
+                        {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          setDeliveryResolved(false);
+                        }}
+                      />
                       <Button 
                         type="button" 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => setRandomLocation('delivery')}
+                        variant={deliveryResolved ? "default" : "outline"}
+                        size="icon"
+                        onClick={() => resolveAddress('delivery')}
+                        disabled={geocoding}
+                        title="Buscar dirección"
                       >
-                        Demo
+                        {geocoding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                       </Button>
                     </div>
                   </FormControl>
+                  {deliveryResolved && (
+                    <p className="text-xs text-status-delivered">✓ Dirección localizada en el mapa</p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
