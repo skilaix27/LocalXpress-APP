@@ -28,13 +28,24 @@ export default function AdminDashboard() {
       
       if (stopsData) setStops(stopsData as Stop[]);
 
-      // Fetch drivers (profiles with driver role)
-      const { data: driversData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('is_active', true);
-      
-      if (driversData) setDrivers(driversData as Profile[]);
+      // Fetch only driver-role profiles
+      const { data: driverRoles } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'driver');
+
+      if (driverRoles && driverRoles.length > 0) {
+        const driverUserIds = driverRoles.map(r => r.user_id);
+        const { data: driversData } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('user_id', driverUserIds)
+          .eq('is_active', true);
+        
+        if (driversData) setDrivers(driversData as Profile[]);
+      } else {
+        setDrivers([]);
+      }
 
       // Fetch driver locations
       const { data: locationsData } = await supabase
