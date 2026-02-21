@@ -102,6 +102,7 @@ export type Database = {
           pickup_address: string
           pickup_lat: number
           pickup_lng: number
+          proof_photo_url: string | null
           status: Database["public"]["Enums"]["stop_status"]
           updated_at: string
         }
@@ -121,6 +122,7 @@ export type Database = {
           pickup_address: string
           pickup_lat: number
           pickup_lng: number
+          proof_photo_url?: string | null
           status?: Database["public"]["Enums"]["stop_status"]
           updated_at?: string
         }
@@ -140,6 +142,7 @@ export type Database = {
           pickup_address?: string
           pickup_lat?: number
           pickup_lng?: number
+          proof_photo_url?: string | null
           status?: Database["public"]["Enums"]["stop_status"]
           updated_at?: string
         }

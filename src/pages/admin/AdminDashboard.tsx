@@ -4,6 +4,7 @@ import { DeliveryMap } from '@/components/map/DeliveryMap';
 import { StopCard } from '@/components/admin/StopCard';
 import { DriverCard } from '@/components/admin/DriverCard';
 import { CreateStopDialog } from '@/components/admin/CreateStopDialog';
+import { StopDetailDialog } from '@/components/admin/StopDetailDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Stop, Profile, DriverLocation } from '@/lib/supabase-types';
@@ -14,13 +15,13 @@ export default function AdminDashboard() {
   const [stops, setStops] = useState<Stop[]>([]);
   const [drivers, setDrivers] = useState<Profile[]>([]);
   const [driverLocations, setDriverLocations] = useState<DriverLocation[]>([]);
-  const [selectedStopId, setSelectedStopId] = useState<string | null>(null);
+  const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
     try {
-      // Fetch stops
       const { data: stopsData } = await supabase
         .from('stops')
         .select('*')
@@ -28,7 +29,6 @@ export default function AdminDashboard() {
       
       if (stopsData) setStops(stopsData as Stop[]);
 
-      // Fetch only driver-role profiles
       const { data: driverRoles } = await supabase
         .from('user_roles')
         .select('user_id')
@@ -47,7 +47,6 @@ export default function AdminDashboard() {
         setDrivers([]);
       }
 
-      // Fetch driver locations
       const { data: locationsData } = await supabase
         .from('driver_locations')
         .select('*');
@@ -63,23 +62,14 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchData();
 
-    // Subscribe to realtime updates
     const stopsChannel = supabase
       .channel('stops-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'stops' },
-        () => fetchData()
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stops' }, () => fetchData())
       .subscribe();
 
     const locationsChannel = supabase
       .channel('locations-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'driver_locations' },
-        () => fetchData()
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'driver_locations' }, () => fetchData())
       .subscribe();
 
     return () => {
@@ -88,7 +78,6 @@ export default function AdminDashboard() {
     };
   }, []);
 
-  // Stats
   const pendingStops = stops.filter((s) => s.status === 'pending').length;
   const pickedStops = stops.filter((s) => s.status === 'picked').length;
   const deliveredStops = stops.filter((s) => s.status === 'delivered').length;
@@ -103,17 +92,20 @@ export default function AdminDashboard() {
     { label: 'Repartidores', value: activeDrivers, icon: Users, color: 'text-primary' },
   ];
 
-  const getDriverLocation = (driverId: string) => {
-    return driverLocations.find((loc) => loc.driver_id === driverId);
-  };
+  const getDriverLocation = (driverId: string) =>
+    driverLocations.find((loc) => loc.driver_id === driverId);
 
-  const getDriverStopsCount = (driverId: string) => {
-    return stops.filter((s) => s.driver_id === driverId && s.status !== 'delivered').length;
-  };
+  const getDriverStopsCount = (driverId: string) =>
+    stops.filter((s) => s.driver_id === driverId && s.status !== 'delivered').length;
 
   const getDriverById = (driverId: string | null) => {
     if (!driverId) return null;
     return drivers.find((d) => d.id === driverId);
+  };
+
+  const handleStopClick = (stop: Stop) => {
+    setSelectedStop(stop);
+    setDetailDialogOpen(true);
   };
 
   if (loading) {
@@ -141,12 +133,7 @@ export default function AdminDashboard() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-          >
+          <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
             <Card>
               <CardContent className="p-4 flex items-center gap-4">
                 <div className={`p-3 rounded-lg bg-muted ${stat.color}`}>
@@ -177,8 +164,8 @@ export default function AdminDashboard() {
                   ...loc,
                   driver: getDriverById(loc.driver_id) || undefined,
                 }))}
-                selectedStopId={selectedStopId}
-                onStopClick={(stop) => setSelectedStopId(stop.id)}
+                selectedStopId={selectedStop?.id}
+                onStopClick={handleStopClick}
               />
             </CardContent>
           </Card>
@@ -186,34 +173,28 @@ export default function AdminDashboard() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Recent Stops */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex items-center justify-between">
                 Paradas recientes
-                <span className="text-sm font-normal text-muted-foreground">
-                  {stops.length} total
-                </span>
+                <span className="text-sm font-normal text-muted-foreground">{stops.length} total</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-2 max-h-[300px] overflow-y-auto space-y-2">
-              {stops.slice(0, 5).map((stop) => (
+              {stops.slice(0, 10).map((stop) => (
                 <StopCard
                   key={stop.id}
                   stop={stop}
                   driver={getDriverById(stop.driver_id)}
-                  onClick={() => setSelectedStopId(stop.id)}
+                  onClick={() => handleStopClick(stop)}
                 />
               ))}
               {stops.length === 0 && (
-                <p className="text-center text-muted-foreground py-8">
-                  No hay paradas aún
-                </p>
+                <p className="text-center text-muted-foreground py-8">No hay paradas aún</p>
               )}
             </CardContent>
           </Card>
 
-          {/* Drivers */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">Repartidores</CardTitle>
@@ -228,22 +209,15 @@ export default function AdminDashboard() {
                 />
               ))}
               {drivers.length === 0 && (
-                <p className="text-center text-muted-foreground py-8">
-                  No hay repartidores registrados
-                </p>
+                <p className="text-center text-muted-foreground py-8">No hay repartidores registrados</p>
               )}
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Create Stop Dialog */}
-      <CreateStopDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        drivers={drivers}
-        onSuccess={fetchData}
-      />
+      <CreateStopDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} drivers={drivers} onSuccess={fetchData} />
+      <StopDetailDialog stop={selectedStop} open={detailDialogOpen} onOpenChange={setDetailDialogOpen} drivers={drivers} onUpdate={fetchData} />
     </div>
   );
 }

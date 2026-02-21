@@ -37,6 +37,7 @@ export interface Stop {
   picked_at: string | null;
   delivered_at: string | null;
   created_by: string | null;
+  proof_photo_url: string | null;
 }
 
 export interface DriverLocation {
