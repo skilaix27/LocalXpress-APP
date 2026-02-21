@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { DeliveryMap } from '@/components/map/DeliveryMap';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { DeliveryProofDialog } from '@/components/driver/DeliveryProofDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { Stop, DriverLocation } from '@/lib/supabase-types';
@@ -14,11 +15,15 @@ import {
   Phone,
   FileText,
   Package,
-  CheckCircle,
+  Camera,
   User,
   LogOut,
   ChevronUp,
+  ChevronDown,
+  Clock,
 } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 export default function DriverApp() {
   const { profile, signOut } = useAuth();
@@ -28,11 +33,11 @@ export default function DriverApp() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(true);
+  const [proofDialogOpen, setProofDialogOpen] = useState(false);
+  const [showQueue, setShowQueue] = useState(false);
 
-  // Fetch assigned stops
   const fetchStops = async () => {
     if (!profile) return;
-
     try {
       const { data } = await supabase
         .from('stops')
@@ -42,9 +47,10 @@ export default function DriverApp() {
         .order('created_at', { ascending: true });
 
       if (data) {
-        setStops(data as Stop[]);
-        if (!selectedStop && data.length > 0) {
-          setSelectedStop(data[0] as Stop);
+        const typedData = data as Stop[];
+        setStops(typedData);
+        if (!selectedStop || !typedData.find(s => s.id === selectedStop.id)) {
+          setSelectedStop(typedData[0] || null);
         }
       }
     } catch (error) {
@@ -54,119 +60,62 @@ export default function DriverApp() {
     }
   };
 
-  // Update location
   const updateLocation = async (lat: number, lng: number) => {
     if (!profile) return;
-
     try {
-      const { error } = await supabase
-        .from('driver_locations')
-        .upsert({
-          driver_id: profile.id,
-          lat,
-          lng,
-          updated_at: new Date().toISOString(),
-        }, {
-          onConflict: 'driver_id',
-        });
-
-      if (error) throw error;
+      await supabase.from('driver_locations').upsert(
+        { driver_id: profile.id, lat, lng, updated_at: new Date().toISOString() },
+        { onConflict: 'driver_id' }
+      );
     } catch (error) {
       console.error('Error updating location:', error);
     }
   };
 
-  // Geolocation
   useEffect(() => {
     if (!navigator.geolocation) return;
-
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
-        const loc = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        };
+        const loc = { lat: position.coords.latitude, lng: position.coords.longitude };
         setCurrentLocation(loc);
         updateLocation(loc.lat, loc.lng);
       },
-      (error) => {
-        console.error('Geolocation error:', error);
-        // Set Barcelona center as fallback
-        setCurrentLocation({ lat: 41.3851, lng: 2.1734 });
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 10000,
-        timeout: 5000,
-      }
+      () => setCurrentLocation({ lat: 41.3851, lng: 2.1734 }),
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
     );
-
     return () => navigator.geolocation.clearWatch(watchId);
   }, [profile]);
 
-  // Fetch stops on mount
   useEffect(() => {
     fetchStops();
-
-    // Realtime subscription
     const channel = supabase
       .channel('driver-stops')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'stops' },
-        () => fetchStops()
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stops' }, () => fetchStops())
       .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [profile]);
 
-  // Update stop status
-  const updateStopStatus = async (status: 'picked' | 'delivered') => {
+  const markAsPicked = async () => {
     if (!selectedStop) return;
-
     setUpdating(true);
     try {
-      const updateData: any = {
-        status,
-        updated_at: new Date().toISOString(),
-      };
-
-      if (status === 'picked') {
-        updateData.picked_at = new Date().toISOString();
-      } else if (status === 'delivered') {
-        updateData.delivered_at = new Date().toISOString();
-      }
-
       const { error } = await supabase
         .from('stops')
-        .update(updateData)
+        .update({ status: 'picked', picked_at: new Date().toISOString(), updated_at: new Date().toISOString() })
         .eq('id', selectedStop.id);
-
       if (error) throw error;
-
-      toast.success(
-        status === 'picked' ? '¡Paquete recogido!' : '¡Entrega completada!',
-        { description: selectedStop.client_name }
-      );
-
-      // Refresh and select next stop
-      await fetchStops();
-      
-      if (status === 'delivered') {
-        const nextStop = stops.find((s) => s.id !== selectedStop.id);
-        setSelectedStop(nextStop || null);
-      } else {
-        setSelectedStop({ ...selectedStop, status: 'picked' });
-      }
+      toast.success('¡Paquete recogido!', { description: selectedStop.client_name });
+      setSelectedStop({ ...selectedStop, status: 'picked' });
+      fetchStops();
     } catch (error: any) {
       toast.error('Error al actualizar', { description: error.message });
     } finally {
       setUpdating(false);
     }
   };
+
+  const currentStop = stops.find(s => s.status === 'picked') || stops.find(s => s.status === 'pending');
+  const queueStops = stops.filter(s => s.id !== currentStop?.id);
 
   if (loading) {
     return (
@@ -189,9 +138,7 @@ export default function DriverApp() {
           </div>
           <div>
             <p className="font-semibold">{profile?.full_name}</p>
-            <p className="text-xs text-secondary-foreground/70">
-              {stops.length} paradas pendientes
-            </p>
+            <p className="text-xs text-secondary-foreground/70">{stops.length} paradas pendientes</p>
           </div>
         </div>
         <Button variant="ghost" size="icon" onClick={signOut}>
@@ -205,18 +152,7 @@ export default function DriverApp() {
           stops={selectedStop ? [selectedStop] : []}
           driverLocations={
             currentLocation && profile
-              ? [
-                  {
-                    id: 'current',
-                    driver_id: profile.id,
-                    lat: currentLocation.lat,
-                    lng: currentLocation.lng,
-                    heading: null,
-                    speed: null,
-                    updated_at: new Date().toISOString(),
-                    driver: profile,
-                  },
-                ]
+              ? [{ id: 'current', driver_id: profile.id, lat: currentLocation.lat, lng: currentLocation.lng, heading: null, speed: null, updated_at: new Date().toISOString(), driver: profile }]
               : []
           }
           showRoute={true}
@@ -248,22 +184,12 @@ export default function DriverApp() {
       {/* Bottom Sheet */}
       <AnimatePresence>
         {selectedStop && (
-          <motion.div
-            initial={{ y: 100 }}
-            animate={{ y: 0 }}
-            exit={{ y: 100 }}
-            className="bg-card rounded-t-3xl shadow-float -mt-6 relative z-10"
-          >
-            {/* Handle */}
-            <button
-              onClick={() => setDetailsExpanded(!detailsExpanded)}
-              className="absolute left-1/2 -translate-x-1/2 -top-3 p-2"
-            >
+          <motion.div initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }} className="bg-card rounded-t-3xl shadow-float -mt-6 relative z-10">
+            <button onClick={() => setDetailsExpanded(!detailsExpanded)} className="absolute left-1/2 -translate-x-1/2 -top-3 p-2">
               <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
             </button>
 
             <div className="p-4 pt-6">
-              {/* Header */}
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <div className="flex items-center gap-2">
@@ -271,34 +197,20 @@ export default function DriverApp() {
                     <StatusBadge status={selectedStop.status} />
                   </div>
                   {selectedStop.client_phone && (
-                    <a
-                      href={`tel:${selectedStop.client_phone}`}
-                      className="text-sm text-primary flex items-center gap-1 mt-1"
-                    >
+                    <a href={`tel:${selectedStop.client_phone}`} className="text-sm text-primary flex items-center gap-1 mt-1">
                       <Phone className="w-3 h-3" />
                       {selectedStop.client_phone}
                     </a>
                   )}
                 </div>
-                <motion.div
-                  animate={{ rotate: detailsExpanded ? 180 : 0 }}
-                  onClick={() => setDetailsExpanded(!detailsExpanded)}
-                  className="p-2 cursor-pointer"
-                >
+                <motion.div animate={{ rotate: detailsExpanded ? 180 : 0 }} onClick={() => setDetailsExpanded(!detailsExpanded)} className="p-2 cursor-pointer">
                   <ChevronUp className="w-5 h-5 text-muted-foreground" />
                 </motion.div>
               </div>
 
-              {/* Expandable Details */}
               <AnimatePresence>
                 {detailsExpanded && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="space-y-3 mb-4 overflow-hidden"
-                  >
-                    {/* Pickup */}
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-3 mb-4 overflow-hidden">
                     <Card className="border-l-4 border-l-primary">
                       <CardContent className="p-3 flex items-start gap-3">
                         <MapPin className="w-5 h-5 text-primary shrink-0 mt-0.5" />
@@ -306,18 +218,12 @@ export default function DriverApp() {
                           <p className="text-xs font-medium text-muted-foreground">RECOGIDA</p>
                           <p className="text-sm">{selectedStop.pickup_address}</p>
                         </div>
-                        <a
-                          href={`https://www.google.com/maps/dir/?api=1&destination=${selectedStop.pickup_lat},${selectedStop.pickup_lng}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-2 rounded-full bg-primary/10 text-primary"
-                        >
+                        <a href={`https://www.google.com/maps/dir/?api=1&destination=${selectedStop.pickup_lat},${selectedStop.pickup_lng}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full bg-primary/10 text-primary">
                           <Navigation className="w-4 h-4" />
                         </a>
                       </CardContent>
                     </Card>
 
-                    {/* Delivery */}
                     <Card className="border-l-4 border-l-status-delivered">
                       <CardContent className="p-3 flex items-start gap-3">
                         <MapPin className="w-5 h-5 text-status-delivered shrink-0 mt-0.5" />
@@ -325,24 +231,51 @@ export default function DriverApp() {
                           <p className="text-xs font-medium text-muted-foreground">ENTREGA</p>
                           <p className="text-sm">{selectedStop.delivery_address}</p>
                         </div>
-                        <a
-                          href={`https://www.google.com/maps/dir/?api=1&destination=${selectedStop.delivery_lat},${selectedStop.delivery_lng}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-2 rounded-full bg-status-delivered/10 text-status-delivered"
-                        >
+                        <a href={`https://www.google.com/maps/dir/?api=1&destination=${selectedStop.delivery_lat},${selectedStop.delivery_lng}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full bg-status-delivered/10 text-status-delivered">
                           <Navigation className="w-4 h-4" />
                         </a>
                       </CardContent>
                     </Card>
 
-                    {/* Notes */}
                     {selectedStop.client_notes && (
                       <div className="flex items-start gap-2 p-3 bg-muted rounded-lg">
                         <FileText className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
                         <p className="text-sm text-muted-foreground">{selectedStop.client_notes}</p>
                       </div>
                     )}
+
+                    {/* Queue */}
+                    {queueStops.length > 0 && (
+                      <button onClick={() => setShowQueue(!showQueue)} className="w-full flex items-center justify-between p-3 bg-muted rounded-lg text-sm">
+                        <span className="font-medium">{queueStops.length} paradas más en cola</span>
+                        {showQueue ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </button>
+                    )}
+
+                    <AnimatePresence>
+                      {showQueue && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-2 overflow-hidden">
+                          {queueStops.map((stop, i) => (
+                            <button
+                              key={stop.id}
+                              onClick={() => { setSelectedStop(stop); setShowQueue(false); }}
+                              className="w-full p-3 rounded-lg border text-left hover:bg-muted/50 transition-colors"
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs bg-muted rounded-full w-6 h-6 flex items-center justify-center font-medium">
+                                    {i + 2}
+                                  </span>
+                                  <span className="font-medium text-sm">{stop.client_name}</span>
+                                </div>
+                                <StatusBadge status={stop.status} />
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1 pl-8 truncate">{stop.delivery_address}</p>
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -351,7 +284,7 @@ export default function DriverApp() {
               <div className="flex gap-3">
                 {selectedStop.status === 'pending' && (
                   <Button
-                    onClick={() => updateStopStatus('picked')}
+                    onClick={markAsPicked}
                     disabled={updating}
                     className="flex-1 h-14 text-base gap-2 bg-status-picked hover:bg-status-picked/90 text-white"
                   >
@@ -361,12 +294,11 @@ export default function DriverApp() {
                 )}
                 {selectedStop.status === 'picked' && (
                   <Button
-                    onClick={() => updateStopStatus('delivered')}
-                    disabled={updating}
+                    onClick={() => setProofDialogOpen(true)}
                     className="flex-1 h-14 text-base gap-2 bg-status-delivered hover:bg-status-delivered/90 text-white"
                   >
-                    <CheckCircle className="w-5 h-5" />
-                    {updating ? 'Actualizando...' : 'Entregado'}
+                    <Camera className="w-5 h-5" />
+                    Entregar con foto
                   </Button>
                 )}
               </div>
@@ -375,19 +307,27 @@ export default function DriverApp() {
         )}
       </AnimatePresence>
 
-      {/* No stops message */}
+      {/* No stops */}
       {stops.length === 0 && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-20">
           <div className="text-center p-6">
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
               <Package className="w-8 h-8 text-primary" />
             </div>
             <h2 className="text-xl font-bold mb-2">¡Todo entregado!</h2>
-            <p className="text-muted-foreground">
-              No tienes paradas asignadas en este momento.
-            </p>
+            <p className="text-muted-foreground">No tienes paradas asignadas en este momento.</p>
           </div>
         </div>
+      )}
+
+      {/* Proof Dialog */}
+      {selectedStop && (
+        <DeliveryProofDialog
+          stop={selectedStop}
+          open={proofDialogOpen}
+          onOpenChange={setProofDialogOpen}
+          onSuccess={fetchStops}
+        />
       )}
     </div>
   );
