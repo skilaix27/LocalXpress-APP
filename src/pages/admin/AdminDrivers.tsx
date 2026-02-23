@@ -1,11 +1,15 @@
+import { useState } from 'react';
 import { useAdminData } from '@/hooks/useAdminData';
 import { DriverCard } from '@/components/admin/DriverCard';
+import { CreateUserDialog } from '@/components/admin/CreateUserDialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Users, Wifi, WifiOff } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Users, Wifi, WifiOff, UserPlus } from 'lucide-react';
 
 export default function AdminDrivers() {
-  const { drivers, loading, getDriverLocation, getDriverStopsCount, driverLocations } = useAdminData();
+  const { drivers, loading, fetchData, getDriverLocation, getDriverStopsCount, driverLocations } = useAdminData();
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   if (loading) {
     return (
@@ -23,10 +27,15 @@ export default function AdminDrivers() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold">Repartidores</h1>
-        <p className="text-muted-foreground">Gestiona tu equipo de reparto</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Repartidores</h1>
+          <p className="text-muted-foreground">Gestiona tu equipo de reparto</p>
+        </div>
+        <Button onClick={() => setCreateDialogOpen(true)}>
+          <UserPlus className="w-4 h-4 mr-2" />
+          Nuevo usuario
+        </Button>
       </div>
 
       {/* Summary */}
@@ -116,6 +125,8 @@ export default function AdminDrivers() {
           </CardContent>
         </Card>
       )}
+
+      <CreateUserDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} onSuccess={fetchData} />
     </div>
   );
 }
