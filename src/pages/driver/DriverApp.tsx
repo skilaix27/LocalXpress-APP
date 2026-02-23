@@ -121,46 +121,45 @@ export default function DriverApp() {
     }
   };
 
-  const openNavigation = (lat: number, lng: number, app: 'google' | 'waze' | 'apple') => {
-    const urls = {
-      google: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`,
-      waze: `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`,
-      apple: `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`,
-    };
-    // Use an anchor element with target="_top" to reliably escape iframe restrictions
-    const a = document.createElement('a');
-    a.href = urls[app];
-    a.target = '_top';
-    a.rel = 'noopener noreferrer';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
+  const getNavUrls = (lat: number, lng: number) => ({
+    google: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`,
+    waze: `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`,
+    apple: `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`,
+  });
 
   const NavTriggerButton = forwardRef<HTMLButtonElement, { className?: string; children?: React.ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>>(
     (props, ref) => <button ref={ref} {...props} />
   );
 
-  const NavigateButton = ({ lat, lng, color }: { lat: number; lng: number; color: string }) => (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <NavTriggerButton className={`p-2 rounded-full ${color} shrink-0`}>
-          <Navigation className="w-4 h-4" />
-        </NavTriggerButton>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-[160px]">
-        <DropdownMenuItem onSelect={() => openNavigation(lat, lng, 'google')}>
-          <Map className="w-4 h-4 mr-2" /> Google Maps
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => openNavigation(lat, lng, 'waze')}>
-          <Navigation className="w-4 h-4 mr-2" /> Waze
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => openNavigation(lat, lng, 'apple')}>
-          <MapPin className="w-4 h-4 mr-2" /> Apple Maps
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
+  const NavigateButton = ({ lat, lng, color }: { lat: number; lng: number; color: string }) => {
+    const urls = getNavUrls(lat, lng);
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <NavTriggerButton className={`p-2 rounded-full ${color} shrink-0`}>
+            <Navigation className="w-4 h-4" />
+          </NavTriggerButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-[160px]">
+          <DropdownMenuItem asChild>
+            <a href={urls.google} target="_blank" rel="noopener noreferrer" className="flex items-center">
+              <Map className="w-4 h-4 mr-2" /> Google Maps
+            </a>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <a href={urls.waze} target="_blank" rel="noopener noreferrer" className="flex items-center">
+              <Navigation className="w-4 h-4 mr-2" /> Waze
+            </a>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <a href={urls.apple} target="_blank" rel="noopener noreferrer" className="flex items-center">
+              <MapPin className="w-4 h-4 mr-2" /> Apple Maps
+            </a>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
 
   const currentStop = stops.find(s => s.status === 'picked') || stops.find(s => s.status === 'pending');
   const queueStops = stops.filter(s => s.id !== currentStop?.id);
