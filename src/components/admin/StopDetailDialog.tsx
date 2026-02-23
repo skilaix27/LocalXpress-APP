@@ -29,7 +29,7 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Stop, Profile } from '@/lib/supabase-types';
-import { MapPin, User, Phone, FileText, Trash2, Truck, Clock, Camera, Receipt } from 'lucide-react';
+import { MapPin, User, Phone, FileText, Trash2, Truck, Clock, Camera, Receipt, Route } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DeliveryReceipt } from './DeliveryReceipt';
@@ -140,6 +140,15 @@ export function StopDetailDialog({
               </div>
               <p className="text-sm text-muted-foreground pl-4">{stop.delivery_address}</p>
             </div>
+
+            {/* Distance */}
+            {stop.distance_km != null && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10">
+                <Route className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium">Distancia en coche:</span>
+                <span className="text-sm text-primary font-bold">{stop.distance_km} km</span>
+              </div>
+            )}
 
             {/* Phone */}
             {stop.client_phone && (

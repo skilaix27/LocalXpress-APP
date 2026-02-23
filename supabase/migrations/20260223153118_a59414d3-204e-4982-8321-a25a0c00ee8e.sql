@@ -1,0 +1,1 @@
+ALTER TABLE public.stops ADD COLUMN distance_km double precision DEFAULT NULL;
