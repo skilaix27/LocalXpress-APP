@@ -272,7 +272,24 @@ export default function DriverApp() {
 
       {/* List View */}
       {viewMode === 'list' && stops.length > 1 ? (
-        <DriverStopsList stops={stops} onSelectStop={handleSelectStop} />
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          {/* Map with all stops */}
+          <div className="h-[35dvh] shrink-0 relative">
+            <DeliveryMap
+              stops={stops}
+              driverLocations={
+                currentLocation && profile
+                  ? [{ id: 'current', driver_id: profile.id, lat: currentLocation.lat, lng: currentLocation.lng, heading: null, speed: null, updated_at: new Date().toISOString(), driver: profile }]
+                  : []
+              }
+              showRoute={false}
+              centerOn={null}
+              onStopClick={handleSelectStop}
+              className="h-full"
+            />
+          </div>
+          <DriverStopsList stops={stops} onSelectStop={handleSelectStop} />
+        </div>
       ) : (
       <>
       {/* Map - takes remaining space */}
