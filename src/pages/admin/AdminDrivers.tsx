@@ -2,14 +2,18 @@ import { useState } from 'react';
 import { useAdminData } from '@/hooks/useAdminData';
 import { DriverCard } from '@/components/admin/DriverCard';
 import { CreateUserDialog } from '@/components/admin/CreateUserDialog';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DriverDetailDialog } from '@/components/admin/DriverDetailDialog';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Users, Wifi, WifiOff, UserPlus } from 'lucide-react';
+import type { Profile } from '@/lib/supabase-types';
 
 export default function AdminDrivers() {
-  const { drivers, loading, fetchData, getDriverLocation, getDriverStopsCount, driverLocations } = useAdminData();
+  const { drivers, stops, loading, fetchData, getDriverLocation, getDriverStopsCount, driverLocations } = useAdminData();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [selectedDriver, setSelectedDriver] = useState<Profile | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   if (loading) {
     return (
@@ -90,6 +94,7 @@ export default function AdminDrivers() {
                 driver={driver}
                 location={getDriverLocation(driver.id)}
                 activeStopsCount={getDriverStopsCount(driver.id)}
+                onClick={() => { setSelectedDriver(driver); setDetailOpen(true); }}
               />
             ))}
           </div>
@@ -111,6 +116,7 @@ export default function AdminDrivers() {
                 driver={driver}
                 location={getDriverLocation(driver.id)}
                 activeStopsCount={getDriverStopsCount(driver.id)}
+                onClick={() => { setSelectedDriver(driver); setDetailOpen(true); }}
               />
             ))}
           </div>
@@ -127,6 +133,13 @@ export default function AdminDrivers() {
       )}
 
       <CreateUserDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} onSuccess={fetchData} />
+      <DriverDetailDialog
+        driver={selectedDriver}
+        stops={stops}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        onUpdate={fetchData}
+      />
     </div>
   );
 }
