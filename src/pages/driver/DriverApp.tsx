@@ -7,7 +7,7 @@ import { DeliveryProofDialog } from '@/components/driver/DeliveryProofDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { Stop } from '@/lib/supabase-types';
-import { getDeliveryZone } from '@/lib/delivery-zones';
+import { getDeliveryZone, adjustDistance } from '@/lib/delivery-zones';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -409,7 +409,7 @@ export default function DriverApp() {
                     {/* Distance */}
                     {selectedStop.distance_km != null && (
                       <div className="flex items-center justify-center gap-2 py-1.5 px-3 bg-primary/10 rounded-lg text-sm">
-                        <span className="text-primary font-bold">{selectedStop.distance_km} km</span>
+                        <span className="text-primary font-bold">{adjustDistance(selectedStop.distance_km)} km</span>
                         <span className="text-muted-foreground">·</span>
                         <span className="font-semibold">{getDeliveryZone(selectedStop.distance_km)}</span>
                       </div>
