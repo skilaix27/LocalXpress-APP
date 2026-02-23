@@ -15,6 +15,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminStops from "./pages/admin/AdminStops";
 import AdminDrivers from "./pages/admin/AdminDrivers";
 import AdminMap from "./pages/admin/AdminMap";
+import AdminHistory from "./pages/admin/AdminHistory";
 import DriverApp from "./pages/driver/DriverApp";
 
 const queryClient = new QueryClient();
@@ -46,6 +47,7 @@ const App = () => (
               <Route path="stops" element={<AdminStops />} />
               <Route path="drivers" element={<AdminDrivers />} />
               <Route path="map" element={<AdminMap />} />
+              <Route path="history" element={<AdminHistory />} />
             </Route>
             
             {/* Driver routes */}
