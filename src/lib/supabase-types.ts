@@ -21,6 +21,7 @@ export interface UserRole {
 
 export interface Stop {
   id: string;
+  order_code: string | null;
   pickup_address: string;
   pickup_lat: number;
   pickup_lng: number;

@@ -39,6 +39,7 @@ import { cn } from '@/lib/utils';
 import { useGeocoding } from '@/hooks/useGeocoding';
 import { useRouteDistance } from '@/hooks/useRouteDistance';
 import { getDeliveryZone, adjustDistance } from '@/lib/delivery-zones';
+import { generateOrderCode } from '@/lib/order-code';
 
 const stopSchema = z.object({
   pickup_address: z.string().min(1, 'Dirección de recogida requerida'),
@@ -155,6 +156,9 @@ export function CreateStopDialog({
         scheduledPickupAt = date.toISOString();
       }
 
+      // Generate order code
+      const orderCode = await generateOrderCode();
+
       const { error } = await supabase.from('stops').insert({
         pickup_address: data.pickup_address,
         pickup_lat: data.pickup_lat,
@@ -168,6 +172,7 @@ export function CreateStopDialog({
         driver_id: data.driver_id || null,
         distance_km: routeDistance,
         scheduled_pickup_at: scheduledPickupAt,
+        order_code: orderCode,
       } as any);
 
       if (error) throw error;

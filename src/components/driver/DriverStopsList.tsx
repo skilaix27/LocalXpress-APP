@@ -60,6 +60,9 @@ export function DriverStopsList({ stops, onSelectStop }: DriverStopsListProps) {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-sm truncate">{stop.client_name}</span>
+                        {stop.order_code && (
+                          <span className="text-[10px] font-mono bg-muted px-1 py-0.5 rounded text-muted-foreground">{stop.order_code}</span>
+                        )}
                         <StatusBadge status={stop.status} />
                       </div>
                       {(stop as any).scheduled_pickup_at && (

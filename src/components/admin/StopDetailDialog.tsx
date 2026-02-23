@@ -98,6 +98,9 @@ export function StopDetailDialog({
           <DialogTitle className="flex items-center gap-2">
             <User className="w-5 h-5 text-primary" />
             {stop.client_name}
+            {stop.order_code && (
+              <span className="text-sm font-mono bg-muted px-2 py-0.5 rounded text-muted-foreground">{stop.order_code}</span>
+            )}
           </DialogTitle>
           <DialogDescription>Detalle de la parada</DialogDescription>
         </DialogHeader>

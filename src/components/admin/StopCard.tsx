@@ -37,6 +37,9 @@ export const StopCard = forwardRef<HTMLDivElement, StopCardProps>(
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4 text-muted-foreground" />
                   <span className="font-semibold">{stop.client_name}</span>
+                  {stop.order_code && (
+                    <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded text-muted-foreground">{stop.order_code}</span>
+                  )}
                 </div>
                 <StatusBadge status={stop.status} />
               </div>
