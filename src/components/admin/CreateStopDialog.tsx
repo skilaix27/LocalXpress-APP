@@ -38,7 +38,7 @@ import { MapPin, User, Phone, FileText, Loader2, CalendarIcon, Clock } from 'luc
 import { cn } from '@/lib/utils';
 import { useRouteDistance } from '@/hooks/useRouteDistance';
 import { AddressInput } from '@/components/admin/AddressInput';
-import type { AddressSuggestion } from '@/hooks/useAddressAutocomplete';
+import type { PlaceDetails } from '@/hooks/useGooglePlaces';
 import { getDeliveryZone, adjustDistance } from '@/lib/delivery-zones';
 import { generateOrderCode } from '@/lib/order-code';
 
@@ -96,25 +96,26 @@ export function CreateStopDialog({
     },
   });
 
-  const handleAddressSelect = async (type: 'pickup' | 'delivery', suggestion: AddressSuggestion) => {
+  const handleAddressResolved = async (type: 'pickup' | 'delivery', details: PlaceDetails) => {
     if (type === 'pickup') {
-      form.setValue('pickup_lat', suggestion.lat);
-      form.setValue('pickup_lng', suggestion.lng);
+      form.setValue('pickup_address', details.formattedAddress);
+      form.setValue('pickup_lat', details.lat);
+      form.setValue('pickup_lng', details.lng);
       setPickupResolved(true);
     } else {
-      form.setValue('delivery_lat', suggestion.lat);
-      form.setValue('delivery_lng', suggestion.lng);
+      form.setValue('delivery_address', details.formattedAddress);
+      form.setValue('delivery_lat', details.lat);
+      form.setValue('delivery_lng', details.lng);
       setDeliveryResolved(true);
     }
 
-    // Auto-calculate route distance when both addresses are resolved
     const pResolved = type === 'pickup' ? true : pickupResolved;
     const dResolved = type === 'delivery' ? true : deliveryResolved;
     if (pResolved && dResolved) {
-      const pLat = type === 'pickup' ? suggestion.lat : form.getValues('pickup_lat');
-      const pLng = type === 'pickup' ? suggestion.lng : form.getValues('pickup_lng');
-      const dLat = type === 'delivery' ? suggestion.lat : form.getValues('delivery_lat');
-      const dLng = type === 'delivery' ? suggestion.lng : form.getValues('delivery_lng');
+      const pLat = type === 'pickup' ? details.lat : form.getValues('pickup_lat');
+      const pLng = type === 'pickup' ? details.lng : form.getValues('pickup_lng');
+      const dLat = type === 'delivery' ? details.lat : form.getValues('delivery_lat');
+      const dLng = type === 'delivery' ? details.lng : form.getValues('delivery_lng');
       const route = await calculateDistance(pLat, pLng, dLat, dLng);
       if (route) {
         setRouteDistance(route.distanceKm);
@@ -124,8 +125,8 @@ export function CreateStopDialog({
 
   const onSubmit = async (data: StopFormData) => {
     if (!pickupResolved || !deliveryResolved) {
-      toast.error('Busca las direcciones primero', {
-        description: 'Pulsa el botón de búsqueda para localizar las direcciones en el mapa',
+      toast.error('Selecciona las direcciones primero', {
+        description: 'Escribe y selecciona una dirección de la lista de sugerencias',
       });
       return;
     }
@@ -209,14 +210,11 @@ export function CreateStopDialog({
                   <FormControl>
                     <AddressInput
                       value={field.value}
-                      onChange={(val) => {
-                        field.onChange(val);
-                        setPickupResolved(false);
-                      }}
-                      onSelect={(s) => handleAddressSelect('pickup', s)}
+                      onChange={(val) => field.onChange(val)}
+                      onResolved={(d) => handleAddressResolved('pickup', d)}
+                      onClear={() => setPickupResolved(false)}
                       resolved={pickupResolved}
                       placeholder="Ej: Carrer de Balmes 145, Barcelona"
-                      resolvedLabel="Dirección localizada en el mapa"
                     />
                   </FormControl>
                   <FormMessage />
@@ -237,14 +235,11 @@ export function CreateStopDialog({
                   <FormControl>
                     <AddressInput
                       value={field.value}
-                      onChange={(val) => {
-                        field.onChange(val);
-                        setDeliveryResolved(false);
-                      }}
-                      onSelect={(s) => handleAddressSelect('delivery', s)}
+                      onChange={(val) => field.onChange(val)}
+                      onResolved={(d) => handleAddressResolved('delivery', d)}
+                      onClear={() => setDeliveryResolved(false)}
                       resolved={deliveryResolved}
                       placeholder="Ej: Passeig de Gràcia 92, Barcelona"
-                      resolvedLabel="Dirección localizada en el mapa"
                     />
                   </FormControl>
                   <FormMessage />
