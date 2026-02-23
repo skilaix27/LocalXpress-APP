@@ -1,0 +1,1 @@
+ALTER TABLE public.stops ADD COLUMN order_code text;

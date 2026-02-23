@@ -99,6 +99,7 @@ export type Database = {
           distance_km: number | null
           driver_id: string | null
           id: string
+          order_code: string | null
           picked_at: string | null
           pickup_address: string
           pickup_lat: number
@@ -121,6 +122,7 @@ export type Database = {
           distance_km?: number | null
           driver_id?: string | null
           id?: string
+          order_code?: string | null
           picked_at?: string | null
           pickup_address: string
           pickup_lat: number
@@ -143,6 +145,7 @@ export type Database = {
           distance_km?: number | null
           driver_id?: string | null
           id?: string
+          order_code?: string | null
           picked_at?: string | null
           pickup_address?: string
           pickup_lat?: number

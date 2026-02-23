@@ -22,7 +22,8 @@ export default function AdminHistory() {
         (s) =>
           s.client_name.toLowerCase().includes(q) ||
           s.pickup_address.toLowerCase().includes(q) ||
-          s.delivery_address.toLowerCase().includes(q)
+          s.delivery_address.toLowerCase().includes(q) ||
+          (s.order_code && s.order_code.toLowerCase().includes(q))
       );
     }
     // Sort by delivered_at descending
