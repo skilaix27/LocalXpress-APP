@@ -96,6 +96,7 @@ export type Database = {
           delivery_address: string
           delivery_lat: number
           delivery_lng: number
+          distance_km: number | null
           driver_id: string | null
           id: string
           picked_at: string | null
@@ -116,6 +117,7 @@ export type Database = {
           delivery_address: string
           delivery_lat: number
           delivery_lng: number
+          distance_km?: number | null
           driver_id?: string | null
           id?: string
           picked_at?: string | null
@@ -136,6 +138,7 @@ export type Database = {
           delivery_address?: string
           delivery_lat?: number
           delivery_lng?: number
+          distance_km?: number | null
           driver_id?: string | null
           id?: string
           picked_at?: string | null

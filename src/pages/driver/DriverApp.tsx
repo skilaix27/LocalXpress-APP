@@ -355,6 +355,14 @@ export default function DriverApp() {
                       </CardContent>
                     </Card>
 
+                    {/* Distance */}
+                    {selectedStop.distance_km != null && (
+                      <div className="flex items-center justify-center gap-2 py-1.5 px-3 bg-primary/10 rounded-lg text-sm">
+                        <span className="text-primary font-bold">{selectedStop.distance_km} km</span>
+                        <span className="text-muted-foreground">en coche</span>
+                      </div>
+                    )}
+
                     {selectedStop.client_notes && (
                       <div className="flex items-start gap-2 p-3 bg-muted rounded-lg">
                         <FileText className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />

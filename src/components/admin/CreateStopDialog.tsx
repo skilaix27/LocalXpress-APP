@@ -32,6 +32,7 @@ import { toast } from 'sonner';
 import type { Profile } from '@/lib/supabase-types';
 import { MapPin, User, Phone, FileText, Loader2, Search } from 'lucide-react';
 import { useGeocoding } from '@/hooks/useGeocoding';
+import { useRouteDistance } from '@/hooks/useRouteDistance';
 
 const stopSchema = z.object({
   pickup_address: z.string().min(1, 'Dirección de recogida requerida'),
@@ -64,7 +65,9 @@ export function CreateStopDialog({
   const [loading, setLoading] = useState(false);
   const [pickupResolved, setPickupResolved] = useState(false);
   const [deliveryResolved, setDeliveryResolved] = useState(false);
+  const [routeDistance, setRouteDistance] = useState<number | null>(null);
   const { geocodeAddress, loading: geocoding } = useGeocoding();
+  const { calculateDistance, loading: calculatingRoute } = useRouteDistance();
 
   const form = useForm<StopFormData>({
     resolver: zodResolver(stopSchema),
@@ -101,6 +104,20 @@ export function CreateStopDialog({
         setDeliveryResolved(true);
       }
       toast.success(`Dirección localizada`, { description: result.displayName.split(',').slice(0, 3).join(',') });
+      
+      // Auto-calculate route distance when both addresses are resolved
+      const pResolved = type === 'pickup' ? true : pickupResolved;
+      const dResolved = type === 'delivery' ? true : deliveryResolved;
+      if (pResolved && dResolved) {
+        const pLat = type === 'pickup' ? result.lat : form.getValues('pickup_lat');
+        const pLng = type === 'pickup' ? result.lng : form.getValues('pickup_lng');
+        const dLat = type === 'delivery' ? result.lat : form.getValues('delivery_lat');
+        const dLng = type === 'delivery' ? result.lng : form.getValues('delivery_lng');
+        const route = await calculateDistance(pLat, pLng, dLat, dLng);
+        if (route) {
+          setRouteDistance(route.distanceKm);
+        }
+      }
     } else {
       toast.error('No se encontró la dirección', { description: 'Intenta con más detalle, ej: "Carrer de Balmes 145, Barcelona"' });
     }
@@ -128,6 +145,7 @@ export function CreateStopDialog({
         client_phone: data.client_phone || null,
         client_notes: data.client_notes || null,
         driver_id: data.driver_id || null,
+        distance_km: routeDistance,
       });
 
       if (error) throw error;
@@ -136,6 +154,7 @@ export function CreateStopDialog({
       form.reset();
       setPickupResolved(false);
       setDeliveryResolved(false);
+      setRouteDistance(null);
       onOpenChange(false);
       onSuccess?.();
     } catch (error: any) {
@@ -299,6 +318,22 @@ export function CreateStopDialog({
                 </FormItem>
               )}
             />
+
+            {/* Route Distance */}
+            {routeDistance !== null && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+                <MapPin className="w-4 h-4 text-primary" />
+                <span className="font-medium">Distancia en coche:</span>
+                <span className="text-primary font-bold">{routeDistance} km</span>
+                {calculatingRoute && <Loader2 className="w-4 h-4 animate-spin" />}
+              </div>
+            )}
+            {calculatingRoute && routeDistance === null && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                <span className="text-muted-foreground">Calculando ruta en coche...</span>
+              </div>
+            )}
 
             {/* Driver Assignment */}
             <FormField

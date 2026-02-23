@@ -38,6 +38,7 @@ export interface Stop {
   delivered_at: string | null;
   created_by: string | null;
   proof_photo_url: string | null;
+  distance_km: number | null;
 }
 
 export interface DriverLocation {
