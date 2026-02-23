@@ -5,6 +5,7 @@ import type { Stop, Profile } from '@/lib/supabase-types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CheckCircle, MapPin, User, Clock, Truck, Camera, Package } from 'lucide-react';
+import logoLocalxpress from '@/assets/logo-localxpress.png';
 
 interface DeliveryReceiptProps {
   stop: Stop;
@@ -17,8 +18,9 @@ export const DeliveryReceipt = forwardRef<HTMLDivElement, DeliveryReceiptProps>(
       <div ref={ref} className="space-y-4">
         <Card className="border-2 border-status-delivered/30 overflow-hidden">
           {/* Header */}
-          <div className="bg-status-delivered/10 p-4 text-center space-y-1">
-            <CheckCircle className="w-8 h-8 text-status-delivered mx-auto" />
+          <div className="bg-status-delivered/10 p-4 text-center space-y-2">
+            <img src={logoLocalxpress} alt="LocalXpress" className="h-8 mx-auto" />
+            <CheckCircle className="w-6 h-6 text-status-delivered mx-auto" />
             <h3 className="text-lg font-bold">Justificante de Entrega</h3>
             <p className="text-xs text-muted-foreground">
               ID: {stop.id.slice(0, 8).toUpperCase()}
@@ -126,10 +128,11 @@ export const DeliveryReceipt = forwardRef<HTMLDivElement, DeliveryReceiptProps>(
           </CardContent>
 
           {/* Footer */}
-          <div className="bg-muted/50 p-3 text-center">
+          <div className="bg-muted/50 p-3 text-center space-y-1">
             <p className="text-xs text-muted-foreground">
               Generado el {format(new Date(), "dd/MM/yyyy HH:mm", { locale: es })}
             </p>
+            <p className="text-xs text-muted-foreground font-medium">LocalXpress</p>
           </div>
         </Card>
       </div>

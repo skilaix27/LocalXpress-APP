@@ -8,9 +8,9 @@ import {
   Package,
   Settings,
   LogOut,
-  Truck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import logoLocalxpress from '@/assets/logo-localxpress.png';
 
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
@@ -27,13 +27,7 @@ export function AdminSidebar() {
       {/* Logo */}
       <div className="p-6 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center">
-            <Truck className="w-5 h-5 text-sidebar-primary-foreground" />
-          </div>
-          <div>
-            <h1 className="font-bold text-lg">RutaExpress</h1>
-            <p className="text-xs text-sidebar-foreground/60">Admin Panel</p>
-          </div>
+          <img src={logoLocalxpress} alt="LocalXpress" className="h-9" />
         </div>
       </div>
 
