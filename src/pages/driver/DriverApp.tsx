@@ -20,12 +20,14 @@ import {
   Camera,
   User,
   LogOut,
-  ChevronUp,
-  ChevronDown,
   Map,
   Locate,
   AlertCircle,
   Clock,
+  ArrowLeft,
+  List,
+  ChevronRight,
+  Route,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -34,17 +36,18 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+type ViewMode = 'list' | 'detail';
+
 export default function DriverApp() {
   const { profile, signOut } = useAuth();
   const [stops, setStops] = useState<Stop[]>([]);
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const [detailsExpanded, setDetailsExpanded] = useState(true);
   const [proofDialogOpen, setProofDialogOpen] = useState(false);
-  const [showQueue, setShowQueue] = useState(false);
   const [gpsStatus, setGpsStatus] = useState<'loading' | 'active' | 'denied' | 'unavailable'>('loading');
 
   const fetchStops = useCallback(async () => {
@@ -57,18 +60,23 @@ export default function DriverApp() {
         .neq('status', 'delivered');
 
       if (data) {
-        // Sort: stops with scheduled time first (closest deadline first), then unscheduled by created_at
-        const typedData = (data as any[]).sort((a, b) => {
+        const typedData = (data as Stop[]).sort((a, b) => {
           const aTime = a.scheduled_pickup_at ? new Date(a.scheduled_pickup_at).getTime() : null;
           const bTime = b.scheduled_pickup_at ? new Date(b.scheduled_pickup_at).getTime() : null;
           if (aTime && bTime) return aTime - bTime;
           if (aTime && !bTime) return -1;
           if (!aTime && bTime) return 1;
           return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-        }) as Stop[];
+        });
         setStops(typedData);
-        if (!selectedStop || !typedData.find(s => s.id === selectedStop.id)) {
-          setSelectedStop(typedData[0] || null);
+        // Update selected stop data if viewing detail
+        if (selectedStop) {
+          const updated = typedData.find(s => s.id === selectedStop.id);
+          if (updated) setSelectedStop(updated);
+          else if (viewMode === 'detail') {
+            setViewMode('list');
+            setSelectedStop(null);
+          }
         }
       }
     } catch (error) {
@@ -76,7 +84,7 @@ export default function DriverApp() {
     } finally {
       setLoading(false);
     }
-  }, [profile, selectedStop]);
+  }, [profile, selectedStop, viewMode]);
 
   const updateLocation = useCallback(async (lat: number, lng: number) => {
     if (!profile) return;
@@ -114,7 +122,7 @@ export default function DriverApp() {
         if (error.code === 1) {
           setGpsStatus('denied');
           toast.error('Ubicación denegada', {
-            description: 'Activa la ubicación en los ajustes de tu navegador para usar la app correctamente.',
+            description: 'Activa la ubicación en los ajustes de tu navegador.',
             duration: 8000,
           });
         } else if (error.code === 2) {
@@ -160,26 +168,36 @@ export default function DriverApp() {
     }
   };
 
+  const openStopDetail = (stop: Stop) => {
+    setSelectedStop(stop);
+    setViewMode('detail');
+  };
+
+  const goBackToList = () => {
+    setViewMode('list');
+  };
+
   const getNavUrls = (lat: number, lng: number) => ({
     google: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`,
     waze: `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`,
     apple: `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`,
   });
 
-  const NavTriggerButton = forwardRef<HTMLButtonElement, { className?: string; children?: React.ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>>(
+  const NavTriggerButton = forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
     (props, ref) => <button ref={ref} {...props} />
   );
 
-  const NavigateButton = ({ lat, lng, color }: { lat: number; lng: number; color: string }) => {
+  const NavigateButton = ({ lat, lng, label }: { lat: number; lng: number; label: string }) => {
     const urls = getNavUrls(lat, lng);
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <NavTriggerButton className={`p-3 rounded-full ${color} shrink-0 active:scale-95 transition-transform`}>
-            <Navigation className="w-5 h-5" />
+          <NavTriggerButton className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold active:scale-95 transition-transform w-full justify-center">
+            <Navigation className="w-4 h-4" />
+            {label}
           </NavTriggerButton>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-[180px]">
+        <DropdownMenuContent align="center" className="min-w-[200px]">
           <DropdownMenuItem asChild>
             <a href={urls.google} target="_blank" rel="noopener noreferrer" className="flex items-center py-3">
               <Map className="w-5 h-5 mr-3" /> Google Maps
@@ -200,8 +218,8 @@ export default function DriverApp() {
     );
   };
 
-  const currentStop = stops.find(s => s.status === 'picked') || stops.find(s => s.status === 'pending');
-  const queueStops = stops.filter(s => s.id !== currentStop?.id);
+  const pendingCount = stops.filter(s => s.status === 'pending').length;
+  const pickedCount = stops.filter(s => s.status === 'picked').length;
 
   if (loading) {
     return (
@@ -216,16 +234,26 @@ export default function DriverApp() {
 
   return (
     <div className="h-[100dvh] flex flex-col bg-background overflow-hidden">
-      {/* Header - compact for mobile */}
+      {/* Header */}
       <header className="bg-secondary text-secondary-foreground px-4 py-2.5 flex items-center justify-between z-20 shrink-0 safe-area-top">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center">
-            <User className="w-4 h-4 text-primary" />
-          </div>
+          {viewMode === 'detail' ? (
+            <button onClick={goBackToList} className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center active:scale-95 transition-transform">
+              <ArrowLeft className="w-4 h-4 text-primary" />
+            </button>
+          ) : (
+            <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center">
+              <User className="w-4 h-4 text-primary" />
+            </div>
+          )}
           <div>
-            <p className="font-semibold text-sm leading-tight">{profile?.full_name}</p>
+            <p className="font-semibold text-sm leading-tight">
+              {viewMode === 'detail' ? selectedStop?.client_name : profile?.full_name}
+            </p>
             <div className="flex items-center gap-1.5">
-              <p className="text-xs text-secondary-foreground/70">{stops.length} paradas</p>
+              <p className="text-xs text-secondary-foreground/70">
+                {viewMode === 'detail' ? 'Detalle de parada' : `${stops.length} paradas`}
+              </p>
               {gpsStatus === 'active' && (
                 <span className="flex items-center gap-0.5 text-xs text-secondary-foreground/90">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
@@ -245,235 +273,260 @@ export default function DriverApp() {
         </Button>
       </header>
 
-      {/* Map - takes remaining space */}
-      <div className="flex-1 relative min-h-0">
-        <DeliveryMap
-          stops={selectedStop ? [selectedStop] : []}
-          driverLocations={
-            currentLocation && profile
-              ? [{ id: 'current', driver_id: profile.id, lat: currentLocation.lat, lng: currentLocation.lng, heading: null, speed: null, updated_at: new Date().toISOString(), driver: profile }]
-              : []
-          }
-          showRoute={true}
-          centerOn={mapCenter}
-          className="h-full"
-        />
-
-        {/* Stop pills - scrollable horizontally */}
-        {stops.length > 1 && (
-          <div className="absolute top-3 left-3 right-3 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            {stops.map((stop, i) => (
-              <motion.button
-                key={stop.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.05 }}
-                onClick={() => setSelectedStop(stop)}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg transition-all active:scale-95 ${
-                  selectedStop?.id === stop.id
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-card text-card-foreground border'
-                }`}
-              >
-                <span>#{i + 1} {stop.client_name.split(' ')[0]}</span>
-                {(stop as any).scheduled_pickup_at && (
-                  <span className="ml-1 opacity-80">
-                    {format(new Date((stop as any).scheduled_pickup_at), 'HH:mm')}
-                  </span>
-                )}
-              </motion.button>
-            ))}
-          </div>
-        )}
-
-        {/* Re-center button */}
-        {gpsStatus === 'active' && (
-          <button
-            onClick={() => currentLocation && setMapCenter({ ...currentLocation })}
-            className="absolute bottom-4 left-4 w-10 h-10 bg-card rounded-full shadow-lg flex items-center justify-center border active:scale-95 transition-transform z-10"
-          >
-            <Locate className="w-5 h-5 text-primary" />
-          </button>
-        )}
-      </div>
-
-      {/* Bottom Sheet */}
-      <AnimatePresence>
-        {selectedStop && (
+      <AnimatePresence mode="wait">
+        {viewMode === 'list' ? (
           <motion.div
-            initial={{ y: 100 }}
-            animate={{ y: 0 }}
-            exit={{ y: 100 }}
-            className="bg-card rounded-t-2xl shadow-[0_-4px_20px_rgba(0,0,0,0.1)] -mt-4 relative z-20 shrink-0 safe-area-bottom max-h-[55dvh] overflow-y-auto"
+            key="list"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+            className="flex-1 flex flex-col min-h-0"
           >
-            {/* Drag handle */}
-            <button
-              onClick={() => setDetailsExpanded(!detailsExpanded)}
-              className="w-full flex justify-center pt-2.5 pb-1"
-            >
-              <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
-            </button>
+            {/* Summary stats */}
+            <div className="px-4 py-3 flex gap-2 shrink-0">
+              <div className="flex-1 bg-muted rounded-xl p-3 text-center">
+                <p className="text-2xl font-bold text-foreground">{pendingCount}</p>
+                <p className="text-[10px] font-semibold text-muted-foreground tracking-wider">PENDIENTES</p>
+              </div>
+              <div className="flex-1 bg-status-picked-bg rounded-xl p-3 text-center">
+                <p className="text-2xl font-bold text-status-picked">{pickedCount}</p>
+                <p className="text-[10px] font-semibold text-muted-foreground tracking-wider">RECOGIDOS</p>
+              </div>
+              <div className="flex-1 bg-primary/10 rounded-xl p-3 text-center">
+                <p className="text-2xl font-bold text-primary">{stops.length}</p>
+                <p className="text-[10px] font-semibold text-muted-foreground tracking-wider">TOTAL</p>
+              </div>
+            </div>
 
-            <div className="px-4 pb-4">
-              {/* Stop header */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-base font-bold truncate">{selectedStop.client_name}</h2>
-                    <StatusBadge status={selectedStop.status} />
+            {/* Map preview with all stops */}
+            <div className="px-4 pb-3 shrink-0">
+              <div className="h-40 rounded-xl overflow-hidden border relative">
+                <DeliveryMap
+                  stops={stops}
+                  driverLocations={
+                    currentLocation && profile
+                      ? [{ id: 'current', driver_id: profile.id, lat: currentLocation.lat, lng: currentLocation.lng, heading: null, speed: null, updated_at: new Date().toISOString(), driver: profile }]
+                      : []
+                  }
+                  showRoute={false}
+                  className="h-full"
+                />
+                <div className="absolute bottom-2 right-2 bg-card/90 backdrop-blur-sm rounded-lg px-2.5 py-1 text-xs font-medium flex items-center gap-1.5 shadow-sm border">
+                  <Route className="w-3.5 h-3.5 text-primary" />
+                  {stops.length} paradas
+                </div>
+              </div>
+            </div>
+
+            {/* Stop list */}
+            <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-2">
+              {stops.map((stop, i) => (
+                <motion.div
+                  key={stop.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                >
+                  <button
+                    onClick={() => openStopDetail(stop)}
+                    className="w-full text-left bg-card border rounded-xl p-3.5 active:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-start gap-3">
+                      {/* Order number */}
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-bold ${
+                        stop.status === 'picked' 
+                          ? 'bg-status-picked text-white' 
+                          : 'bg-primary/10 text-primary'
+                      }`}>
+                        {i + 1}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        {/* Client & status */}
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="font-semibold text-sm truncate">{stop.client_name}</span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <StatusBadge status={stop.status} className="text-[10px] px-2 py-0.5" />
+                            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                        </div>
+
+                        {/* Scheduled time */}
+                        {stop.scheduled_pickup_at && (
+                          <div className="flex items-center gap-1 text-xs text-primary font-medium mb-1">
+                            <Clock className="w-3 h-3" />
+                            {format(new Date(stop.scheduled_pickup_at), "d MMM · HH:mm", { locale: es })}
+                          </div>
+                        )}
+
+                        {/* Addresses */}
+                        <div className="space-y-0.5">
+                          <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                            {stop.pickup_address}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-status-delivered shrink-0" />
+                            {stop.delivery_address}
+                          </p>
+                        </div>
+
+                        {/* Distance */}
+                        {stop.distance_km != null && (
+                          <span className="text-[10px] text-muted-foreground mt-1 inline-block">
+                            {stop.distance_km} km
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Empty state */}
+            {stops.length === 0 && (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center p-6">
+                  <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                    <Package className="w-8 h-8 text-primary" />
                   </div>
-                  {(selectedStop as any).scheduled_pickup_at && (
-                    <div className="flex items-center gap-1 mt-0.5 text-sm text-primary font-medium">
-                      <Clock className="w-3.5 h-3.5" />
-                      {format(new Date((selectedStop as any).scheduled_pickup_at), "d MMM · HH:mm", { locale: es })}
+                  <h2 className="text-xl font-bold mb-2">¡Todo entregado!</h2>
+                  <p className="text-muted-foreground">No tienes paradas asignadas.</p>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        ) : selectedStop ? (
+          <motion.div
+            key="detail"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{ duration: 0.2 }}
+            className="flex-1 flex flex-col min-h-0"
+          >
+            {/* Map for selected stop */}
+            <div className="h-[35dvh] relative shrink-0">
+              <DeliveryMap
+                stops={[selectedStop]}
+                driverLocations={
+                  currentLocation && profile
+                    ? [{ id: 'current', driver_id: profile.id, lat: currentLocation.lat, lng: currentLocation.lng, heading: null, speed: null, updated_at: new Date().toISOString(), driver: profile }]
+                    : []
+                }
+                showRoute={true}
+                centerOn={mapCenter}
+                className="h-full"
+              />
+              {gpsStatus === 'active' && (
+                <button
+                  onClick={() => currentLocation && setMapCenter({ ...currentLocation })}
+                  className="absolute bottom-3 left-3 w-10 h-10 bg-card rounded-full shadow-lg flex items-center justify-center border active:scale-95 transition-transform z-10"
+                >
+                  <Locate className="w-5 h-5 text-primary" />
+                </button>
+              )}
+            </div>
+
+            {/* Stop detail card */}
+            <div className="flex-1 overflow-y-auto -mt-4 relative z-10">
+              <div className="bg-card rounded-t-2xl shadow-[0_-4px_20px_rgba(0,0,0,0.08)] px-4 pt-5 pb-6 min-h-full">
+                {/* Status & time */}
+                <div className="flex items-center justify-between mb-4">
+                  <StatusBadge status={selectedStop.status} />
+                  {selectedStop.scheduled_pickup_at && (
+                    <div className="flex items-center gap-1.5 text-sm text-primary font-semibold">
+                      <Clock className="w-4 h-4" />
+                      {format(new Date(selectedStop.scheduled_pickup_at), "d MMM · HH:mm", { locale: es })}
                     </div>
                   )}
+                </div>
+
+                {/* Client info */}
+                <div className="mb-4">
+                  <h2 className="text-lg font-bold">{selectedStop.client_name}</h2>
                   {selectedStop.client_phone && (
-                    <a href={`tel:${selectedStop.client_phone}`} className="text-sm text-primary flex items-center gap-1 mt-0.5 active:opacity-70">
+                    <a href={`tel:${selectedStop.client_phone}`} className="text-sm text-primary flex items-center gap-1 mt-1 active:opacity-70">
                       <Phone className="w-3.5 h-3.5" />
                       {selectedStop.client_phone}
                     </a>
                   )}
                 </div>
-                <motion.button
-                  animate={{ rotate: detailsExpanded ? 180 : 0 }}
-                  onClick={() => setDetailsExpanded(!detailsExpanded)}
-                  className="p-2 -mr-2"
+
+                {/* Addresses with navigation */}
+                <div className="space-y-3 mb-4">
+                  <Card className="border-l-4 border-l-primary">
+                    <CardContent className="p-3">
+                      <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-1">RECOGIDA</p>
+                      <p className="text-sm leading-snug mb-2">{selectedStop.pickup_address}</p>
+                      <NavigateButton lat={selectedStop.pickup_lat} lng={selectedStop.pickup_lng} label="Ir a recoger" />
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-l-4 border-l-status-delivered">
+                    <CardContent className="p-3">
+                      <p className="text-[10px] font-bold text-muted-foreground tracking-wider mb-1">ENTREGA</p>
+                      <p className="text-sm leading-snug mb-2">{selectedStop.delivery_address}</p>
+                      <NavigateButton lat={selectedStop.delivery_lat} lng={selectedStop.delivery_lng} label="Ir a entregar" />
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Distance */}
+                {selectedStop.distance_km != null && (
+                  <div className="flex items-center justify-center gap-2 py-2 px-3 bg-primary/10 rounded-xl text-sm mb-4">
+                    <Route className="w-4 h-4 text-primary" />
+                    <span className="text-primary font-bold">{selectedStop.distance_km} km</span>
+                    <span className="text-muted-foreground">en coche</span>
+                  </div>
+                )}
+
+                {/* Notes */}
+                {selectedStop.client_notes && (
+                  <div className="flex items-start gap-2 p-3 bg-muted rounded-xl mb-4">
+                    <FileText className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                    <p className="text-sm text-muted-foreground">{selectedStop.client_notes}</p>
+                  </div>
+                )}
+
+                {/* Action buttons */}
+                <div className="flex gap-3 mt-auto">
+                  {selectedStop.status === 'pending' && (
+                    <Button
+                      onClick={markAsPicked}
+                      disabled={updating}
+                      className="flex-1 h-14 text-base gap-2 bg-status-picked hover:bg-status-picked/90 active:scale-[0.98] transition-transform text-white rounded-xl"
+                    >
+                      <Package className="w-5 h-5" />
+                      {updating ? 'Actualizando...' : 'Marcar Recogido'}
+                    </Button>
+                  )}
+                  {selectedStop.status === 'picked' && (
+                    <Button
+                      onClick={() => setProofDialogOpen(true)}
+                      className="flex-1 h-14 text-base gap-2 bg-status-delivered hover:bg-status-delivered/90 active:scale-[0.98] transition-transform text-white rounded-xl"
+                    >
+                      <Camera className="w-5 h-5" />
+                      Entregar con foto
+                    </Button>
+                  )}
+                </div>
+
+                {/* Back to list button */}
+                <button
+                  onClick={goBackToList}
+                  className="w-full mt-3 py-3 text-sm text-muted-foreground flex items-center justify-center gap-1.5 active:text-foreground transition-colors"
                 >
-                  <ChevronUp className="w-5 h-5 text-muted-foreground" />
-                </motion.button>
-              </div>
-
-              <AnimatePresence>
-                {detailsExpanded && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="space-y-2.5 mb-3 overflow-hidden"
-                  >
-                    {/* Pickup */}
-                    <Card className="border-l-4 border-l-primary">
-                      <CardContent className="p-3 flex items-center gap-3">
-                        <MapPin className="w-5 h-5 text-primary shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[10px] font-bold text-muted-foreground tracking-wider">RECOGIDA</p>
-                          <p className="text-sm leading-snug truncate">{selectedStop.pickup_address}</p>
-                        </div>
-                        <NavigateButton lat={selectedStop.pickup_lat} lng={selectedStop.pickup_lng} color="bg-primary/10 text-primary" />
-                      </CardContent>
-                    </Card>
-
-                    {/* Delivery */}
-                    <Card className="border-l-4 border-l-status-delivered">
-                      <CardContent className="p-3 flex items-center gap-3">
-                        <MapPin className="w-5 h-5 text-status-delivered shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[10px] font-bold text-muted-foreground tracking-wider">ENTREGA</p>
-                          <p className="text-sm leading-snug truncate">{selectedStop.delivery_address}</p>
-                        </div>
-                        <NavigateButton lat={selectedStop.delivery_lat} lng={selectedStop.delivery_lng} color="bg-status-delivered/10 text-status-delivered" />
-                      </CardContent>
-                    </Card>
-
-                    {/* Distance */}
-                    {selectedStop.distance_km != null && (
-                      <div className="flex items-center justify-center gap-2 py-1.5 px-3 bg-primary/10 rounded-lg text-sm">
-                        <span className="text-primary font-bold">{selectedStop.distance_km} km</span>
-                        <span className="text-muted-foreground">en coche</span>
-                      </div>
-                    )}
-
-                    {selectedStop.client_notes && (
-                      <div className="flex items-start gap-2 p-3 bg-muted rounded-lg">
-                        <FileText className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-                        <p className="text-sm text-muted-foreground">{selectedStop.client_notes}</p>
-                      </div>
-                    )}
-
-                    {/* Queue */}
-                    {queueStops.length > 0 && (
-                      <button onClick={() => setShowQueue(!showQueue)} className="w-full flex items-center justify-between p-3 bg-muted rounded-lg text-sm active:bg-muted/70 transition-colors">
-                        <span className="font-medium">{queueStops.length} paradas más</span>
-                        {showQueue ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      </button>
-                    )}
-
-                    <AnimatePresence>
-                      {showQueue && (
-                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="space-y-1.5 overflow-hidden">
-                          {queueStops.map((stop, i) => (
-                            <button
-                              key={stop.id}
-                              onClick={() => { setSelectedStop(stop); setShowQueue(false); }}
-                              className="w-full p-3 rounded-lg border text-left active:bg-muted/50 transition-colors"
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs bg-muted rounded-full w-6 h-6 flex items-center justify-center font-bold">
-                                    {i + 2}
-                                  </span>
-                                  <span className="font-medium text-sm">{stop.client_name}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {(stop as any).scheduled_pickup_at && (
-                                    <span className="text-xs text-primary font-medium flex items-center gap-0.5">
-                                      <Clock className="w-3 h-3" />
-                                      {format(new Date((stop as any).scheduled_pickup_at), 'HH:mm')}
-                                    </span>
-                                  )}
-                                  <StatusBadge status={stop.status} />
-                                </div>
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-1 pl-8 truncate">{stop.delivery_address}</p>
-                            </button>
-                          ))}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Action Buttons - large touch targets */}
-              <div className="flex gap-3">
-                {selectedStop.status === 'pending' && (
-                  <Button
-                    onClick={markAsPicked}
-                    disabled={updating}
-                    className="flex-1 h-14 text-base gap-2 bg-status-picked hover:bg-status-picked/90 active:scale-[0.98] transition-transform text-white rounded-xl"
-                  >
-                    <Package className="w-5 h-5" />
-                    {updating ? 'Actualizando...' : 'Recogido'}
-                  </Button>
-                )}
-                {selectedStop.status === 'picked' && (
-                  <Button
-                    onClick={() => setProofDialogOpen(true)}
-                    className="flex-1 h-14 text-base gap-2 bg-status-delivered hover:bg-status-delivered/90 active:scale-[0.98] transition-transform text-white rounded-xl"
-                  >
-                    <Camera className="w-5 h-5" />
-                    Entregar con foto
-                  </Button>
-                )}
+                  <List className="w-4 h-4" />
+                  Ver todas las paradas
+                </button>
               </div>
             </div>
           </motion.div>
-        )}
+        ) : null}
       </AnimatePresence>
-
-      {/* No stops */}
-      {stops.length === 0 && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-30">
-          <div className="text-center p-6">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <Package className="w-8 h-8 text-primary" />
-            </div>
-            <h2 className="text-xl font-bold mb-2">¡Todo entregado!</h2>
-            <p className="text-muted-foreground">No tienes paradas asignadas.</p>
-          </div>
-        </div>
-      )}
 
       {/* Proof Dialog */}
       {selectedStop && (
