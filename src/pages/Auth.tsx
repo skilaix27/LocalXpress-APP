@@ -2,21 +2,16 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import { MapPin, Truck, Shield } from 'lucide-react';
+import { User, Lock } from 'lucide-react';
 import logoLocalxpress from '@/assets/logo-localxpress.png';
 
 export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const { signIn } = useAuth();
   const navigate = useNavigate();
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -37,27 +32,8 @@ export default function Auth() {
     setLoading(false);
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    const { error } = await signUp(email, password, fullName);
-    
-    if (error) {
-      toast.error('Error al registrarse', {
-        description: error.message,
-      });
-    } else {
-      toast.success('Cuenta creada', {
-        description: 'Revisa tu email para confirmar tu cuenta.',
-      });
-    }
-    
-    setLoading(false);
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-secondary via-secondary/90 to-primary/20 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-muted/50 flex flex-col items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -66,128 +42,64 @@ export default function Auth() {
       >
         {/* Logo & Branding */}
         <div className="text-center mb-8">
-          <motion.div
+          <motion.img
+            src={logoLocalxpress}
+            alt="LocalXpress"
+            className="h-16 mx-auto mb-3"
             initial={{ scale: 0.8 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-            className="mb-4"
-          >
-            <img src={logoLocalxpress} alt="LocalXpress" className="h-14 mx-auto" />
-          </motion.div>
-          <p className="text-white/70 mt-2">Gestión de repartos locales</p>
+          />
+          <div className="flex items-center justify-center gap-2 text-muted-foreground text-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+            </svg>
+            <span>Portal de Repartidores</span>
+          </div>
         </div>
 
-        <Card className="shadow-float border-0">
-          <CardHeader className="text-center pb-2">
-            <CardTitle>Accede a tu cuenta</CardTitle>
-            <CardDescription>
-              Gestiona tus entregas en tiempo real
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="signin" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="signin">Iniciar Sesión</TabsTrigger>
-                <TabsTrigger value="signup">Registrarse</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="signin">
-                <form onSubmit={handleSignIn} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email-signin">Email</Label>
-                    <Input
-                      id="email-signin"
-                      type="email"
-                      placeholder="tu@email.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password-signin">Contraseña</Label>
-                    <Input
-                      id="password-signin"
-                      type="password"
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full"
-                    disabled={loading}
-                  >
-                    {loading ? 'Cargando...' : 'Iniciar Sesión'}
-                  </Button>
-                </form>
-              </TabsContent>
-              
-              <TabsContent value="signup">
-                <form onSubmit={handleSignUp} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name-signup">Nombre completo</Label>
-                    <Input
-                      id="name-signup"
-                      type="text"
-                      placeholder="Juan García"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email-signup">Email</Label>
-                    <Input
-                      id="email-signup"
-                      type="email"
-                      placeholder="tu@email.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password-signup">Contraseña</Label>
-                    <Input
-                      id="password-signup"
-                      type="password"
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      minLength={6}
-                    />
-                  </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full"
-                    disabled={loading}
-                  >
-                    {loading ? 'Creando cuenta...' : 'Crear cuenta'}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-
-        {/* Features */}
-        <div className="mt-8 grid grid-cols-3 gap-4 text-center text-white/80 text-sm">
-          <div className="flex flex-col items-center gap-2">
-            <MapPin className="w-5 h-5 text-primary" />
-            <span>Tiempo real</span>
-          </div>
-          <div className="flex flex-col items-center gap-2">
-            <Truck className="w-5 h-5 text-primary" />
-            <span>Rutas optimizadas</span>
-          </div>
-          <div className="flex flex-col items-center gap-2">
-            <Shield className="w-5 h-5 text-primary" />
-            <span>Seguro</span>
-          </div>
+        {/* Login Card */}
+        <div className="bg-card rounded-2xl shadow-lg p-8">
+          <h2 className="text-xl font-bold text-center text-foreground mb-6">Iniciar sesión</h2>
+          
+          <form onSubmit={handleSignIn} className="space-y-5">
+            <div className="relative">
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <input
+                type="email"
+                placeholder="Usuario o email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full h-12 pl-12 pr-4 rounded-full border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+              />
+            </div>
+            
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <input
+                type="password"
+                placeholder="Contraseña"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full h-12 pl-12 pr-4 rounded-full border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+              />
+            </div>
+            
+            <Button 
+              type="submit" 
+              className="w-full h-12 rounded-full text-base font-semibold"
+              disabled={loading}
+            >
+              {loading ? 'Cargando...' : 'Entrar'}
+            </Button>
+          </form>
+          
+          <p className="text-center text-primary text-sm mt-5 cursor-pointer hover:underline">
+            Contacta con tu administrador si no tienes acceso
+          </p>
         </div>
       </motion.div>
     </div>
