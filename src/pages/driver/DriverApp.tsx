@@ -36,6 +36,7 @@ export default function DriverApp() {
   const [stops, setStops] = useState<Stop[]>([]);
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(true);
@@ -93,6 +94,8 @@ export default function DriverApp() {
       (position) => {
         const loc = { lat: position.coords.latitude, lng: position.coords.longitude };
         setCurrentLocation(loc);
+        // Only center map on first GPS fix
+        setMapCenter(prev => prev === null ? loc : prev);
         setGpsStatus('active');
         updateLocation(loc.lat, loc.lng);
       },
@@ -242,7 +245,7 @@ export default function DriverApp() {
               : []
           }
           showRoute={true}
-          centerOn={currentLocation}
+          centerOn={mapCenter}
           className="h-full"
         />
 
@@ -271,7 +274,7 @@ export default function DriverApp() {
         {/* Re-center button */}
         {gpsStatus === 'active' && (
           <button
-            onClick={() => currentLocation && setCurrentLocation({ ...currentLocation })}
+            onClick={() => currentLocation && setMapCenter({ ...currentLocation })}
             className="absolute bottom-4 left-4 w-10 h-10 bg-card rounded-full shadow-lg flex items-center justify-center border active:scale-95 transition-transform z-10"
           >
             <Locate className="w-5 h-5 text-primary" />
