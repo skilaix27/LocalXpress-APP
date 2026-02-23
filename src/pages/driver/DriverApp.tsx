@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
+import { DriverStopsList } from '@/components/driver/DriverStopsList';
 import {
   MapPin,
   Navigation,
@@ -26,6 +27,8 @@ import {
   Locate,
   AlertCircle,
   Clock,
+  List,
+  ArrowLeft,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -46,6 +49,7 @@ export default function DriverApp() {
   const [proofDialogOpen, setProofDialogOpen] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
   const [gpsStatus, setGpsStatus] = useState<'loading' | 'active' | 'denied' | 'unavailable'>('loading');
+  const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
 
   const fetchStops = useCallback(async () => {
     if (!profile) return;
@@ -67,6 +71,9 @@ export default function DriverApp() {
           return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
         }) as Stop[];
         setStops(typedData);
+        if (typedData.length <= 1) {
+          setViewMode('detail');
+        }
         if (!selectedStop || !typedData.find(s => s.id === selectedStop.id)) {
           setSelectedStop(typedData[0] || null);
         }
@@ -200,6 +207,11 @@ export default function DriverApp() {
     );
   };
 
+  const handleSelectStop = (stop: Stop) => {
+    setSelectedStop(stop);
+    setViewMode('detail');
+  };
+
   const currentStop = stops.find(s => s.status === 'picked') || stops.find(s => s.status === 'pending');
   const queueStops = stops.filter(s => s.id !== currentStop?.id);
 
@@ -216,9 +228,14 @@ export default function DriverApp() {
 
   return (
     <div className="h-[100dvh] flex flex-col bg-background overflow-hidden">
-      {/* Header - compact for mobile */}
+      {/* Header */}
       <header className="bg-secondary text-secondary-foreground px-4 py-2.5 flex items-center justify-between z-20 shrink-0 safe-area-top">
         <div className="flex items-center gap-2.5">
+          {viewMode === 'detail' && stops.length > 1 && (
+            <button onClick={() => setViewMode('list')} className="p-1.5 -ml-1.5 rounded-lg active:bg-secondary-foreground/10">
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+          )}
           <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center">
             <User className="w-4 h-4 text-primary" />
           </div>
@@ -240,11 +257,23 @@ export default function DriverApp() {
             </div>
           </div>
         </div>
-        <Button variant="ghost" size="icon" onClick={signOut} className="h-9 w-9">
-          <LogOut className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          {viewMode === 'detail' && stops.length > 1 && (
+            <Button variant="ghost" size="icon" onClick={() => setViewMode('list')} className="h-9 w-9">
+              <List className="w-4 h-4" />
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" onClick={signOut} className="h-9 w-9">
+            <LogOut className="w-4 h-4" />
+          </Button>
+        </div>
       </header>
 
+      {/* List View */}
+      {viewMode === 'list' && stops.length > 1 ? (
+        <DriverStopsList stops={stops} onSelectStop={handleSelectStop} />
+      ) : (
+      <>
       {/* Map - takes remaining space */}
       <div className="flex-1 relative min-h-0">
         <DeliveryMap
@@ -473,6 +502,8 @@ export default function DriverApp() {
             <p className="text-muted-foreground">No tienes paradas asignadas.</p>
           </div>
         </div>
+      )}
+      </>
       )}
 
       {/* Proof Dialog */}
