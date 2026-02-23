@@ -1,0 +1,1 @@
+ALTER TABLE public.stops ADD COLUMN scheduled_pickup_at TIMESTAMPTZ;
