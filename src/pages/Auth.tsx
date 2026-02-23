@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { MapPin, Truck, Shield } from 'lucide-react';
+import logoLocalxpress from '@/assets/logo-localxpress.png';
 
 export default function Auth() {
   const [email, setEmail] = useState('');
@@ -69,12 +70,11 @@ export default function Auth() {
             initial={{ scale: 0.8 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary mb-4"
+            className="mb-4"
           >
-            <Truck className="w-8 h-8 text-primary-foreground" />
+            <img src={logoLocalxpress} alt="LocalXpress" className="h-14 mx-auto" />
           </motion.div>
-          <h1 className="text-3xl font-bold text-white">RutaExpress</h1>
-          <p className="text-white/70 mt-2">Gestión de repartos Barcelona</p>
+          <p className="text-white/70 mt-2">Gestión de repartos locales</p>
         </div>
 
         <Card className="shadow-float border-0">
