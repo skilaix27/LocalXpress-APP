@@ -2,6 +2,7 @@ import { forwardRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/ui/status-badge';
 import type { Stop, Profile } from '@/lib/supabase-types';
+import { getDeliveryZone } from '@/lib/delivery-zones';
 import { MapPin, User, Phone, Clock, ChevronRight, Route } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -57,7 +58,7 @@ export const StopCard = forwardRef<HTMLDivElement, StopCardProps>(
                 {stop.distance_km != null && (
                   <span className="flex items-center gap-1 text-primary font-semibold">
                     <Route className="w-3 h-3" />
-                    {stop.distance_km} km
+                    {stop.distance_km} km · {getDeliveryZone(stop.distance_km)}
                   </span>
                 )}
                 {stop.client_phone && (
