@@ -61,6 +61,8 @@ export function DeliveryMap({
   const markersRef = useRef<L.LayerGroup | null>(null);
   const routeRef = useRef<L.Polyline | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const userInteractedRef = useRef(false);
+  const initialFitDoneRef = useRef(false);
 
   // Initialize map
   useEffect(() => {
@@ -88,6 +90,10 @@ export function DeliveryMap({
     }).addTo(mapInstanceRef.current);
 
     markersRef.current = L.layerGroup().addTo(mapInstanceRef.current);
+
+    // Track user interaction to stop auto-centering
+    mapInstanceRef.current.on('dragstart', () => { userInteractedRef.current = true; });
+    mapInstanceRef.current.on('zoomstart', () => { userInteractedRef.current = true; });
 
     // ResizeObserver to handle map container resizing (critical for mobile)
     resizeObserverRef.current = new ResizeObserver(() => {
@@ -176,13 +182,16 @@ export function DeliveryMap({
     });
   }, [stops, driverLocations, selectedStopId, showRoute, onStopClick]);
 
-  // Center map
+  // Center map — only on explicit centerOn changes or initial load
   useEffect(() => {
     if (!mapInstanceRef.current) return;
 
     if (centerOn) {
+      // Explicit center request (e.g. clicking a stop) always applies
+      userInteractedRef.current = false;
       mapInstanceRef.current.setView([centerOn.lat, centerOn.lng], 15, { animate: true });
-    } else if (stops.length > 0) {
+    } else if (stops.length > 0 && !initialFitDoneRef.current && !userInteractedRef.current) {
+      // Only fit bounds on first load
       const bounds = L.latLngBounds(
         stops.flatMap((stop) => [
           [stop.pickup_lat, stop.pickup_lng] as [number, number],
@@ -190,6 +199,7 @@ export function DeliveryMap({
         ])
       );
       mapInstanceRef.current.fitBounds(bounds, { padding: [40, 40], animate: true });
+      initialFitDoneRef.current = true;
     }
   }, [centerOn, stops]);
 
