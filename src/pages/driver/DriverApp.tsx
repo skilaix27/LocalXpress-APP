@@ -127,9 +127,14 @@ export default function DriverApp() {
       waze: `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`,
       apple: `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`,
     };
-    // Use window.top to escape the iframe and open in the real browser
-    const topWindow = window.top || window;
-    topWindow.open(urls[app], '_blank', 'noopener,noreferrer');
+    // Use an anchor element with target="_top" to reliably escape iframe restrictions
+    const a = document.createElement('a');
+    a.href = urls[app];
+    a.target = '_top';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   const NavTriggerButton = forwardRef<HTMLButtonElement, { className?: string; children?: React.ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>>(
