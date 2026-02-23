@@ -168,11 +168,33 @@ export default function DriverApp() {
     }
   };
 
-  const getNavUrls = (lat: number, lng: number) => ({
-    google: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`,
-    waze: `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`,
-    apple: `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`,
-  });
+  const getNavUrls = (lat: number, lng: number) => {
+    const origin = currentLocation
+      ? `${currentLocation.lat},${currentLocation.lng}`
+      : '';
+    return {
+      google: origin
+        ? `https://www.google.com/maps/dir/${origin}/${lat},${lng}`
+        : `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`,
+      waze: `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`,
+      apple: origin
+        ? `https://maps.apple.com/?saddr=${origin}&daddr=${lat},${lng}&dirflg=d`
+        : `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`,
+    };
+  };
+
+  const openNavLink = (url: string) => {
+    const win = window.open(url, '_blank', 'noopener,noreferrer');
+    if (!win) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  };
 
   const NavTriggerButton = forwardRef<HTMLButtonElement, { className?: string; children?: React.ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>>(
     (props, ref) => <button ref={ref} {...props} />
@@ -188,20 +210,14 @@ export default function DriverApp() {
           </NavTriggerButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[180px]">
-          <DropdownMenuItem asChild>
-            <a href={urls.google} target="_blank" rel="noopener noreferrer" className="flex items-center py-3">
-              <Map className="w-5 h-5 mr-3" /> Google Maps
-            </a>
+          <DropdownMenuItem onClick={() => openNavLink(urls.google)} className="flex items-center py-3 cursor-pointer">
+            <Map className="w-5 h-5 mr-3" /> Google Maps
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <a href={urls.waze} target="_blank" rel="noopener noreferrer" className="flex items-center py-3">
-              <Navigation className="w-5 h-5 mr-3" /> Waze
-            </a>
+          <DropdownMenuItem onClick={() => openNavLink(urls.waze)} className="flex items-center py-3 cursor-pointer">
+            <Navigation className="w-5 h-5 mr-3" /> Waze
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <a href={urls.apple} target="_blank" rel="noopener noreferrer" className="flex items-center py-3">
-              <MapPin className="w-5 h-5 mr-3" /> Apple Maps
-            </a>
+          <DropdownMenuItem onClick={() => openNavLink(urls.apple)} className="flex items-center py-3 cursor-pointer">
+            <MapPin className="w-5 h-5 mr-3" /> Apple Maps
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
