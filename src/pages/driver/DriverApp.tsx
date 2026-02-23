@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { Stop } from '@/lib/supabase-types';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MapPin,
@@ -23,6 +25,7 @@ import {
   Map,
   Locate,
   AlertCircle,
+  Clock,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -51,11 +54,18 @@ export default function DriverApp() {
         .from('stops')
         .select('*')
         .eq('driver_id', profile.id)
-        .neq('status', 'delivered')
-        .order('created_at', { ascending: true });
+        .neq('status', 'delivered');
 
       if (data) {
-        const typedData = data as Stop[];
+        // Sort: stops with scheduled time first (closest deadline first), then unscheduled by created_at
+        const typedData = (data as any[]).sort((a, b) => {
+          const aTime = a.scheduled_pickup_at ? new Date(a.scheduled_pickup_at).getTime() : null;
+          const bTime = b.scheduled_pickup_at ? new Date(b.scheduled_pickup_at).getTime() : null;
+          if (aTime && bTime) return aTime - bTime;
+          if (aTime && !bTime) return -1;
+          if (!aTime && bTime) return 1;
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        }) as Stop[];
         setStops(typedData);
         if (!selectedStop || !typedData.find(s => s.id === selectedStop.id)) {
           setSelectedStop(typedData[0] || null);
@@ -265,7 +275,12 @@ export default function DriverApp() {
                     : 'bg-card text-card-foreground border'
                 }`}
               >
-                #{i + 1} {stop.client_name.split(' ')[0]}
+                <span>#{i + 1} {stop.client_name.split(' ')[0]}</span>
+                {(stop as any).scheduled_pickup_at && (
+                  <span className="ml-1 opacity-80">
+                    {format(new Date((stop as any).scheduled_pickup_at), 'HH:mm')}
+                  </span>
+                )}
               </motion.button>
             ))}
           </div>
@@ -307,6 +322,12 @@ export default function DriverApp() {
                     <h2 className="text-base font-bold truncate">{selectedStop.client_name}</h2>
                     <StatusBadge status={selectedStop.status} />
                   </div>
+                  {(selectedStop as any).scheduled_pickup_at && (
+                    <div className="flex items-center gap-1 mt-0.5 text-sm text-primary font-medium">
+                      <Clock className="w-3.5 h-3.5" />
+                      {format(new Date((selectedStop as any).scheduled_pickup_at), "d MMM · HH:mm", { locale: es })}
+                    </div>
+                  )}
                   {selectedStop.client_phone && (
                     <a href={`tel:${selectedStop.client_phone}`} className="text-sm text-primary flex items-center gap-1 mt-0.5 active:opacity-70">
                       <Phone className="w-3.5 h-3.5" />
@@ -394,7 +415,15 @@ export default function DriverApp() {
                                   </span>
                                   <span className="font-medium text-sm">{stop.client_name}</span>
                                 </div>
-                                <StatusBadge status={stop.status} />
+                                <div className="flex items-center gap-2">
+                                  {(stop as any).scheduled_pickup_at && (
+                                    <span className="text-xs text-primary font-medium flex items-center gap-0.5">
+                                      <Clock className="w-3 h-3" />
+                                      {format(new Date((stop as any).scheduled_pickup_at), 'HH:mm')}
+                                    </span>
+                                  )}
+                                  <StatusBadge status={stop.status} />
+                                </div>
                               </div>
                               <p className="text-xs text-muted-foreground mt-1 pl-8 truncate">{stop.delivery_address}</p>
                             </button>
