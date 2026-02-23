@@ -19,7 +19,7 @@ const navItems = [
   { to: '/admin/map', icon: MapPin, label: 'Mapa' },
 ];
 
-export function AdminSidebar() {
+export function AdminSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
   const { profile, signOut } = useAuth();
 
   return (
@@ -38,6 +38,7 @@ export function AdminSidebar() {
             key={item.to}
             to={item.to}
             end={item.end}
+            onClick={onNavigate}
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-3 px-4 py-3 rounded-lg transition-colors',
