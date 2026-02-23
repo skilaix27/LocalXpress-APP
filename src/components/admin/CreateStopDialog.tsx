@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import {
   Dialog,
   DialogContent,
@@ -27,10 +29,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Profile } from '@/lib/supabase-types';
-import { MapPin, User, Phone, FileText, Loader2, Search } from 'lucide-react';
+import { MapPin, User, Phone, FileText, Loader2, Search, CalendarIcon, Clock } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useGeocoding } from '@/hooks/useGeocoding';
 import { useRouteDistance } from '@/hooks/useRouteDistance';
 
@@ -45,6 +50,8 @@ const stopSchema = z.object({
   client_phone: z.string().optional(),
   client_notes: z.string().optional(),
   driver_id: z.string().optional(),
+  scheduled_date: z.date().optional(),
+  scheduled_time: z.string().optional(),
 });
 
 type StopFormData = z.infer<typeof stopSchema>;
@@ -82,6 +89,8 @@ export function CreateStopDialog({
       client_phone: '',
       client_notes: '',
       driver_id: '',
+      scheduled_date: undefined,
+      scheduled_time: '',
     },
   });
 
@@ -134,6 +143,17 @@ export function CreateStopDialog({
     setLoading(true);
     
     try {
+      // Build scheduled_pickup_at timestamp
+      let scheduledPickupAt: string | null = null;
+      if (data.scheduled_date) {
+        const date = new Date(data.scheduled_date);
+        if (data.scheduled_time) {
+          const [hours, minutes] = data.scheduled_time.split(':').map(Number);
+          date.setHours(hours, minutes, 0, 0);
+        }
+        scheduledPickupAt = date.toISOString();
+      }
+
       const { error } = await supabase.from('stops').insert({
         pickup_address: data.pickup_address,
         pickup_lat: data.pickup_lat,
@@ -146,7 +166,8 @@ export function CreateStopDialog({
         client_notes: data.client_notes || null,
         driver_id: data.driver_id || null,
         distance_km: routeDistance,
-      });
+        scheduled_pickup_at: scheduledPickupAt,
+      } as any);
 
       if (error) throw error;
 
@@ -319,7 +340,70 @@ export function CreateStopDialog({
               )}
             />
 
-            {/* Route Distance */}
+            {/* Scheduled Pickup Date & Time */}
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="scheduled_date"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel className="flex items-center gap-2">
+                      <CalendarIcon className="w-4 h-4" />
+                      Día de recogida
+                    </FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP", { locale: es })
+                            ) : (
+                              <span>Seleccionar día</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                          initialFocus
+                          className={cn("p-3 pointer-events-auto")}
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="scheduled_time"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      Hora de recogida
+                    </FormLabel>
+                    <FormControl>
+                      <Input type="time" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             {routeDistance !== null && (
               <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 text-sm">
                 <MapPin className="w-4 h-4 text-primary" />
