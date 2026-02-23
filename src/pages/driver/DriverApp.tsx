@@ -21,7 +21,14 @@ import {
   ChevronUp,
   ChevronDown,
   Clock,
+  Map,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -113,6 +120,36 @@ export default function DriverApp() {
       setUpdating(false);
     }
   };
+
+  const openNavigation = (lat: number, lng: number, app: 'google' | 'waze' | 'apple') => {
+    const urls = {
+      google: `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`,
+      waze: `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`,
+      apple: `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`,
+    };
+    window.open(urls[app], '_blank');
+  };
+
+  const NavigateButton = ({ lat, lng, color }: { lat: number; lng: number; color: string }) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className={`p-2 rounded-full ${color} shrink-0`}>
+          <Navigation className="w-4 h-4" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-[160px]">
+        <DropdownMenuItem onClick={() => openNavigation(lat, lng, 'google')}>
+          <Map className="w-4 h-4 mr-2" /> Google Maps
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => openNavigation(lat, lng, 'waze')}>
+          <Navigation className="w-4 h-4 mr-2" /> Waze
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => openNavigation(lat, lng, 'apple')}>
+          <MapPin className="w-4 h-4 mr-2" /> Apple Maps
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   const currentStop = stops.find(s => s.status === 'picked') || stops.find(s => s.status === 'pending');
   const queueStops = stops.filter(s => s.id !== currentStop?.id);
@@ -218,9 +255,7 @@ export default function DriverApp() {
                           <p className="text-xs font-medium text-muted-foreground">RECOGIDA</p>
                           <p className="text-sm">{selectedStop.pickup_address}</p>
                         </div>
-                        <a href={`https://www.google.com/maps/dir/?api=1&destination=${selectedStop.pickup_lat},${selectedStop.pickup_lng}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full bg-primary/10 text-primary">
-                          <Navigation className="w-4 h-4" />
-                        </a>
+                        <NavigateButton lat={selectedStop.pickup_lat} lng={selectedStop.pickup_lng} color="bg-primary/10 text-primary" />
                       </CardContent>
                     </Card>
 
@@ -231,9 +266,7 @@ export default function DriverApp() {
                           <p className="text-xs font-medium text-muted-foreground">ENTREGA</p>
                           <p className="text-sm">{selectedStop.delivery_address}</p>
                         </div>
-                        <a href={`https://www.google.com/maps/dir/?api=1&destination=${selectedStop.delivery_lat},${selectedStop.delivery_lng}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-full bg-status-delivered/10 text-status-delivered">
-                          <Navigation className="w-4 h-4" />
-                        </a>
+                        <NavigateButton lat={selectedStop.delivery_lat} lng={selectedStop.delivery_lng} color="bg-status-delivered/10 text-status-delivered" />
                       </CardContent>
                     </Card>
 
