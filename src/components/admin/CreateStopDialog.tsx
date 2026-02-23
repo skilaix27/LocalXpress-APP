@@ -34,10 +34,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Profile } from '@/lib/supabase-types';
-import { MapPin, User, Phone, FileText, Loader2, Search, CalendarIcon, Clock } from 'lucide-react';
+import { MapPin, User, Phone, FileText, Loader2, CalendarIcon, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useGeocoding } from '@/hooks/useGeocoding';
 import { useRouteDistance } from '@/hooks/useRouteDistance';
+import { AddressInput } from '@/components/admin/AddressInput';
+import { MiniMapPreview } from '@/components/admin/MiniMapPreview';
+import type { AddressSuggestion } from '@/hooks/useAddressAutocomplete';
 import { getDeliveryZone, adjustDistance } from '@/lib/delivery-zones';
 import { generateOrderCode } from '@/lib/order-code';
 
@@ -75,7 +77,6 @@ export function CreateStopDialog({
   const [pickupResolved, setPickupResolved] = useState(false);
   const [deliveryResolved, setDeliveryResolved] = useState(false);
   const [routeDistance, setRouteDistance] = useState<number | null>(null);
-  const { geocodeAddress, loading: geocoding } = useGeocoding();
   const { calculateDistance, loading: calculatingRoute } = useRouteDistance();
 
   const form = useForm<StopFormData>({
@@ -96,41 +97,29 @@ export function CreateStopDialog({
     },
   });
 
-  const resolveAddress = async (type: 'pickup' | 'delivery') => {
-    const address = form.getValues(type === 'pickup' ? 'pickup_address' : 'delivery_address');
-    if (!address) {
-      toast.error('Introduce una dirección primero');
-      return;
+  const handleAddressSelect = async (type: 'pickup' | 'delivery', suggestion: AddressSuggestion) => {
+    if (type === 'pickup') {
+      form.setValue('pickup_lat', suggestion.lat);
+      form.setValue('pickup_lng', suggestion.lng);
+      setPickupResolved(true);
+    } else {
+      form.setValue('delivery_lat', suggestion.lat);
+      form.setValue('delivery_lng', suggestion.lng);
+      setDeliveryResolved(true);
     }
 
-    const result = await geocodeAddress(address);
-    if (result) {
-      if (type === 'pickup') {
-        form.setValue('pickup_lat', result.lat);
-        form.setValue('pickup_lng', result.lng);
-        setPickupResolved(true);
-      } else {
-        form.setValue('delivery_lat', result.lat);
-        form.setValue('delivery_lng', result.lng);
-        setDeliveryResolved(true);
+    // Auto-calculate route distance when both addresses are resolved
+    const pResolved = type === 'pickup' ? true : pickupResolved;
+    const dResolved = type === 'delivery' ? true : deliveryResolved;
+    if (pResolved && dResolved) {
+      const pLat = type === 'pickup' ? suggestion.lat : form.getValues('pickup_lat');
+      const pLng = type === 'pickup' ? suggestion.lng : form.getValues('pickup_lng');
+      const dLat = type === 'delivery' ? suggestion.lat : form.getValues('delivery_lat');
+      const dLng = type === 'delivery' ? suggestion.lng : form.getValues('delivery_lng');
+      const route = await calculateDistance(pLat, pLng, dLat, dLng);
+      if (route) {
+        setRouteDistance(route.distanceKm);
       }
-      toast.success(`Dirección localizada`, { description: result.displayName.split(',').slice(0, 3).join(',') });
-      
-      // Auto-calculate route distance when both addresses are resolved
-      const pResolved = type === 'pickup' ? true : pickupResolved;
-      const dResolved = type === 'delivery' ? true : deliveryResolved;
-      if (pResolved && dResolved) {
-        const pLat = type === 'pickup' ? result.lat : form.getValues('pickup_lat');
-        const pLng = type === 'pickup' ? result.lng : form.getValues('pickup_lng');
-        const dLat = type === 'delivery' ? result.lat : form.getValues('delivery_lat');
-        const dLng = type === 'delivery' ? result.lng : form.getValues('delivery_lng');
-        const route = await calculateDistance(pLat, pLng, dLat, dLng);
-        if (route) {
-          setRouteDistance(route.distanceKm);
-        }
-      }
-    } else {
-      toast.error('No se encontró la dirección', { description: 'Intenta con más detalle, ej: "Carrer de Balmes 145, Barcelona"' });
     }
   };
 
@@ -219,30 +208,18 @@ export function CreateStopDialog({
                     Dirección de recogida
                   </FormLabel>
                   <FormControl>
-                    <div className="flex gap-2">
-                      <Input 
-                        placeholder="Ej: Carrer de Balmes 145, Barcelona" 
-                        {...field} 
-                        onChange={(e) => {
-                          field.onChange(e);
-                          setPickupResolved(false);
-                        }}
-                      />
-                      <Button 
-                        type="button" 
-                        variant={pickupResolved ? "default" : "outline"}
-                        size="icon"
-                        onClick={() => resolveAddress('pickup')}
-                        disabled={geocoding}
-                        title="Buscar dirección"
-                      >
-                        {geocoding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                      </Button>
-                    </div>
+                    <AddressInput
+                      value={field.value}
+                      onChange={(val) => {
+                        field.onChange(val);
+                        setPickupResolved(false);
+                      }}
+                      onSelect={(s) => handleAddressSelect('pickup', s)}
+                      resolved={pickupResolved}
+                      placeholder="Ej: Carrer de Balmes 145, Barcelona"
+                      resolvedLabel="Dirección localizada en el mapa"
+                    />
                   </FormControl>
-                  {pickupResolved && (
-                    <p className="text-xs text-status-delivered">✓ Dirección localizada en el mapa</p>
-                  )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -259,33 +236,31 @@ export function CreateStopDialog({
                     Dirección de entrega
                   </FormLabel>
                   <FormControl>
-                    <div className="flex gap-2">
-                      <Input 
-                        placeholder="Ej: Passeig de Gràcia 92, Barcelona" 
-                        {...field}
-                        onChange={(e) => {
-                          field.onChange(e);
-                          setDeliveryResolved(false);
-                        }}
-                      />
-                      <Button 
-                        type="button" 
-                        variant={deliveryResolved ? "default" : "outline"}
-                        size="icon"
-                        onClick={() => resolveAddress('delivery')}
-                        disabled={geocoding}
-                        title="Buscar dirección"
-                      >
-                        {geocoding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                      </Button>
-                    </div>
+                    <AddressInput
+                      value={field.value}
+                      onChange={(val) => {
+                        field.onChange(val);
+                        setDeliveryResolved(false);
+                      }}
+                      onSelect={(s) => handleAddressSelect('delivery', s)}
+                      resolved={deliveryResolved}
+                      placeholder="Ej: Passeig de Gràcia 92, Barcelona"
+                      resolvedLabel="Dirección localizada en el mapa"
+                    />
                   </FormControl>
-                  {deliveryResolved && (
-                    <p className="text-xs text-status-delivered">✓ Dirección localizada en el mapa</p>
-                  )}
                   <FormMessage />
                 </FormItem>
               )}
+            />
+
+            {/* Mini Map Preview */}
+            <MiniMapPreview
+              pickupLat={form.watch('pickup_lat')}
+              pickupLng={form.watch('pickup_lng')}
+              deliveryLat={form.watch('delivery_lat')}
+              deliveryLng={form.watch('delivery_lng')}
+              pickupResolved={pickupResolved}
+              deliveryResolved={deliveryResolved}
             />
 
             {/* Client Name */}
