@@ -6,7 +6,7 @@ import {
   MapPin,
   Users,
   Package,
-  Settings,
+  History,
   LogOut,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ const navItems = [
   { to: '/admin/stops', icon: Package, label: 'Paradas' },
   { to: '/admin/drivers', icon: Users, label: 'Repartidores' },
   { to: '/admin/map', icon: MapPin, label: 'Mapa' },
+  { to: '/admin/history', icon: History, label: 'Historial' },
 ];
 
 export function AdminSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
