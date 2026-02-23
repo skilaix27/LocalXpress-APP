@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface RouteResult {
   distanceKm: number;
@@ -17,21 +18,26 @@ export function useRouteDistance() {
     ): Promise<RouteResult | null> => {
       setLoading(true);
       try {
-        // OSRM expects lng,lat order
-        const url = `https://router.project-osrm.org/route/v1/driving/${originLng},${originLat};${destLng},${destLat}?overview=false`;
-        const res = await fetch(url);
-        if (!res.ok) return null;
+        const { data, error } = await supabase.functions.invoke('calculate-route', {
+          body: { originLat, originLng, destLat, destLng },
+        });
 
-        const data = await res.json();
-        if (data.code !== 'Ok' || !data.routes?.length) return null;
+        if (error) {
+          console.error('Route calculation error:', error);
+          return null;
+        }
 
-        const route = data.routes[0];
+        if (data?.error) {
+          console.error('Google Maps API error:', data.error, data.message);
+          return null;
+        }
+
         return {
-          distanceKm: Math.round((route.distance / 1000) * 100) / 100,
-          durationMin: Math.round(route.duration / 60),
+          distanceKm: data.distanceKm,
+          durationMin: data.durationMin,
         };
       } catch (err) {
-        console.error('OSRM routing error:', err);
+        console.error('Route calculation error:', err);
         return null;
       } finally {
         setLoading(false);
