@@ -12,6 +12,9 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminStops from "./pages/admin/AdminStops";
+import AdminDrivers from "./pages/admin/AdminDrivers";
+import AdminMap from "./pages/admin/AdminMap";
 import DriverApp from "./pages/driver/DriverApp";
 
 const queryClient = new QueryClient();
@@ -40,9 +43,9 @@ const App = () => (
               }
             >
               <Route index element={<AdminDashboard />} />
-              <Route path="stops" element={<AdminDashboard />} />
-              <Route path="drivers" element={<AdminDashboard />} />
-              <Route path="map" element={<AdminDashboard />} />
+              <Route path="stops" element={<AdminStops />} />
+              <Route path="drivers" element={<AdminDrivers />} />
+              <Route path="map" element={<AdminMap />} />
             </Route>
             
             {/* Driver routes */}
