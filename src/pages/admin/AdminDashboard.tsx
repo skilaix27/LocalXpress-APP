@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState } from 'react';
 import { DeliveryMap } from '@/components/map/DeliveryMap';
 import { StopCard } from '@/components/admin/StopCard';
 import { DriverCard } from '@/components/admin/DriverCard';
@@ -7,101 +6,30 @@ import { CreateStopDialog } from '@/components/admin/CreateStopDialog';
 import { StopDetailDialog } from '@/components/admin/StopDetailDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { Stop, Profile, DriverLocation } from '@/lib/supabase-types';
-import { Plus, Package, Users, Truck, CheckCircle } from 'lucide-react';
+import type { Stop } from '@/lib/supabase-types';
+import { Plus, Package, Users, Truck, CheckCircle, TrendingUp } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAdminData } from '@/hooks/useAdminData';
+import { useNavigate } from 'react-router-dom';
 
 export default function AdminDashboard() {
-  const [stops, setStops] = useState<Stop[]>([]);
-  const [drivers, setDrivers] = useState<Profile[]>([]);
-  const [driverLocations, setDriverLocations] = useState<DriverLocation[]>([]);
+  const {
+    stops, drivers, driverLocations, loading, fetchData,
+    getDriverById, getDriverLocation, getDriverStopsCount,
+    pendingStops, pickedStops, deliveredStops, activeDrivers,
+  } = useAdminData();
+
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  const fetchData = async () => {
-    try {
-      const { data: stopsData } = await supabase
-        .from('stops')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (stopsData) setStops(stopsData as Stop[]);
-
-      const { data: driverRoles } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'driver');
-
-      if (driverRoles && driverRoles.length > 0) {
-        const driverUserIds = driverRoles.map(r => r.user_id);
-        const { data: driversData } = await supabase
-          .from('profiles')
-          .select('*')
-          .in('user_id', driverUserIds)
-          .eq('is_active', true);
-        
-        if (driversData) setDrivers(driversData as Profile[]);
-      } else {
-        setDrivers([]);
-      }
-
-      const { data: locationsData } = await supabase
-        .from('driver_locations')
-        .select('*');
-      
-      if (locationsData) setDriverLocations(locationsData as DriverLocation[]);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-
-    const stopsChannel = supabase
-      .channel('stops-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'stops' }, () => fetchData())
-      .subscribe();
-
-    const locationsChannel = supabase
-      .channel('locations-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'driver_locations' }, () => fetchData())
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(stopsChannel);
-      supabase.removeChannel(locationsChannel);
-    };
-  }, []);
-
-  const pendingStops = stops.filter((s) => s.status === 'pending').length;
-  const pickedStops = stops.filter((s) => s.status === 'picked').length;
-  const deliveredStops = stops.filter((s) => s.status === 'delivered').length;
-  const activeDrivers = driverLocations.filter(
-    (loc) => new Date(loc.updated_at).getTime() > Date.now() - 5 * 60 * 1000
-  ).length;
+  const navigate = useNavigate();
 
   const stats = [
-    { label: 'Pendientes', value: pendingStops, icon: Package, color: 'text-muted-foreground' },
-    { label: 'Recogidos', value: pickedStops, icon: Truck, color: 'text-status-picked' },
-    { label: 'Entregados', value: deliveredStops, icon: CheckCircle, color: 'text-status-delivered' },
-    { label: 'Repartidores', value: activeDrivers, icon: Users, color: 'text-primary' },
+    { label: 'Pendientes', value: pendingStops, icon: Package, color: 'text-muted-foreground', bg: 'bg-muted' },
+    { label: 'Recogidos', value: pickedStops, icon: Truck, color: 'text-status-picked', bg: 'bg-[hsl(var(--status-picked-bg))]' },
+    { label: 'Entregados', value: deliveredStops, icon: CheckCircle, color: 'text-status-delivered', bg: 'bg-[hsl(var(--status-delivered-bg))]' },
+    { label: 'Repartidores activos', value: activeDrivers, icon: Users, color: 'text-primary', bg: 'bg-primary/10' },
   ];
-
-  const getDriverLocation = (driverId: string) =>
-    driverLocations.find((loc) => loc.driver_id === driverId);
-
-  const getDriverStopsCount = (driverId: string) =>
-    stops.filter((s) => s.driver_id === driverId && s.status !== 'delivered').length;
-
-  const getDriverById = (driverId: string | null) => {
-    if (!driverId) return null;
-    return drivers.find((d) => d.id === driverId);
-  };
 
   const handleStopClick = (stop: Stop) => {
     setSelectedStop(stop);
@@ -116,15 +44,19 @@ export default function AdminDashboard() {
     );
   }
 
+  const totalToday = stops.filter(
+    (s) => new Date(s.created_at).toDateString() === new Date().toDateString()
+  ).length;
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Gestión de repartos en tiempo real</p>
+          <h1 className="text-2xl font-bold">Panel de control</h1>
+          <p className="text-muted-foreground">Visión global de tu flota en tiempo real</p>
         </div>
-        <Button onClick={() => setCreateDialogOpen(true)}>
+        <Button onClick={() => setCreateDialogOpen(true)} size="lg">
           <Plus className="w-4 h-4 mr-2" />
           Nueva parada
         </Button>
@@ -133,15 +65,17 @@ export default function AdminDashboard() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, i) => (
-          <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
-            <Card>
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className={`p-3 rounded-lg bg-muted ${stat.color}`}>
-                  <stat.icon className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{stat.value}</p>
-                  <p className="text-sm text-muted-foreground">{stat.label}</p>
+          <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
+            <Card className="overflow-hidden">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">{stat.label}</p>
+                    <p className="text-3xl font-bold mt-1">{stat.value}</p>
+                  </div>
+                  <div className={`p-3 rounded-xl ${stat.bg}`}>
+                    <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -149,17 +83,36 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* Main Content */}
+      {/* Summary banner */}
+      <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+        <CardContent className="p-4 flex items-center gap-4">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <TrendingUp className="w-5 h-5 text-primary" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium">Resumen del día</p>
+            <p className="text-xs text-muted-foreground">
+              {totalToday} paradas creadas hoy · {stops.length} en total · {drivers.length} repartidores registrados
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Map + Recent */}
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Map */}
         <div className="lg:col-span-2">
-          <Card className="h-[500px]">
+          <Card className="h-[500px] overflow-hidden">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Mapa en tiempo real</CardTitle>
+              <CardTitle className="text-lg flex items-center justify-between">
+                Mapa en tiempo real
+                <Button variant="ghost" size="sm" onClick={() => navigate('/admin/map')}>
+                  Ver completo
+                </Button>
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-2 h-[calc(100%-60px)]">
               <DeliveryMap
-                stops={stops}
+                stops={stops.filter((s) => s.status !== 'delivered')}
                 driverLocations={driverLocations.map((loc) => ({
                   ...loc,
                   driver: getDriverById(loc.driver_id) || undefined,
@@ -171,23 +124,20 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        {/* Sidebar */}
         <div className="space-y-6">
+          {/* Recent stops */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-lg flex items-center justify-between">
                 Paradas recientes
-                <span className="text-sm font-normal text-muted-foreground">{stops.length} total</span>
+                <Button variant="ghost" size="sm" onClick={() => navigate('/admin/stops')}>
+                  Ver todas
+                </Button>
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-2 max-h-[300px] overflow-y-auto space-y-2">
-              {stops.slice(0, 10).map((stop) => (
-                <StopCard
-                  key={stop.id}
-                  stop={stop}
-                  driver={getDriverById(stop.driver_id)}
-                  onClick={() => handleStopClick(stop)}
-                />
+            <CardContent className="p-2 max-h-[280px] overflow-y-auto space-y-2">
+              {stops.slice(0, 5).map((stop) => (
+                <StopCard key={stop.id} stop={stop} driver={getDriverById(stop.driver_id)} onClick={() => handleStopClick(stop)} />
               ))}
               {stops.length === 0 && (
                 <p className="text-center text-muted-foreground py-8">No hay paradas aún</p>
@@ -195,12 +145,18 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
+          {/* Drivers */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Repartidores</CardTitle>
+              <CardTitle className="text-lg flex items-center justify-between">
+                Repartidores
+                <Button variant="ghost" size="sm" onClick={() => navigate('/admin/drivers')}>
+                  Ver todos
+                </Button>
+              </CardTitle>
             </CardHeader>
             <CardContent className="p-2 space-y-2">
-              {drivers.map((driver) => (
+              {drivers.slice(0, 4).map((driver) => (
                 <DriverCard
                   key={driver.id}
                   driver={driver}
