@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -8,7 +9,7 @@ import { User, Lock } from 'lucide-react';
 import logoLocalxpress from '@/assets/logo-localxpress.png';
 
 export default function Auth() {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
@@ -17,18 +18,41 @@ export default function Auth() {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
+    let email = identifier.trim();
+
+    // If no "@", look up email by name
+    if (!email.includes('@')) {
+      try {
+        const { data, error } = await supabase.functions.invoke('lookup-email', {
+          body: { username: email },
+        });
+        if (error || data?.error) {
+          toast.error('Usuario no encontrado', {
+            description: 'Verifica tu nombre de usuario o usa tu email.',
+          });
+          setLoading(false);
+          return;
+        }
+        email = data.email;
+      } catch {
+        toast.error('Error al buscar usuario');
+        setLoading(false);
+        return;
+      }
+    }
+
     const { error } = await signIn(email, password);
-    
+
     if (error) {
       toast.error('Error al iniciar sesión', {
-        description: error.message,
+        description: 'Email/usuario o contraseña incorrectos.',
       });
     } else {
       toast.success('¡Bienvenido!');
       navigate('/');
     }
-    
+
     setLoading(false);
   };
 
@@ -67,10 +91,10 @@ export default function Auth() {
             <div className="relative">
               <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <input
-                type="email"
+                type="text"
                 placeholder="Usuario o email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 required
                 className="w-full h-12 pl-12 pr-4 rounded-full border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
               />
