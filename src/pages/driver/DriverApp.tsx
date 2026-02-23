@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, forwardRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { DeliveryMap } from '@/components/map/DeliveryMap';
@@ -127,24 +127,35 @@ export default function DriverApp() {
       waze: `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`,
       apple: `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`,
     };
-    window.open(urls[app], '_blank');
+    // Use link click to avoid popup blockers
+    const link = document.createElement('a');
+    link.href = urls[app];
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
+
+  const NavTriggerButton = forwardRef<HTMLButtonElement, { className?: string; children?: React.ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>>(
+    (props, ref) => <button ref={ref} {...props} />
+  );
 
   const NavigateButton = ({ lat, lng, color }: { lat: number; lng: number; color: string }) => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className={`p-2 rounded-full ${color} shrink-0`}>
+        <NavTriggerButton className={`p-2 rounded-full ${color} shrink-0`}>
           <Navigation className="w-4 h-4" />
-        </button>
+        </NavTriggerButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[160px]">
-        <DropdownMenuItem onClick={() => openNavigation(lat, lng, 'google')}>
+        <DropdownMenuItem onSelect={() => openNavigation(lat, lng, 'google')}>
           <Map className="w-4 h-4 mr-2" /> Google Maps
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => openNavigation(lat, lng, 'waze')}>
+        <DropdownMenuItem onSelect={() => openNavigation(lat, lng, 'waze')}>
           <Navigation className="w-4 h-4 mr-2" /> Waze
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => openNavigation(lat, lng, 'apple')}>
+        <DropdownMenuItem onSelect={() => openNavigation(lat, lng, 'apple')}>
           <MapPin className="w-4 h-4 mr-2" /> Apple Maps
         </DropdownMenuItem>
       </DropdownMenuContent>
