@@ -22,22 +22,48 @@ serve(async (req) => {
       throw new Error('Missing required coordinates');
     }
 
-    const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${originLat},${originLng}&destination=${destLat},${destLng}&mode=driving&key=${GOOGLE_MAPS_API_KEY}`;
+    // Use the new Routes API
+    const url = 'https://routes.googleapis.com/directions/v2:computeRoutes';
 
-    const res = await fetch(url);
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': GOOGLE_MAPS_API_KEY,
+        'X-Goog-FieldMask': 'routes.distanceMeters,routes.duration',
+      },
+      body: JSON.stringify({
+        origin: {
+          location: { latLng: { latitude: originLat, longitude: originLng } },
+        },
+        destination: {
+          location: { latLng: { latitude: destLat, longitude: destLng } },
+        },
+        travelMode: 'DRIVE',
+      }),
+    });
+
     const data = await res.json();
 
-    if (data.status !== 'OK' || !data.routes?.length) {
-      console.error('Google Maps API error:', data.status, data.error_message);
-      return new Response(JSON.stringify({ error: data.status, message: data.error_message }), {
+    if (!res.ok || data.error) {
+      console.error('Routes API error:', JSON.stringify(data));
+      return new Response(JSON.stringify({ error: data.error?.message || 'Routes API error' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const leg = data.routes[0].legs[0];
-    const distanceKm = Math.round((leg.distance.value / 1000) * 100) / 100;
-    const durationMin = Math.round(leg.duration.value / 60);
+    if (!data.routes?.length) {
+      return new Response(JSON.stringify({ error: 'No route found' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const route = data.routes[0];
+    const distanceKm = Math.round((route.distanceMeters / 1000) * 100) / 100;
+    const durationSec = parseInt(route.duration.replace('s', ''), 10);
+    const durationMin = Math.round(durationSec / 60);
 
     return new Response(JSON.stringify({ distanceKm, durationMin }), {
       status: 200,
