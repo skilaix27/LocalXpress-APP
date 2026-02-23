@@ -38,6 +38,7 @@ import { MapPin, User, Phone, FileText, Loader2, Search, CalendarIcon, Clock } f
 import { cn } from '@/lib/utils';
 import { useGeocoding } from '@/hooks/useGeocoding';
 import { useRouteDistance } from '@/hooks/useRouteDistance';
+import { getDeliveryZone } from '@/lib/delivery-zones';
 
 const stopSchema = z.object({
   pickup_address: z.string().min(1, 'Dirección de recogida requerida'),
@@ -407,8 +408,8 @@ export function CreateStopDialog({
             {routeDistance !== null && (
               <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 text-sm">
                 <MapPin className="w-4 h-4 text-primary" />
-                <span className="font-medium">Distancia en coche:</span>
                 <span className="text-primary font-bold">{routeDistance} km</span>
+                <span className="font-medium">· {getDeliveryZone(routeDistance)}</span>
                 {calculatingRoute && <Loader2 className="w-4 h-4 animate-spin" />}
               </div>
             )}

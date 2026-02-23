@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getDeliveryZone } from '@/lib/delivery-zones';
 import {
   Dialog,
   DialogContent,
@@ -145,8 +146,8 @@ export function StopDetailDialog({
             {stop.distance_km != null && (
               <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10">
                 <Route className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium">Distancia en coche:</span>
                 <span className="text-sm text-primary font-bold">{stop.distance_km} km</span>
+                <span className="text-sm font-medium">· {getDeliveryZone(stop.distance_km)}</span>
               </div>
             )}
 
