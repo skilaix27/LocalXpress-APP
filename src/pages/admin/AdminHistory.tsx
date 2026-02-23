@@ -5,7 +5,10 @@ import { StopDetailDialog } from '@/components/admin/StopDetailDialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import type { Stop } from '@/lib/supabase-types';
-import { Search, History, Package } from 'lucide-react';
+import { Search, History, Package, Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 export default function AdminHistory() {
   const { allStops, drivers, loading, fetchData, getDriverById } = useAdminData();
@@ -37,6 +40,37 @@ export default function AdminHistory() {
     setDetailDialogOpen(true);
   };
 
+  const exportCSV = () => {
+    if (deliveredStops.length === 0) return;
+    const headers = [
+      'Referencia', 'Cliente', 'Teléfono', 'Dirección Recogida', 'Dirección Entrega',
+      'Hora Recogida', 'Hora Entrega', 'Repartidor', 'Distancia (km)', 'Notas'
+    ];
+    const rows = deliveredStops.map((s) => {
+      const driver = getDriverById(s.driver_id);
+      return [
+        s.order_code || '',
+        s.client_name,
+        s.client_phone || '',
+        `"${s.pickup_address.replace(/"/g, '""')}"`,
+        `"${s.delivery_address.replace(/"/g, '""')}"`,
+        s.picked_at ? format(new Date(s.picked_at), 'dd/MM/yyyy HH:mm', { locale: es }) : '',
+        s.delivered_at ? format(new Date(s.delivered_at), 'dd/MM/yyyy HH:mm', { locale: es }) : '',
+        driver?.full_name || 'No asignado',
+        s.distance_km?.toFixed(1) || '',
+        `"${(s.client_notes || '').replace(/"/g, '""')}"`,
+      ].join(',');
+    });
+    const csv = '\uFEFF' + [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `entregas-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -57,6 +91,10 @@ export default function AdminHistory() {
             {deliveredStops.length} entregas completadas en total
           </p>
         </div>
+        <Button variant="outline" size="sm" onClick={exportCSV} disabled={deliveredStops.length === 0}>
+          <Download className="w-4 h-4 mr-2" />
+          Exportar CSV
+        </Button>
       </div>
 
       <div className="relative max-w-md">
