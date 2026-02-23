@@ -38,7 +38,6 @@ import { MapPin, User, Phone, FileText, Loader2, CalendarIcon, Clock } from 'luc
 import { cn } from '@/lib/utils';
 import { useRouteDistance } from '@/hooks/useRouteDistance';
 import { AddressInput } from '@/components/admin/AddressInput';
-import { MiniMapPreview } from '@/components/admin/MiniMapPreview';
 import type { AddressSuggestion } from '@/hooks/useAddressAutocomplete';
 import { getDeliveryZone, adjustDistance } from '@/lib/delivery-zones';
 import { generateOrderCode } from '@/lib/order-code';
@@ -253,15 +252,6 @@ export function CreateStopDialog({
               )}
             />
 
-            {/* Mini Map Preview */}
-            <MiniMapPreview
-              pickupLat={form.watch('pickup_lat')}
-              pickupLng={form.watch('pickup_lng')}
-              deliveryLat={form.watch('delivery_lat')}
-              deliveryLng={form.watch('delivery_lng')}
-              pickupResolved={pickupResolved}
-              deliveryResolved={deliveryResolved}
-            />
 
             {/* Client Name */}
             <FormField
