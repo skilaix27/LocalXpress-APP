@@ -5,26 +5,13 @@ import { z } from 'zod';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveDialog, ResponsiveDialogHeader, ResponsiveDialogTitle, ResponsiveDialogDescription,
+} from '@/components/ui/responsive-dialog';
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
+  Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -66,12 +53,7 @@ interface CreateStopDialogProps {
   onSuccess?: () => void;
 }
 
-export function CreateStopDialog({
-  open,
-  onOpenChange,
-  drivers,
-  onSuccess,
-}: CreateStopDialogProps) {
+export function CreateStopDialog({ open, onOpenChange, drivers, onSuccess }: CreateStopDialogProps) {
   const [loading, setLoading] = useState(false);
   const [pickupResolved, setPickupResolved] = useState(false);
   const [deliveryResolved, setDeliveryResolved] = useState(false);
@@ -81,18 +63,10 @@ export function CreateStopDialog({
   const form = useForm<StopFormData>({
     resolver: zodResolver(stopSchema),
     defaultValues: {
-      pickup_address: '',
-      pickup_lat: 41.3851,
-      pickup_lng: 2.1734,
-      delivery_address: '',
-      delivery_lat: 41.3920,
-      delivery_lng: 2.1650,
-      client_name: '',
-      client_phone: '',
-      client_notes: '',
-      driver_id: '',
-      scheduled_date: undefined,
-      scheduled_time: '',
+      pickup_address: '', pickup_lat: 41.3851, pickup_lng: 2.1734,
+      delivery_address: '', delivery_lat: 41.3920, delivery_lng: 2.1650,
+      client_name: '', client_phone: '', client_notes: '',
+      driver_id: '', scheduled_date: undefined, scheduled_time: '',
     },
   });
 
@@ -117,9 +91,7 @@ export function CreateStopDialog({
       const dLat = type === 'delivery' ? details.lat : form.getValues('delivery_lat');
       const dLng = type === 'delivery' ? details.lng : form.getValues('delivery_lng');
       const route = await calculateDistance(pLat, pLng, dLat, dLng);
-      if (route) {
-        setRouteDistance(route.distanceKm);
-      }
+      if (route) setRouteDistance(route.distanceKm);
     }
   };
 
@@ -132,9 +104,7 @@ export function CreateStopDialog({
     }
 
     setLoading(true);
-    
     try {
-      // Build scheduled_pickup_at timestamp
       let scheduledPickupAt: string | null = null;
       if (data.scheduled_date) {
         const date = new Date(data.scheduled_date);
@@ -145,10 +115,9 @@ export function CreateStopDialog({
         scheduledPickupAt = date.toISOString();
       }
 
-      // Generate order code
       const orderCode = await generateOrderCode();
-
       const hasDriver = !!data.driver_id;
+
       const { error } = await supabase.from('stops').insert({
         pickup_address: data.pickup_address,
         pickup_lat: data.pickup_lat,
@@ -176,259 +145,166 @@ export function CreateStopDialog({
       onOpenChange(false);
       onSuccess?.();
     } catch (error: any) {
-      toast.error('Error al crear parada', {
-        description: error.message,
-      });
+      toast.error('Error al crear parada', { description: error.message });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg w-[calc(100vw-2rem)] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-primary" />
-            Nueva Parada
-          </DialogTitle>
-          <DialogDescription>
-            Introduce las direcciones y pulsa buscar para localizarlas en el mapa.
-          </DialogDescription>
-        </DialogHeader>
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogHeader>
+        <ResponsiveDialogTitle className="flex items-center gap-2">
+          <MapPin className="w-5 h-5 text-primary" />
+          Nueva Parada
+        </ResponsiveDialogTitle>
+        <ResponsiveDialogDescription>
+          Introduce las direcciones y pulsa buscar para localizarlas en el mapa.
+        </ResponsiveDialogDescription>
+      </ResponsiveDialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Pickup Address */}
-            <FormField
-              control={form.control}
-              name="pickup_address"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-primary" />
-                    Dirección de recogida
-                  </FormLabel>
-                  <FormControl>
-                    <AddressInput
-                      value={field.value}
-                      onChange={(val) => field.onChange(val)}
-                      onResolved={(d) => handleAddressResolved('pickup', d)}
-                      onClear={() => setPickupResolved(false)}
-                      resolved={pickupResolved}
-                      placeholder="Ej: Carrer de Balmes 145, Barcelona"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <FormField control={form.control} name="pickup_address" render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-primary" /> Dirección de recogida
+              </FormLabel>
+              <FormControl>
+                <AddressInput
+                  value={field.value} onChange={(val) => field.onChange(val)}
+                  onResolved={(d) => handleAddressResolved('pickup', d)}
+                  onClear={() => setPickupResolved(false)} resolved={pickupResolved}
+                  placeholder="Ej: Carrer de Balmes 145, Barcelona"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
 
-            {/* Delivery Address */}
-            <FormField
-              control={form.control}
-              name="delivery_address"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-status-delivered" />
-                    Dirección de entrega
-                  </FormLabel>
-                  <FormControl>
-                    <AddressInput
-                      value={field.value}
-                      onChange={(val) => field.onChange(val)}
-                      onResolved={(d) => handleAddressResolved('delivery', d)}
-                      onClear={() => setDeliveryResolved(false)}
-                      resolved={deliveryResolved}
-                      placeholder="Ej: Passeig de Gràcia 92, Barcelona"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <FormField control={form.control} name="delivery_address" render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-status-delivered" /> Dirección de entrega
+              </FormLabel>
+              <FormControl>
+                <AddressInput
+                  value={field.value} onChange={(val) => field.onChange(val)}
+                  onResolved={(d) => handleAddressResolved('delivery', d)}
+                  onClear={() => setDeliveryResolved(false)} resolved={deliveryResolved}
+                  placeholder="Ej: Passeig de Gràcia 92, Barcelona"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
 
+          <FormField control={form.control} name="client_name" render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2"><User className="w-4 h-4" /> Nombre del cliente</FormLabel>
+              <FormControl><Input placeholder="Juan García" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
 
-            {/* Client Name */}
-            <FormField
-              control={form.control}
-              name="client_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <User className="w-4 h-4" />
-                    Nombre del cliente
-                  </FormLabel>
-                  <FormControl>
-                    <Input placeholder="Juan García" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <FormField control={form.control} name="client_phone" render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2"><Phone className="w-4 h-4" /> Teléfono (opcional)</FormLabel>
+              <FormControl><Input placeholder="+34 612 345 678" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
 
-            {/* Client Phone */}
-            <FormField
-              control={form.control}
-              name="client_phone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <Phone className="w-4 h-4" />
-                    Teléfono (opcional)
-                  </FormLabel>
-                  <FormControl>
-                    <Input placeholder="+34 612 345 678" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <FormField control={form.control} name="client_notes" render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2"><FileText className="w-4 h-4" /> Notas (opcional)</FormLabel>
+              <FormControl>
+                <Textarea placeholder="Instrucciones especiales, código de portal, etc." className="resize-none" rows={2} {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
 
-            {/* Client Notes */}
-            <FormField
-              control={form.control}
-              name="client_notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex items-center gap-2">
-                    <FileText className="w-4 h-4" />
-                    Notas (opcional)
-                  </FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Instrucciones especiales, código de portal, etc."
-                      className="resize-none"
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Scheduled Pickup Date & Time */}
-            <div className="grid grid-cols-2 gap-3">
-              <FormField
-                control={form.control}
-                name="scheduled_date"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel className="flex items-center gap-2">
-                      <CalendarIcon className="w-4 h-4" />
-                      Día de recogida
-                    </FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? (
-                              format(field.value, "PPP", { locale: es })
-                            ) : (
-                              <span>Seleccionar día</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                          initialFocus
-                          className={cn("p-3 pointer-events-auto")}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="scheduled_time"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
-                      Hora de recogida
-                    </FormLabel>
+          {/* Scheduled Pickup Date & Time */}
+          <div className="grid grid-cols-2 gap-3">
+            <FormField control={form.control} name="scheduled_date" render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel className="flex items-center gap-2">
+                  <CalendarIcon className="w-4 h-4" /> Día de recogida
+                </FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
                     <FormControl>
-                      <Input type="time" {...field} />
+                      <Button variant="outline" className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}>
+                        {field.value ? format(field.value, "PPP", { locale: es }) : <span>Seleccionar día</span>}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single" selected={field.value} onSelect={field.onChange}
+                      disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                      initialFocus className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            <FormField control={form.control} name="scheduled_time" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="flex items-center gap-2"><Clock className="w-4 h-4" /> Hora de recogida</FormLabel>
+                <FormControl><Input type="time" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+          </div>
+
+          {routeDistance !== null && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+              <MapPin className="w-4 h-4 text-primary" />
+              <span className="text-primary font-bold">{adjustDistance(routeDistance)} km</span>
+              <span className="font-medium">· {getDeliveryZone(routeDistance)}</span>
+              {calculatingRoute && <Loader2 className="w-4 h-4 animate-spin" />}
             </div>
-
-            {routeDistance !== null && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 text-sm">
-                <MapPin className="w-4 h-4 text-primary" />
-                <span className="text-primary font-bold">{adjustDistance(routeDistance)} km</span>
-                <span className="font-medium">· {getDeliveryZone(routeDistance)}</span>
-                {calculatingRoute && <Loader2 className="w-4 h-4 animate-spin" />}
-              </div>
-            )}
-            {calculatingRoute && routeDistance === null && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 text-sm">
-                <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                <span className="text-muted-foreground">Calculando ruta en coche...</span>
-              </div>
-            )}
-
-            {/* Driver Assignment */}
-            <FormField
-              control={form.control}
-              name="driver_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Asignar repartidor (opcional)</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sin asignar" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {drivers.map((driver) => (
-                        <SelectItem key={driver.id} value={driver.id}>
-                          {driver.full_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="flex gap-3 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1"
-                onClick={() => onOpenChange(false)}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" className="flex-1" disabled={loading}>
-                {loading ? 'Creando...' : 'Crear parada'}
-              </Button>
+          )}
+          {calculatingRoute && routeDistance === null && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+              <Loader2 className="w-4 h-4 animate-spin text-primary" />
+              <span className="text-muted-foreground">Calculando ruta en coche...</span>
             </div>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+          )}
+
+          {/* Driver Assignment */}
+          <FormField control={form.control} name="driver_id" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Asignar repartidor (opcional)</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger><SelectValue placeholder="Sin asignar" /></SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {drivers.map((driver) => (
+                    <SelectItem key={driver.id} value={driver.id}>{driver.full_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )} />
+
+          <div className="flex gap-3 pt-4">
+            <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" className="flex-1" disabled={loading}>
+              {loading ? 'Creando...' : 'Crear parada'}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </ResponsiveDialog>
   );
 }

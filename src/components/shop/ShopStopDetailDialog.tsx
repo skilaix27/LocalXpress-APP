@@ -1,10 +1,7 @@
 import { useState } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveDialog, ResponsiveDialogHeader, ResponsiveDialogTitle,
+} from '@/components/ui/responsive-dialog';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { DeliveryReceipt } from '@/components/admin/DeliveryReceipt';
@@ -26,36 +23,33 @@ export function ShopStopDetailDialog({ stop, open, onOpenChange }: ShopStopDetai
   if (!stop) return null;
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setShowReceipt(false); }}>
-      <DialogContent className="max-w-lg w-[calc(100vw-2rem)] max-h-[90vh] overflow-y-auto rounded-xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-primary" />
-              Detalle del pedido
-            </span>
-            <StatusBadge status={stop.status} />
-          </DialogTitle>
-        </DialogHeader>
+    <ResponsiveDialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setShowReceipt(false); }}>
+      <ResponsiveDialogHeader>
+        <ResponsiveDialogTitle className="flex items-center justify-between">
+          <span className="flex items-center gap-2">
+            <MapPin className="w-5 h-5 text-primary" />
+            Detalle del pedido
+          </span>
+          <StatusBadge status={stop.status} />
+        </ResponsiveDialogTitle>
+      </ResponsiveDialogHeader>
 
-        {/* Receipt toggle for delivered stops */}
-        {stop.status === 'delivered' && (
-          <Button
-            variant={showReceipt ? 'default' : 'outline'}
-            className="w-full rounded-lg"
-            onClick={() => setShowReceipt(!showReceipt)}
-          >
-            <Receipt className="w-4 h-4 mr-2" />
-            {showReceipt ? 'Volver al detalle' : 'Ver justificante de entrega'}
-          </Button>
-        )}
+      {/* Receipt toggle for delivered stops */}
+      {stop.status === 'delivered' && (
+        <Button
+          variant={showReceipt ? 'default' : 'outline'}
+          className="w-full rounded-lg"
+          onClick={() => setShowReceipt(!showReceipt)}
+        >
+          <Receipt className="w-4 h-4 mr-2" />
+          {showReceipt ? 'Volver al detalle' : 'Ver justificante de entrega'}
+        </Button>
+      )}
 
-        {showReceipt && stop.status === 'delivered' ? (
-          <DeliveryReceipt stop={stop} />
-        ) : (
-
+      {showReceipt && stop.status === 'delivered' ? (
+        <DeliveryReceipt stop={stop} />
+      ) : (
         <div className="space-y-3">
-          {/* Order code & Shop name */}
           {(stop.order_code || stop.shop_name) && (
             <div className="text-center space-y-1">
               {stop.order_code && (
@@ -72,7 +66,6 @@ export function ShopStopDetailDialog({ stop, open, onOpenChange }: ShopStopDetai
             </div>
           )}
 
-          {/* Client */}
           <div className="bg-muted/40 rounded-lg p-3 space-y-1.5">
             <h3 className="font-semibold text-xs text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider">
               <User className="w-3.5 h-3.5" /> Cliente
@@ -85,7 +78,6 @@ export function ShopStopDetailDialog({ stop, open, onOpenChange }: ShopStopDetai
             )}
           </div>
 
-          {/* Addresses */}
           <div className="space-y-2">
             <div className="flex items-start gap-3 bg-muted/30 rounded-lg p-3">
               <div className="w-2.5 h-2.5 rounded-full bg-primary mt-1.5 shrink-0" />
@@ -103,7 +95,6 @@ export function ShopStopDetailDialog({ stop, open, onOpenChange }: ShopStopDetai
             </div>
           </div>
 
-          {/* Distance */}
           {stop.distance_km != null && (
             <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
               <Route className="w-4 h-4 text-primary" />
@@ -112,7 +103,6 @@ export function ShopStopDetailDialog({ stop, open, onOpenChange }: ShopStopDetai
             </div>
           )}
 
-          {/* Notes */}
           {stop.client_notes && (
             <div className="space-y-1.5">
               <h3 className="font-semibold text-xs text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider">
@@ -122,7 +112,6 @@ export function ShopStopDetailDialog({ stop, open, onOpenChange }: ShopStopDetai
             </div>
           )}
 
-          {/* Timestamps */}
           <div className="bg-muted/40 rounded-lg p-3 space-y-1.5 text-sm">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Clock className="w-3.5 h-3.5" />
@@ -142,7 +131,6 @@ export function ShopStopDetailDialog({ stop, open, onOpenChange }: ShopStopDetai
             )}
           </div>
 
-          {/* Proof photo */}
           {stop.proof_photo_url && (
             <div className="space-y-2">
               <h3 className="font-semibold text-xs text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider">
@@ -156,8 +144,7 @@ export function ShopStopDetailDialog({ stop, open, onOpenChange }: ShopStopDetai
             </div>
           )}
         </div>
-        )}
-      </DialogContent>
-    </Dialog>
+      )}
+    </ResponsiveDialog>
   );
 }

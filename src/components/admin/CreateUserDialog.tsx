@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-} from '@/components/ui/dialog';
+  ResponsiveDialog, ResponsiveDialogHeader, ResponsiveDialogTitle, ResponsiveDialogDescription,
+} from '@/components/ui/responsive-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,15 +24,9 @@ export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDi
   const [loading, setLoading] = useState(false);
   const [pickupResolved, setPickupResolved] = useState(false);
   const [form, setForm] = useState({
-    full_name: '',
-    email: '',
-    password: '',
-    phone: '',
+    full_name: '', email: '', password: '', phone: '',
     role: 'driver' as 'admin' | 'driver' | 'shop',
-    shop_name: '',
-    default_pickup_address: '',
-    default_pickup_lat: 0,
-    default_pickup_lng: 0,
+    shop_name: '', default_pickup_address: '', default_pickup_lat: 0, default_pickup_lng: 0,
   });
 
   const roleLabels: Record<string, string> = { admin: 'Administrador', driver: 'Repartidor', shop: 'Tienda' };
@@ -42,43 +36,22 @@ export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDi
   };
 
   const handlePickupResolved = (details: PlaceDetails) => {
-    setForm(prev => ({
-      ...prev,
-      default_pickup_address: details.formattedAddress,
-      default_pickup_lat: details.lat,
-      default_pickup_lng: details.lng,
-    }));
+    setForm(prev => ({ ...prev, default_pickup_address: details.formattedAddress, default_pickup_lat: details.lat, default_pickup_lng: details.lng }));
     setPickupResolved(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!form.full_name.trim() || !form.email.trim() || !form.password.trim()) {
-      toast.error('Completa los campos obligatorios');
-      return;
-    }
-
-    if (form.password.length < 6) {
-      toast.error('La contraseña debe tener al menos 6 caracteres');
-      return;
-    }
-
-    if (form.role === 'shop' && !form.shop_name.trim()) {
-      toast.error('El nombre de la tienda es obligatorio');
-      return;
-    }
+    if (!form.full_name.trim() || !form.email.trim() || !form.password.trim()) { toast.error('Completa los campos obligatorios'); return; }
+    if (form.password.length < 6) { toast.error('La contraseña debe tener al menos 6 caracteres'); return; }
+    if (form.role === 'shop' && !form.shop_name.trim()) { toast.error('El nombre de la tienda es obligatorio'); return; }
 
     setLoading(true);
     try {
       const body: Record<string, any> = {
-        email: form.email.trim(),
-        password: form.password,
-        full_name: form.full_name.trim(),
-        phone: form.phone.trim() || null,
-        role: form.role,
+        email: form.email.trim(), password: form.password, full_name: form.full_name.trim(),
+        phone: form.phone.trim() || null, role: form.role,
       };
-
       if (form.role === 'shop') {
         body.shop_name = form.shop_name.trim();
         if (pickupResolved) {
@@ -89,174 +62,90 @@ export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDi
       }
 
       const { data, error } = await supabase.functions.invoke('create-user', { body });
-
       if (error) {
         const msg = typeof error === 'object' && 'message' in error ? error.message : String(error);
         if (msg.includes('ya está registrado') || msg.includes('already been registered')) {
           toast.error('Este email ya está registrado', { description: 'Usa otro email o edita el usuario existente.' });
-        } else {
-          toast.error('Error al crear usuario', { description: msg });
-        }
-        setLoading(false);
-        return;
+        } else { toast.error('Error al crear usuario', { description: msg }); }
+        setLoading(false); return;
       }
-
       if (data?.error) {
         if (data.error.includes('ya está registrado') || data.error.includes('already been registered')) {
           toast.error('Este email ya está registrado', { description: 'Usa otro email o edita el usuario existente.' });
-        } else {
-          toast.error('Error al crear usuario', { description: data.error });
-        }
-        setLoading(false);
-        return;
+        } else { toast.error('Error al crear usuario', { description: data.error }); }
+        setLoading(false); return;
       }
 
-      toast.success('Usuario creado correctamente', {
-        description: `${form.full_name} (${roleLabels[form.role]})`,
-      });
+      toast.success('Usuario creado correctamente', { description: `${form.full_name} (${roleLabels[form.role]})` });
       resetForm();
       onOpenChange(false);
       onSuccess();
     } catch (err: any) {
       toast.error('Error al crear usuario', { description: err.message });
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md w-[calc(100vw-2rem)] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="w-5 h-5 text-primary" />
-            Crear usuario
-          </DialogTitle>
-          <DialogDescription>
-            Añade un nuevo usuario al sistema.
-          </DialogDescription>
-        </DialogHeader>
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogHeader>
+        <ResponsiveDialogTitle className="flex items-center gap-2">
+          <UserPlus className="w-5 h-5 text-primary" /> Crear usuario
+        </ResponsiveDialogTitle>
+        <ResponsiveDialogDescription>Añade un nuevo usuario al sistema.</ResponsiveDialogDescription>
+      </ResponsiveDialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Role - first so shop fields appear contextually */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label className="flex items-center gap-1.5"><Shield className="w-3.5 h-3.5" /> Rol *</Label>
+          <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v as any })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="driver">🚴 Repartidor</SelectItem>
+              <SelectItem value="shop">🏪 Tienda</SelectItem>
+              <SelectItem value="admin">👑 Administrador</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {form.role === 'shop' && (
           <div className="space-y-2">
-            <Label className="flex items-center gap-1.5">
-              <Shield className="w-3.5 h-3.5" /> Rol *
-            </Label>
-            <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v as any })}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="driver">🚴 Repartidor</SelectItem>
-                <SelectItem value="shop">🏪 Tienda</SelectItem>
-                <SelectItem value="admin">👑 Administrador</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label htmlFor="shop_name" className="flex items-center gap-1.5"><Store className="w-3.5 h-3.5" /> Nombre de la tienda *</Label>
+            <Input id="shop_name" placeholder="Ej: Panadería La Esquina" value={form.shop_name} onChange={(e) => setForm({ ...form, shop_name: e.target.value })} />
           </div>
+        )}
 
-          {/* Shop name - only for shops */}
-          {form.role === 'shop' && (
-            <div className="space-y-2">
-              <Label htmlFor="shop_name" className="flex items-center gap-1.5">
-                <Store className="w-3.5 h-3.5" /> Nombre de la tienda *
-              </Label>
-              <Input
-                id="shop_name"
-                placeholder="Ej: Panadería La Esquina"
-                value={form.shop_name}
-                onChange={(e) => setForm({ ...form, shop_name: e.target.value })}
-              />
-            </div>
-          )}
+        <div className="space-y-2">
+          <Label htmlFor="full_name" className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> {form.role === 'shop' ? 'Persona de contacto *' : 'Nombre completo *'}</Label>
+          <Input id="full_name" placeholder="Juan Pérez" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required />
+        </div>
 
-          {/* Name */}
+        <div className="space-y-2">
+          <Label htmlFor="email" className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> Email *</Label>
+          <Input id="email" type="email" placeholder="juan@empresa.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="password" className="flex items-center gap-1.5"><Lock className="w-3.5 h-3.5" /> Contraseña *</Label>
+          <Input id="password" type="password" placeholder="Mínimo 6 caracteres" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={6} />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="phone" className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" /> Teléfono</Label>
+          <Input id="phone" type="tel" placeholder="+34 600 000 000" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+        </div>
+
+        {form.role === 'shop' && (
           <div className="space-y-2">
-            <Label htmlFor="full_name" className="flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5" /> {form.role === 'shop' ? 'Persona de contacto *' : 'Nombre completo *'}
-            </Label>
-            <Input
-              id="full_name"
-              placeholder="Juan Pérez"
-              value={form.full_name}
-              onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-              required
-            />
+            <Label className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> Dirección habitual de recogida</Label>
+            <AddressInput value={form.default_pickup_address} onChange={(v) => setForm({ ...form, default_pickup_address: v })} onResolved={handlePickupResolved} onClear={() => setPickupResolved(false)} resolved={pickupResolved} placeholder="Ej: Carrer de Balmes 145, Barcelona" />
           </div>
+        )}
 
-          {/* Email */}
-          <div className="space-y-2">
-            <Label htmlFor="email" className="flex items-center gap-1.5">
-              <Mail className="w-3.5 h-3.5" /> Email *
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="juan@empresa.com"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              required
-            />
-          </div>
-
-          {/* Password */}
-          <div className="space-y-2">
-            <Label htmlFor="password" className="flex items-center gap-1.5">
-              <Lock className="w-3.5 h-3.5" /> Contraseña *
-            </Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="Mínimo 6 caracteres"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              required
-              minLength={6}
-            />
-          </div>
-
-          {/* Phone */}
-          <div className="space-y-2">
-            <Label htmlFor="phone" className="flex items-center gap-1.5">
-              <Phone className="w-3.5 h-3.5" /> Teléfono
-            </Label>
-            <Input
-              id="phone"
-              type="tel"
-              placeholder="+34 600 000 000"
-              value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            />
-          </div>
-
-          {/* Default pickup address - only for shops */}
-          {form.role === 'shop' && (
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5" /> Dirección habitual de recogida
-              </Label>
-              <AddressInput
-                value={form.default_pickup_address}
-                onChange={(v) => setForm({ ...form, default_pickup_address: v })}
-                onResolved={handlePickupResolved}
-                onClear={() => setPickupResolved(false)}
-                resolved={pickupResolved}
-                placeholder="Ej: Carrer de Balmes 145, Barcelona"
-              />
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex gap-3 pt-2">
-            <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
-              Cancelar
-            </Button>
-            <Button type="submit" className="flex-1" disabled={loading}>
-              {loading ? 'Creando...' : 'Crear usuario'}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+        <div className="flex gap-3 pt-2">
+          <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button type="submit" className="flex-1" disabled={loading}>{loading ? 'Creando...' : 'Crear usuario'}</Button>
+        </div>
+      </form>
+    </ResponsiveDialog>
   );
 }

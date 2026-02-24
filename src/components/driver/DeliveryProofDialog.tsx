@@ -1,11 +1,7 @@
 import { useState, useRef } from 'react';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveDialog, ResponsiveDialogHeader, ResponsiveDialogTitle, ResponsiveDialogDescription,
+} from '@/components/ui/responsive-dialog';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -19,12 +15,7 @@ interface DeliveryProofDialogProps {
   onSuccess: () => void;
 }
 
-export function DeliveryProofDialog({
-  stop,
-  open,
-  onOpenChange,
-  onSuccess,
-}: DeliveryProofDialogProps) {
+export function DeliveryProofDialog({ stop, open, onOpenChange, onSuccess }: DeliveryProofDialogProps) {
   const [photo, setPhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -34,17 +25,8 @@ export function DeliveryProofDialog({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      toast.error('Solo se permiten imágenes');
-      return;
-    }
-
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('La imagen no puede superar 10MB');
-      return;
-    }
-
+    if (!file.type.startsWith('image/')) { toast.error('Solo se permiten imágenes'); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.error('La imagen no puede superar 10MB'); return; }
     setPhoto(file);
     const reader = new FileReader();
     reader.onloadend = () => setPreview(reader.result as string);
@@ -59,14 +41,9 @@ export function DeliveryProofDialog({
   };
 
   const handleSubmit = async () => {
-    if (!photo) {
-      toast.error('Debes adjuntar una foto de la entrega');
-      return;
-    }
-
+    if (!photo) { toast.error('Debes adjuntar una foto de la entrega'); return; }
     setUploading(true);
     try {
-      // Upload photo
       const fileExt = photo.name.split('.').pop();
       const fileName = `${stop.id}-${Date.now()}.${fileExt}`;
       const filePath = `${stop.driver_id}/${fileName}`;
@@ -74,15 +51,10 @@ export function DeliveryProofDialog({
       const { error: uploadError } = await supabase.storage
         .from('delivery-proofs')
         .upload(filePath, photo, { contentType: photo.type });
-
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from('delivery-proofs')
-        .getPublicUrl(filePath);
+      const { data: urlData } = supabase.storage.from('delivery-proofs').getPublicUrl(filePath);
 
-      // Update stop
       const { error: updateError } = await supabase
         .from('stops')
         .update({
@@ -92,13 +64,9 @@ export function DeliveryProofDialog({
           updated_at: new Date().toISOString(),
         })
         .eq('id', stop.id);
-
       if (updateError) throw updateError;
 
-      toast.success('¡Entrega completada!', {
-        description: `Paquete entregado a ${stop.client_name}`,
-      });
-
+      toast.success('¡Entrega completada!', { description: `Paquete entregado a ${stop.client_name}` });
       clearPhoto();
       onOpenChange(false);
       onSuccess();
@@ -110,93 +78,52 @@ export function DeliveryProofDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm mx-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Camera className="w-5 h-5 text-status-delivered" />
-            Confirmar entrega
-          </DialogTitle>
-          <DialogDescription>
-            Adjunta una foto como prueba de entrega para {stop.client_name}.
-          </DialogDescription>
-        </DialogHeader>
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogHeader>
+        <ResponsiveDialogTitle className="flex items-center gap-2">
+          <Camera className="w-5 h-5 text-status-delivered" />
+          Confirmar entrega
+        </ResponsiveDialogTitle>
+        <ResponsiveDialogDescription>
+          Adjunta una foto como prueba de entrega para {stop.client_name}.
+        </ResponsiveDialogDescription>
+      </ResponsiveDialogHeader>
 
-        <div className="space-y-4">
-          {/* Preview */}
-          {preview ? (
-            <div className="relative">
-              <img
-                src={preview}
-                alt="Preview"
-                className="w-full rounded-lg border max-h-64 object-cover"
-              />
-              <Button
-                variant="destructive"
-                size="icon"
-                className="absolute top-2 right-2 h-8 w-8"
-                onClick={clearPhoto}
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
+      <div className="space-y-4">
+        {preview ? (
+          <div className="relative">
+            <img src={preview} alt="Preview" className="w-full rounded-lg border max-h-64 object-cover" />
+            <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-8 w-8" onClick={clearPhoto}>
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            <button onClick={() => cameraInputRef.current?.click()}
+              className="flex flex-col items-center gap-2 p-6 border-2 border-dashed rounded-lg hover:border-primary hover:bg-primary/5 transition-colors active:scale-95">
+              <Camera className="w-8 h-8 text-muted-foreground" />
+              <span className="text-sm font-medium">Cámara</span>
+            </button>
+            <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileSelect} />
+
+            <button onClick={() => fileInputRef.current?.click()}
+              className="flex flex-col items-center gap-2 p-6 border-2 border-dashed rounded-lg hover:border-primary hover:bg-primary/5 transition-colors active:scale-95">
+              <Upload className="w-8 h-8 text-muted-foreground" />
+              <span className="text-sm font-medium">Galería</span>
+            </button>
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+          </div>
+        )}
+
+        <Button onClick={handleSubmit} disabled={!photo || uploading}
+          className="w-full h-12 text-base gap-2 bg-status-delivered hover:bg-status-delivered/90 text-white">
+          {uploading ? (
+            <><Loader2 className="w-5 h-5 animate-spin" /> Subiendo...</>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
-              {/* Camera */}
-              <button
-                onClick={() => cameraInputRef.current?.click()}
-                className="flex flex-col items-center gap-2 p-6 border-2 border-dashed rounded-lg hover:border-primary hover:bg-primary/5 transition-colors"
-              >
-                <Camera className="w-8 h-8 text-muted-foreground" />
-                <span className="text-sm font-medium">Cámara</span>
-              </button>
-              <input
-                ref={cameraInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                onChange={handleFileSelect}
-              />
-
-              {/* Gallery */}
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="flex flex-col items-center gap-2 p-6 border-2 border-dashed rounded-lg hover:border-primary hover:bg-primary/5 transition-colors"
-              >
-                <Upload className="w-8 h-8 text-muted-foreground" />
-                <span className="text-sm font-medium">Galería</span>
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleFileSelect}
-              />
-            </div>
+            <><CheckCircle className="w-5 h-5" /> Confirmar entrega</>
           )}
-
-          {/* Submit */}
-          <Button
-            onClick={handleSubmit}
-            disabled={!photo || uploading}
-            className="w-full h-12 text-base gap-2 bg-status-delivered hover:bg-status-delivered/90 text-white"
-          >
-            {uploading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Subiendo...
-              </>
-            ) : (
-              <>
-                <CheckCircle className="w-5 h-5" />
-                Confirmar entrega
-              </>
-            )}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </Button>
+      </div>
+    </ResponsiveDialog>
   );
 }
