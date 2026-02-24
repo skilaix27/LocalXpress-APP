@@ -12,7 +12,7 @@ interface DriverStopsListProps {
 }
 
 export function DriverStopsList({ stops, onSelectStop }: DriverStopsListProps) {
-  const pending = stops.filter(s => s.status === 'pending');
+  const pending = stops.filter(s => s.status === 'pending' || s.status === 'assigned');
   const picked = stops.filter(s => s.status === 'picked');
 
   return (
@@ -47,6 +47,8 @@ export function DriverStopsList({ stops, onSelectStop }: DriverStopsListProps) {
               style={{
                 borderLeftColor: stop.status === 'picked'
                   ? 'hsl(var(--status-picked))'
+                  : stop.status === 'assigned'
+                  ? 'hsl(var(--status-assigned))'
                   : 'hsl(var(--status-pending))',
               }}
               onClick={() => onSelectStop(stop)}

@@ -63,6 +63,8 @@ export default {
         status: {
           pending: "hsl(var(--status-pending))",
           "pending-bg": "hsl(var(--status-pending-bg))",
+          assigned: "hsl(var(--status-assigned))",
+          "assigned-bg": "hsl(var(--status-assigned-bg))",
           picked: "hsl(var(--status-picked))",
           "picked-bg": "hsl(var(--status-picked-bg))",
           delivered: "hsl(var(--status-delivered))",

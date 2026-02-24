@@ -91,6 +91,7 @@ export function useAdminData() {
   );
 
   const pendingStops = stops.filter((s) => s.status === 'pending').length;
+  const assignedStops = stops.filter((s) => s.status === 'assigned').length;
   const pickedStops = stops.filter((s) => s.status === 'picked').length;
   const deliveredStops = activeStops.filter((s) => s.status === 'delivered').length;
   const activeDrivers = driverLocations.filter(
@@ -108,6 +109,7 @@ export function useAdminData() {
     getDriverLocation,
     getDriverStopsCount,
     pendingStops,
+    assignedStops,
     pickedStops,
     deliveredStops,
     activeDrivers,

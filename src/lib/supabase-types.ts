@@ -1,5 +1,5 @@
 export type AppRole = 'admin' | 'driver' | 'shop';
-export type StopStatus = 'pending' | 'picked' | 'delivered';
+export type StopStatus = 'pending' | 'assigned' | 'picked' | 'delivered';
 
 export interface Profile {
   id: string;

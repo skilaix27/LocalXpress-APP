@@ -19,6 +19,7 @@ export function ShopStopCard({ stop, onClick, className }: ShopStopCardProps) {
       className={cn(
         'cursor-pointer card-hover border-l-4',
         stop.status === 'pending' && 'border-l-muted-foreground',
+        stop.status === 'assigned' && 'border-l-status-assigned',
         stop.status === 'picked' && 'border-l-status-picked',
         stop.status === 'delivered' && 'border-l-status-delivered',
         className
