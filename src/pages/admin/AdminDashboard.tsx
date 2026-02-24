@@ -50,32 +50,32 @@ export default function AdminDashboard() {
   ).length;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Panel de control</h1>
-          <p className="text-muted-foreground">Visión global de tu flota en tiempo real</p>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold">Panel de control</h1>
+          <p className="text-muted-foreground text-sm hidden sm:block">Visión global de tu flota en tiempo real</p>
         </div>
-        <Button onClick={() => setCreateDialogOpen(true)} size="lg">
-          <Plus className="w-4 h-4 mr-2" />
-          Nueva parada
+        <Button onClick={() => setCreateDialogOpen(true)} size="sm" className="shrink-0 sm:size-default">
+          <Plus className="w-4 h-4 sm:mr-2" />
+          <span className="hidden sm:inline">Nueva parada</span>
         </Button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4">
         {stats.map((stat, i) => (
           <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
             <Card className="overflow-hidden">
-              <CardContent className="p-5">
+              <CardContent className="p-3 sm:p-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">{stat.label}</p>
-                    <p className="text-3xl font-bold mt-1">{stat.value}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">{stat.label}</p>
+                    <p className="text-2xl sm:text-3xl font-bold mt-1">{stat.value}</p>
                   </div>
-                  <div className={`p-3 rounded-xl ${stat.bg}`}>
-                    <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                  <div className={`p-2 sm:p-3 rounded-xl ${stat.bg}`}>
+                    <stat.icon className={`w-5 h-5 sm:w-6 sm:h-6 ${stat.color}`} />
                   </div>
                 </div>
               </CardContent>
@@ -86,25 +86,25 @@ export default function AdminDashboard() {
 
       {/* Summary banner */}
       <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
-        <CardContent className="p-4 flex items-center gap-4">
-          <div className="p-2 rounded-lg bg-primary/10">
+        <CardContent className="p-3 sm:p-4 flex items-center gap-3 sm:gap-4">
+          <div className="p-2 rounded-lg bg-primary/10 shrink-0">
             <TrendingUp className="w-5 h-5 text-primary" />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <p className="text-sm font-medium">Resumen del día</p>
             <p className="text-xs text-muted-foreground">
-              {totalToday} paradas creadas hoy · {stops.length} en total · {drivers.length} repartidores registrados
+              {totalToday} paradas hoy · {stops.length} total · {drivers.length} repartidores
             </p>
           </div>
         </CardContent>
       </Card>
 
       {/* Map + Recent */}
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid lg:grid-cols-3 gap-4 sm:gap-6">
         <div className="lg:col-span-2">
-          <Card className="h-[500px] overflow-hidden">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg flex items-center justify-between">
+          <Card className="h-[300px] sm:h-[500px] overflow-hidden">
+            <CardHeader className="pb-2 px-3 sm:px-6">
+              <CardTitle className="text-base sm:text-lg flex items-center justify-between">
                 Mapa en tiempo real
                 <Button variant="ghost" size="sm" onClick={() => navigate('/admin/map')}>
                   Ver completo
@@ -125,11 +125,11 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Recent stops */}
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg flex items-center justify-between">
+            <CardHeader className="pb-2 px-3 sm:px-6">
+              <CardTitle className="text-base sm:text-lg flex items-center justify-between">
                 Paradas recientes
                 <Button variant="ghost" size="sm" onClick={() => navigate('/admin/stops')}>
                   Ver todas
@@ -148,8 +148,8 @@ export default function AdminDashboard() {
 
           {/* Drivers */}
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg flex items-center justify-between">
+            <CardHeader className="pb-2 px-3 sm:px-6">
+              <CardTitle className="text-base sm:text-lg flex items-center justify-between">
                 Repartidores
                 <Button variant="ghost" size="sm" onClick={() => navigate('/admin/drivers')}>
                   Ver todos

@@ -48,61 +48,61 @@ export default function AdminUsers() {
     .filter((g) => g.users.length > 0);
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Usuarios</h1>
-          <p className="text-muted-foreground">Gestiona todos los usuarios del sistema</p>
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold">Usuarios</h1>
+          <p className="text-muted-foreground text-sm hidden sm:block">Gestiona todos los usuarios del sistema</p>
         </div>
-        <Button onClick={() => setCreateDialogOpen(true)}>
-          <UserPlus className="w-4 h-4 mr-2" />
-          Nuevo usuario
+        <Button onClick={() => setCreateDialogOpen(true)} size="sm" className="shrink-0">
+          <UserPlus className="w-4 h-4 sm:mr-2" />
+          <span className="hidden sm:inline">Nuevo usuario</span>
         </Button>
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
         <Card>
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-primary/10">
-              <Users className="w-6 h-6 text-primary" />
+          <CardContent className="p-3 sm:p-5 flex items-center gap-3 sm:gap-4">
+            <div className="p-2 sm:p-3 rounded-xl bg-primary/10">
+              <Users className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{allUsers.length}</p>
-              <p className="text-sm text-muted-foreground">Total</p>
+              <p className="text-xl sm:text-2xl font-bold">{allUsers.length}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Total</p>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-accent">
-              <Bike className="w-6 h-6 text-accent-foreground" />
+          <CardContent className="p-3 sm:p-5 flex items-center gap-3 sm:gap-4">
+            <div className="p-2 sm:p-3 rounded-xl bg-accent">
+              <Bike className="w-5 h-5 sm:w-6 sm:h-6 text-accent-foreground" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{driverCount}</p>
-              <p className="text-sm text-muted-foreground">Repartidores</p>
+              <p className="text-xl sm:text-2xl font-bold">{driverCount}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Repartidores</p>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-accent">
-              <Store className="w-6 h-6 text-accent-foreground" />
+          <CardContent className="p-3 sm:p-5 flex items-center gap-3 sm:gap-4">
+            <div className="p-2 sm:p-3 rounded-xl bg-accent">
+              <Store className="w-5 h-5 sm:w-6 sm:h-6 text-accent-foreground" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{shopCount}</p>
-              <p className="text-sm text-muted-foreground">Tiendas</p>
+              <p className="text-xl sm:text-2xl font-bold">{shopCount}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Tiendas</p>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-accent">
-              <Shield className="w-6 h-6 text-accent-foreground" />
+          <CardContent className="p-3 sm:p-5 flex items-center gap-3 sm:gap-4">
+            <div className="p-2 sm:p-3 rounded-xl bg-accent">
+              <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-accent-foreground" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{adminCount}</p>
-              <p className="text-sm text-muted-foreground">Admins</p>
+              <p className="text-xl sm:text-2xl font-bold">{adminCount}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Admins</p>
             </div>
           </CardContent>
         </Card>
@@ -110,11 +110,11 @@ export default function AdminUsers() {
 
       {/* Role filter tabs */}
       <Tabs value={roleFilter} onValueChange={(v) => setRoleFilter(v as FilterRole)}>
-        <TabsList>
-          <TabsTrigger value="all">Todos ({allUsers.length})</TabsTrigger>
-          <TabsTrigger value="driver">🚴 Repartidores ({driverCount})</TabsTrigger>
-          <TabsTrigger value="shop">🏪 Tiendas ({shopCount})</TabsTrigger>
-          <TabsTrigger value="admin">👑 Admins ({adminCount})</TabsTrigger>
+        <TabsList className="w-full overflow-x-auto flex justify-start sm:justify-center">
+          <TabsTrigger value="all" className="text-xs sm:text-sm">Todos ({allUsers.length})</TabsTrigger>
+          <TabsTrigger value="driver" className="text-xs sm:text-sm">🚴 Repart. ({driverCount})</TabsTrigger>
+          <TabsTrigger value="shop" className="text-xs sm:text-sm">🏪 Tiendas ({shopCount})</TabsTrigger>
+          <TabsTrigger value="admin" className="text-xs sm:text-sm">👑 Admins ({adminCount})</TabsTrigger>
         </TabsList>
       </Tabs>
 

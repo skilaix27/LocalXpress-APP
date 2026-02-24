@@ -15,16 +15,17 @@ export default function ShopNewStop() {
   const [detailOpen, setDetailOpen] = useState(false);
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Plus className="w-6 h-6" /> Nuevo pedido
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+            <Plus className="w-5 h-5 sm:w-6 sm:h-6" /> Nuevo pedido
           </h1>
-          <p className="text-muted-foreground">Crea un nuevo pedido de entrega</p>
+          <p className="text-muted-foreground text-sm">Crea un nuevo pedido de entrega</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)} size="lg">
-          <Plus className="w-4 h-4 mr-2" /> Crear pedido
+        <Button onClick={() => setCreateOpen(true)} size="sm" className="shrink-0">
+          <Plus className="w-4 h-4 sm:mr-2" />
+          <span className="hidden sm:inline">Crear pedido</span>
         </Button>
       </div>
 
