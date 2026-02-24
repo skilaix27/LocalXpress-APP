@@ -66,8 +66,33 @@ export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDi
         },
       });
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      // Handle edge function HTTP errors (4xx/5xx)
+      if (error) {
+        // Try to extract message from the error body
+        const msg = typeof error === 'object' && 'message' in error ? error.message : String(error);
+        if (msg.includes('ya está registrado') || msg.includes('already been registered')) {
+          toast.error('Este email ya está registrado', {
+            description: 'Usa otro email o edita el usuario existente.',
+          });
+        } else {
+          toast.error('Error al crear usuario', { description: msg });
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Handle error returned in the response body
+      if (data?.error) {
+        if (data.error.includes('ya está registrado') || data.error.includes('already been registered')) {
+          toast.error('Este email ya está registrado', {
+            description: 'Usa otro email o edita el usuario existente.',
+          });
+        } else {
+          toast.error('Error al crear usuario', { description: data.error });
+        }
+        setLoading(false);
+        return;
+      }
 
       toast.success('Usuario creado correctamente', {
         description: `${form.full_name} (${roleLabels[form.role]})`,
