@@ -1,11 +1,14 @@
-import { forwardRef } from 'react';
+import { forwardRef, useRef, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import type { Stop, Profile } from '@/lib/supabase-types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { CheckCircle, MapPin, User, Clock, Truck, Camera, Package } from 'lucide-react';
+import { CheckCircle, MapPin, User, Clock, Camera, Package, Download, Loader2 } from 'lucide-react';
 import logoLocalxpress from '@/assets/logo-localxpress.png';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 interface DeliveryReceiptProps {
   stop: Stop;
@@ -14,8 +17,35 @@ interface DeliveryReceiptProps {
 
 export const DeliveryReceipt = forwardRef<HTMLDivElement, DeliveryReceiptProps>(
   ({ stop, driver }, ref) => {
+    const receiptRef = useRef<HTMLDivElement>(null);
+    const [downloading, setDownloading] = useState(false);
+
+    const downloadPdf = async () => {
+      const el = receiptRef.current;
+      if (!el) return;
+      setDownloading(true);
+      try {
+        const canvas = await html2canvas(el, { scale: 2, useCORS: true });
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`justificante-${stop.order_code || stop.id.slice(0, 8)}.pdf`);
+      } catch {
+        console.error('Error generating PDF');
+      } finally {
+        setDownloading(false);
+      }
+    };
+
     return (
       <div ref={ref} className="space-y-4">
+        <Button onClick={downloadPdf} disabled={downloading} className="w-full" variant="outline">
+          {downloading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+          {downloading ? 'Generando PDF...' : 'Descargar justificante PDF'}
+        </Button>
+        <div ref={receiptRef}>
         <Card className="border-2 border-status-delivered/30 overflow-hidden">
           {/* Header */}
           <div className="bg-status-delivered/10 p-4 text-center space-y-2">
@@ -121,6 +151,7 @@ export const DeliveryReceipt = forwardRef<HTMLDivElement, DeliveryReceiptProps>(
             <p className="text-xs text-muted-foreground font-medium">LocalXpress</p>
           </div>
         </Card>
+        </div>
       </div>
     );
   }
