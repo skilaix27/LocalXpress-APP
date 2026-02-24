@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export default function AdminHistory() {
-  const { allStops, drivers, loading, fetchData, getDriverById } = useAdminData();
+  const { allStops, drivers, loading, fetchData, getDriverById, getShopById } = useAdminData();
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -113,6 +113,7 @@ export default function AdminHistory() {
             key={stop.id}
             stop={stop}
             driver={getDriverById(stop.driver_id)}
+            shopName={getShopById(stop.shop_id)?.shop_name}
             onClick={() => handleStopClick(stop)}
           />
         ))}
@@ -134,6 +135,7 @@ export default function AdminHistory() {
         onOpenChange={setDetailDialogOpen}
         drivers={drivers}
         onUpdate={fetchData}
+        shopName={selectedStop ? getShopById(selectedStop.shop_id)?.shop_name : null}
       />
     </div>
   );

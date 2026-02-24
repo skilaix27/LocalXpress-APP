@@ -10,6 +10,10 @@ export interface Profile {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  shop_name: string | null;
+  default_pickup_address: string | null;
+  default_pickup_lat: number | null;
+  default_pickup_lng: number | null;
 }
 
 export interface UserRole {
@@ -32,6 +36,7 @@ export interface Stop {
   client_phone: string | null;
   client_notes: string | null;
   driver_id: string | null;
+  shop_id: string | null;
   status: StopStatus;
   created_at: string;
   updated_at: string;

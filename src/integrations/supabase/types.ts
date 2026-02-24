@@ -56,30 +56,42 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          default_pickup_address: string | null
+          default_pickup_lat: number | null
+          default_pickup_lng: number | null
           full_name: string
           id: string
           is_active: boolean | null
           phone: string | null
+          shop_name: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          default_pickup_address?: string | null
+          default_pickup_lat?: number | null
+          default_pickup_lng?: number | null
           full_name: string
           id?: string
           is_active?: boolean | null
           phone?: string | null
+          shop_name?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
+          default_pickup_address?: string | null
+          default_pickup_lat?: number | null
+          default_pickup_lng?: number | null
           full_name?: string
           id?: string
           is_active?: boolean | null
           phone?: string | null
+          shop_name?: string | null
           updated_at?: string
           user_id?: string
         }

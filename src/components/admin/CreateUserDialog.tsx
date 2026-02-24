@@ -1,24 +1,18 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { UserPlus, Mail, Lock, Phone, User, Shield } from 'lucide-react';
+import { UserPlus, Mail, Lock, Phone, User, Shield, Store, MapPin } from 'lucide-react';
+import { AddressInput } from '@/components/admin/AddressInput';
+import type { PlaceDetails } from '@/hooks/useGooglePlaces';
 
 interface CreateUserDialogProps {
   open: boolean;
@@ -28,17 +22,33 @@ interface CreateUserDialogProps {
 
 export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDialogProps) {
   const [loading, setLoading] = useState(false);
+  const [pickupResolved, setPickupResolved] = useState(false);
   const [form, setForm] = useState({
     full_name: '',
     email: '',
     password: '',
     phone: '',
     role: 'driver' as 'admin' | 'driver' | 'shop',
+    shop_name: '',
+    default_pickup_address: '',
+    default_pickup_lat: 0,
+    default_pickup_lng: 0,
   });
 
   const roleLabels: Record<string, string> = { admin: 'Administrador', driver: 'Repartidor', shop: 'Tienda' };
   const resetForm = () => {
-    setForm({ full_name: '', email: '', password: '', phone: '', role: 'driver' });
+    setForm({ full_name: '', email: '', password: '', phone: '', role: 'driver', shop_name: '', default_pickup_address: '', default_pickup_lat: 0, default_pickup_lng: 0 });
+    setPickupResolved(false);
+  };
+
+  const handlePickupResolved = (details: PlaceDetails) => {
+    setForm(prev => ({
+      ...prev,
+      default_pickup_address: details.formattedAddress,
+      default_pickup_lat: details.lat,
+      default_pickup_lng: details.lng,
+    }));
+    setPickupResolved(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -54,26 +64,36 @@ export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDi
       return;
     }
 
+    if (form.role === 'shop' && !form.shop_name.trim()) {
+      toast.error('El nombre de la tienda es obligatorio');
+      return;
+    }
+
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('create-user', {
-        body: {
-          email: form.email.trim(),
-          password: form.password,
-          full_name: form.full_name.trim(),
-          phone: form.phone.trim() || null,
-          role: form.role,
-        },
-      });
+      const body: Record<string, any> = {
+        email: form.email.trim(),
+        password: form.password,
+        full_name: form.full_name.trim(),
+        phone: form.phone.trim() || null,
+        role: form.role,
+      };
 
-      // Handle edge function HTTP errors (4xx/5xx)
+      if (form.role === 'shop') {
+        body.shop_name = form.shop_name.trim();
+        if (pickupResolved) {
+          body.default_pickup_address = form.default_pickup_address;
+          body.default_pickup_lat = form.default_pickup_lat;
+          body.default_pickup_lng = form.default_pickup_lng;
+        }
+      }
+
+      const { data, error } = await supabase.functions.invoke('create-user', { body });
+
       if (error) {
-        // Try to extract message from the error body
         const msg = typeof error === 'object' && 'message' in error ? error.message : String(error);
         if (msg.includes('ya está registrado') || msg.includes('already been registered')) {
-          toast.error('Este email ya está registrado', {
-            description: 'Usa otro email o edita el usuario existente.',
-          });
+          toast.error('Este email ya está registrado', { description: 'Usa otro email o edita el usuario existente.' });
         } else {
           toast.error('Error al crear usuario', { description: msg });
         }
@@ -81,12 +101,9 @@ export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDi
         return;
       }
 
-      // Handle error returned in the response body
       if (data?.error) {
         if (data.error.includes('ya está registrado') || data.error.includes('already been registered')) {
-          toast.error('Este email ya está registrado', {
-            description: 'Usa otro email o edita el usuario existente.',
-          });
+          toast.error('Este email ya está registrado', { description: 'Usa otro email o edita el usuario existente.' });
         } else {
           toast.error('Error al crear usuario', { description: data.error });
         }
@@ -109,22 +126,54 @@ export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md w-[calc(100vw-2rem)] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="w-5 h-5 text-primary" />
             Crear usuario
           </DialogTitle>
           <DialogDescription>
-            Añade un nuevo repartidor o administrador al sistema.
+            Añade un nuevo usuario al sistema.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Role - first so shop fields appear contextually */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5">
+              <Shield className="w-3.5 h-3.5" /> Rol *
+            </Label>
+            <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v as any })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="driver">🚴 Repartidor</SelectItem>
+                <SelectItem value="shop">🏪 Tienda</SelectItem>
+                <SelectItem value="admin">👑 Administrador</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Shop name - only for shops */}
+          {form.role === 'shop' && (
+            <div className="space-y-2">
+              <Label htmlFor="shop_name" className="flex items-center gap-1.5">
+                <Store className="w-3.5 h-3.5" /> Nombre de la tienda *
+              </Label>
+              <Input
+                id="shop_name"
+                placeholder="Ej: Panadería La Esquina"
+                value={form.shop_name}
+                onChange={(e) => setForm({ ...form, shop_name: e.target.value })}
+              />
+            </div>
+          )}
+
           {/* Name */}
           <div className="space-y-2">
             <Label htmlFor="full_name" className="flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5" /> Nombre completo *
+              <User className="w-3.5 h-3.5" /> {form.role === 'shop' ? 'Persona de contacto *' : 'Nombre completo *'}
             </Label>
             <Input
               id="full_name"
@@ -180,22 +229,22 @@ export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDi
             />
           </div>
 
-          {/* Role */}
-          <div className="space-y-2">
-            <Label className="flex items-center gap-1.5">
-              <Shield className="w-3.5 h-3.5" /> Rol *
-            </Label>
-            <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v as 'admin' | 'driver' | 'shop' })}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="driver">🚴 Repartidor</SelectItem>
-                <SelectItem value="shop">🏪 Tienda</SelectItem>
-                <SelectItem value="admin">👑 Administrador</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Default pickup address - only for shops */}
+          {form.role === 'shop' && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5" /> Dirección habitual de recogida
+              </Label>
+              <AddressInput
+                value={form.default_pickup_address}
+                onChange={(v) => setForm({ ...form, default_pickup_address: v })}
+                onResolved={handlePickupResolved}
+                onClear={() => setPickupResolved(false)}
+                resolved={pickupResolved}
+                placeholder="Ej: Carrer de Balmes 145, Barcelona"
+              />
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex gap-3 pt-2">

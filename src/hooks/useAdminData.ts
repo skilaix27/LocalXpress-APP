@@ -94,6 +94,14 @@ export function useAdminData() {
     [drivers]
   );
 
+  const getShopById = useCallback(
+    (shopId: string | null) => {
+      if (!shopId) return null;
+      return allUsers.find((u) => u.id === shopId && u.role === 'shop') || null;
+    },
+    [allUsers]
+  );
+
   const getDriverLocation = useCallback(
     (driverId: string) => driverLocations.find((loc) => loc.driver_id === driverId),
     [driverLocations]
@@ -127,6 +135,7 @@ export function useAdminData() {
     loading,
     fetchData,
     getDriverById,
+    getShopById,
     getDriverLocation,
     getDriverStopsCount,
     pendingStops,

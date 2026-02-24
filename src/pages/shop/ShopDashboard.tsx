@@ -9,8 +9,10 @@ import type { Stop } from '@/lib/supabase-types';
 import { Plus, Package, Truck, CheckCircle, TrendingUp, UserCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function ShopDashboard() {
+  const { profile } = useAuth();
   const {
     activeStops, deliveredToday, fetchData,
     pendingCount, assignedCount, pickedCount, deliveredCount,
@@ -45,7 +47,9 @@ export default function ShopDashboard() {
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold">Mi Panel</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">
+            {profile?.shop_name ? `¡Hola, ${profile.shop_name}!` : 'Mi Panel'}
+          </h1>
           <p className="text-muted-foreground text-sm hidden sm:block">Estado de tus pedidos en tiempo real</p>
         </div>
         <Button onClick={() => setCreateOpen(true)} size="sm" className="shrink-0">
