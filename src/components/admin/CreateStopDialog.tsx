@@ -148,6 +148,7 @@ export function CreateStopDialog({
       // Generate order code
       const orderCode = await generateOrderCode();
 
+      const hasDriver = !!data.driver_id;
       const { error } = await supabase.from('stops').insert({
         pickup_address: data.pickup_address,
         pickup_lat: data.pickup_lat,
@@ -159,6 +160,7 @@ export function CreateStopDialog({
         client_phone: data.client_phone || null,
         client_notes: data.client_notes || null,
         driver_id: data.driver_id || null,
+        status: hasDriver ? 'assigned' : 'pending',
         distance_km: routeDistance,
         scheduled_pickup_at: scheduledPickupAt,
         order_code: orderCode,
