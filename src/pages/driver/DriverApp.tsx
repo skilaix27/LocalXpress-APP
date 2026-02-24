@@ -247,43 +247,45 @@ export default function DriverApp() {
   return (
     <div className="h-[100dvh] flex flex-col bg-background overflow-hidden">
       {/* Header */}
-      <header className="bg-secondary text-secondary-foreground px-4 py-2.5 flex items-center justify-between z-20 shrink-0 safe-area-top">
-        <div className="flex items-center gap-2.5">
-          {viewMode === 'detail' && stops.length > 1 && (
-            <button onClick={() => setViewMode('list')} className="p-1.5 -ml-1.5 rounded-lg active:bg-secondary-foreground/10">
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-          )}
-          <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center">
-            <User className="w-4 h-4 text-primary" />
-          </div>
-          <div>
-            <p className="font-semibold text-sm leading-tight">{profile?.full_name}</p>
-            <div className="flex items-center gap-1.5">
-              <p className="text-xs text-secondary-foreground/70">{stops.length} paradas</p>
-              {gpsStatus === 'active' && (
-                <span className="flex items-center gap-0.5 text-xs text-secondary-foreground/90">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                  GPS
-                </span>
-              )}
-              {gpsStatus === 'denied' && (
-                <span className="flex items-center gap-0.5 text-xs text-destructive">
-                  <AlertCircle className="w-3 h-3" /> Sin GPS
-                </span>
-              )}
+      <header className="bg-secondary text-secondary-foreground px-4 py-3 z-20 shrink-0 safe-area-top">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3 min-w-0">
+            {viewMode === 'detail' && stops.length > 1 && (
+              <button onClick={() => setViewMode('list')} className="p-1.5 -ml-1.5 rounded-xl active:bg-secondary-foreground/10 transition-colors">
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            )}
+            <div className="w-10 h-10 rounded-2xl bg-primary/20 flex items-center justify-center shrink-0">
+              <User className="w-5 h-5 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-bold text-sm leading-tight truncate">{profile?.full_name}</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xs text-secondary-foreground/60 font-medium">{stops.length} parada{stops.length !== 1 ? 's' : ''}</span>
+                {gpsStatus === 'active' && (
+                  <span className="flex items-center gap-1 text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                    GPS
+                  </span>
+                )}
+                {gpsStatus === 'denied' && (
+                  <span className="flex items-center gap-1 text-[10px] font-semibold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded-full">
+                    <AlertCircle className="w-3 h-3" /> Sin GPS
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-        <div className="flex items-center gap-1">
-          {viewMode === 'detail' && stops.length > 1 && (
-            <Button variant="ghost" size="icon" onClick={() => setViewMode('list')} className="h-9 w-9">
-              <List className="w-4 h-4" />
+          <div className="flex items-center gap-1 shrink-0">
+            {viewMode === 'detail' && stops.length > 1 && (
+              <Button variant="ghost" size="icon" onClick={() => setViewMode('list')} className="h-9 w-9 rounded-xl text-secondary-foreground/70 hover:text-secondary-foreground hover:bg-secondary-foreground/10">
+                <List className="w-4.5 h-4.5" />
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" onClick={signOut} className="h-9 w-9 rounded-xl text-secondary-foreground/70 hover:text-secondary-foreground hover:bg-secondary-foreground/10">
+              <LogOut className="w-4.5 h-4.5" />
             </Button>
-          )}
-          <Button variant="ghost" size="icon" onClick={signOut} className="h-9 w-9">
-            <LogOut className="w-4 h-4" />
-          </Button>
+          </div>
         </div>
       </header>
 
