@@ -16,6 +16,10 @@ import AdminStops from "./pages/admin/AdminStops";
 import AdminDrivers from "./pages/admin/AdminDrivers";
 import AdminMap from "./pages/admin/AdminMap";
 import AdminHistory from "./pages/admin/AdminHistory";
+import ShopLayout from "./pages/shop/ShopLayout";
+import ShopDashboard from "./pages/shop/ShopDashboard";
+import ShopNewStop from "./pages/shop/ShopNewStop";
+import ShopHistory from "./pages/shop/ShopHistory";
 import DriverApp from "./pages/driver/DriverApp";
 
 const queryClient = new QueryClient();
@@ -50,6 +54,20 @@ const App = () => (
               <Route path="history" element={<AdminHistory />} />
             </Route>
             
+            {/* Shop routes */}
+            <Route
+              path="/shop"
+              element={
+                <ProtectedRoute requiredRole="shop">
+                  <ShopLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<ShopDashboard />} />
+              <Route path="new" element={<ShopNewStop />} />
+              <Route path="history" element={<ShopHistory />} />
+            </Route>
+
             {/* Driver routes */}
             <Route
               path="/driver"

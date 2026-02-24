@@ -1,4 +1,4 @@
-export type AppRole = 'admin' | 'driver';
+export type AppRole = 'admin' | 'driver' | 'shop';
 export type StopStatus = 'pending' | 'picked' | 'delivered';
 
 export interface Profile {
