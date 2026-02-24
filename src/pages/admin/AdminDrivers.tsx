@@ -6,14 +6,24 @@ import { DriverDetailDialog } from '@/components/admin/DriverDetailDialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Users, Wifi, WifiOff, UserPlus } from 'lucide-react';
-import type { Profile } from '@/lib/supabase-types';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Users, UserPlus, Bike, Store, Shield } from 'lucide-react';
+import type { Profile, AppRole } from '@/lib/supabase-types';
 
-export default function AdminDrivers() {
-  const { drivers, stops, loading, fetchData, getDriverLocation, getDriverStopsCount, driverLocations } = useAdminData();
+type FilterRole = 'all' | AppRole;
+
+const roleConfig: Record<AppRole, { label: string; icon: typeof Users; emoji: string }> = {
+  admin: { label: 'Administradores', icon: Shield, emoji: '👑' },
+  driver: { label: 'Repartidores', icon: Bike, emoji: '🚴' },
+  shop: { label: 'Tiendas', icon: Store, emoji: '🏪' },
+};
+
+export default function AdminUsers() {
+  const { allUsers, stops, loading, fetchData, getDriverLocation, getDriverStopsCount } = useAdminData();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState<Profile | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [roleFilter, setRoleFilter] = useState<FilterRole>('all');
 
   if (loading) {
     return (
@@ -23,18 +33,26 @@ export default function AdminDrivers() {
     );
   }
 
-  const onlineDrivers = drivers.filter((d) => {
-    const loc = getDriverLocation(d.id);
-    return loc && new Date(loc.updated_at).getTime() > Date.now() - 5 * 60 * 1000;
-  });
-  const offlineDrivers = drivers.filter((d) => !onlineDrivers.includes(d));
+  const adminCount = allUsers.filter((u) => u.role === 'admin').length;
+  const driverCount = allUsers.filter((u) => u.role === 'driver').length;
+  const shopCount = allUsers.filter((u) => u.role === 'shop').length;
+
+  const filteredUsers = roleFilter === 'all' ? allUsers : allUsers.filter((u) => u.role === roleFilter);
+
+  // Group filtered users by role
+  const groupedUsers = (['admin', 'driver', 'shop'] as AppRole[])
+    .map((role) => ({
+      role,
+      users: filteredUsers.filter((u) => u.role === role),
+    }))
+    .filter((g) => g.users.length > 0);
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Repartidores</h1>
-          <p className="text-muted-foreground">Gestiona tu equipo de reparto</p>
+          <h1 className="text-2xl font-bold">Usuarios</h1>
+          <p className="text-muted-foreground">Gestiona todos los usuarios del sistema</p>
         </div>
         <Button onClick={() => setCreateDialogOpen(true)}>
           <UserPlus className="w-4 h-4 mr-2" />
@@ -42,92 +60,93 @@ export default function AdminDrivers() {
         </Button>
       </div>
 
-      {/* Summary */}
-      <div className="grid grid-cols-3 gap-4">
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-5 flex items-center gap-4">
             <div className="p-3 rounded-xl bg-primary/10">
               <Users className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{drivers.length}</p>
+              <p className="text-2xl font-bold">{allUsers.length}</p>
               <p className="text-sm text-muted-foreground">Total</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-[hsl(var(--status-delivered-bg))]">
-              <Wifi className="w-6 h-6 text-status-delivered" />
+            <div className="p-3 rounded-xl bg-accent">
+              <Bike className="w-6 h-6 text-accent-foreground" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{onlineDrivers.length}</p>
-              <p className="text-sm text-muted-foreground">En línea</p>
+              <p className="text-2xl font-bold">{driverCount}</p>
+              <p className="text-sm text-muted-foreground">Repartidores</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-muted">
-              <WifiOff className="w-6 h-6 text-muted-foreground" />
+            <div className="p-3 rounded-xl bg-accent">
+              <Store className="w-6 h-6 text-accent-foreground" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{offlineDrivers.length}</p>
-              <p className="text-sm text-muted-foreground">Desconectados</p>
+              <p className="text-2xl font-bold">{shopCount}</p>
+              <p className="text-sm text-muted-foreground">Tiendas</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5 flex items-center gap-4">
+            <div className="p-3 rounded-xl bg-accent">
+              <Shield className="w-6 h-6 text-accent-foreground" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{adminCount}</p>
+              <p className="text-sm text-muted-foreground">Admins</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Online */}
-      {onlineDrivers.length > 0 && (
-        <div className="space-y-3">
+      {/* Role filter tabs */}
+      <Tabs value={roleFilter} onValueChange={(v) => setRoleFilter(v as FilterRole)}>
+        <TabsList>
+          <TabsTrigger value="all">Todos ({allUsers.length})</TabsTrigger>
+          <TabsTrigger value="driver">🚴 Repartidores ({driverCount})</TabsTrigger>
+          <TabsTrigger value="shop">🏪 Tiendas ({shopCount})</TabsTrigger>
+          <TabsTrigger value="admin">👑 Admins ({adminCount})</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {/* Grouped user lists */}
+      {groupedUsers.map(({ role, users }) => (
+        <div key={role} className="space-y-3">
           <h2 className="text-lg font-semibold flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-status-delivered animate-pulse" />
-            En línea
-            <Badge variant="secondary">{onlineDrivers.length}</Badge>
+            {roleConfig[role].emoji} {roleConfig[role].label}
+            <Badge variant="secondary">{users.length}</Badge>
           </h2>
           <div className="grid sm:grid-cols-2 gap-3">
-            {onlineDrivers.map((driver) => (
+            {users.map((user) => (
               <DriverCard
-                key={driver.id}
-                driver={driver}
-                location={getDriverLocation(driver.id)}
-                activeStopsCount={getDriverStopsCount(driver.id)}
-                onClick={() => { setSelectedDriver(driver); setDetailOpen(true); }}
+                key={user.id}
+                driver={user}
+                location={role === 'driver' ? getDriverLocation(user.id) : undefined}
+                activeStopsCount={role === 'driver' ? getDriverStopsCount(user.id) : undefined}
+                onClick={() => {
+                  setSelectedDriver(user);
+                  setDetailOpen(true);
+                }}
               />
             ))}
           </div>
         </div>
-      )}
+      ))}
 
-      {/* Offline */}
-      {offlineDrivers.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-muted-foreground" />
-            Desconectados
-            <Badge variant="secondary">{offlineDrivers.length}</Badge>
-          </h2>
-          <div className="grid sm:grid-cols-2 gap-3">
-            {offlineDrivers.map((driver) => (
-              <DriverCard
-                key={driver.id}
-                driver={driver}
-                location={getDriverLocation(driver.id)}
-                activeStopsCount={getDriverStopsCount(driver.id)}
-                onClick={() => { setSelectedDriver(driver); setDetailOpen(true); }}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {drivers.length === 0 && (
+      {allUsers.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center">
             <Users className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
-            <p className="text-muted-foreground">No hay repartidores registrados</p>
+            <p className="text-muted-foreground">No hay usuarios registrados</p>
           </CardContent>
         </Card>
       )}
