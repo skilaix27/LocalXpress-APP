@@ -36,25 +36,25 @@ export default function AdminMap() {
   return (
     <div className="h-full flex flex-col">
       {/* Header bar */}
-      <div className="p-4 border-b bg-card flex items-center justify-between gap-4 shrink-0">
-        <div className="flex items-center gap-3">
-          <MapPin className="w-5 h-5 text-primary" />
-          <h1 className="text-lg font-bold">Mapa de reparto</h1>
-          <Badge variant="secondary">{filteredStops.length} paradas</Badge>
+      <div className="p-3 sm:p-4 border-b bg-card flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <MapPin className="w-5 h-5 text-primary shrink-0" />
+          <h1 className="text-base sm:text-lg font-bold">Mapa</h1>
+          <Badge variant="secondary" className="text-xs">{filteredStops.length} paradas</Badge>
         </div>
         <Tabs value={filter} onValueChange={(v) => setFilter(v as any)}>
-          <TabsList className="h-9">
-            <TabsTrigger value="active" className="text-xs gap-1">
-              <Eye className="w-3.5 h-3.5" /> Activas
+          <TabsList className="h-8 sm:h-9">
+            <TabsTrigger value="active" className="text-xs gap-1 px-2 sm:px-3">
+              <Eye className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> <span className="hidden sm:inline">Activas</span><span className="sm:hidden">Act.</span>
             </TabsTrigger>
-            <TabsTrigger value="pending" className="text-xs gap-1">
-              <Package className="w-3.5 h-3.5" /> Pendientes
+            <TabsTrigger value="pending" className="text-xs gap-1 px-2 sm:px-3">
+              <Package className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> <span className="hidden sm:inline">Pendientes</span><span className="sm:hidden">Pend.</span>
             </TabsTrigger>
-            <TabsTrigger value="picked" className="text-xs gap-1">
-              <Truck className="w-3.5 h-3.5" /> Recogidas
+            <TabsTrigger value="picked" className="text-xs gap-1 px-2 sm:px-3">
+              <Truck className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> <span className="hidden sm:inline">Recogidas</span><span className="sm:hidden">Rec.</span>
             </TabsTrigger>
-            <TabsTrigger value="all" className="text-xs gap-1">
-              <CheckCircle className="w-3.5 h-3.5" /> Todas
+            <TabsTrigger value="all" className="text-xs gap-1 px-2 sm:px-3">
+              <CheckCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> Todas
             </TabsTrigger>
           </TabsList>
         </Tabs>

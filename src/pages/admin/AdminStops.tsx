@@ -61,22 +61,22 @@ export default function AdminStops() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Paradas</h1>
-          <p className="text-muted-foreground">Gestiona todas las paradas de reparto</p>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold">Paradas</h1>
+          <p className="text-muted-foreground text-sm hidden sm:block">Gestiona todas las paradas de reparto</p>
         </div>
-        <Button onClick={() => setCreateDialogOpen(true)} size="lg">
-          <Plus className="w-4 h-4 mr-2" />
-          Nueva parada
+        <Button onClick={() => setCreateDialogOpen(true)} size="sm" className="shrink-0">
+          <Plus className="w-4 h-4 sm:mr-2" />
+          <span className="hidden sm:inline">Nueva parada</span>
         </Button>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
+      <div className="flex flex-col gap-3 sm:gap-4">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Buscar por cliente, dirección..."
@@ -86,26 +86,26 @@ export default function AdminStops() {
           />
         </div>
         <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
-          <TabsList>
-            <TabsTrigger value="all" className="gap-1.5">
-              <ListFilter className="w-3.5 h-3.5" />
+          <TabsList className="w-full overflow-x-auto flex justify-start sm:justify-center">
+            <TabsTrigger value="all" className="gap-1 text-xs sm:text-sm sm:gap-1.5">
+              <ListFilter className="w-3.5 h-3.5 hidden sm:block" />
               Todas ({counts.all})
             </TabsTrigger>
-            <TabsTrigger value="pending" className="gap-1.5">
-              <Package className="w-3.5 h-3.5" />
-              Sin asignar ({counts.pending})
+            <TabsTrigger value="pending" className="gap-1 text-xs sm:text-sm sm:gap-1.5">
+              <Package className="w-3.5 h-3.5 hidden sm:block" />
+              Pend. ({counts.pending})
             </TabsTrigger>
-            <TabsTrigger value="assigned" className="gap-1.5">
-              <UserCheck className="w-3.5 h-3.5" />
-              Asignadas ({counts.assigned})
+            <TabsTrigger value="assigned" className="gap-1 text-xs sm:text-sm sm:gap-1.5">
+              <UserCheck className="w-3.5 h-3.5 hidden sm:block" />
+              Asig. ({counts.assigned})
             </TabsTrigger>
-            <TabsTrigger value="picked" className="gap-1.5">
-              <Truck className="w-3.5 h-3.5" />
-              Recogidas ({counts.picked})
+            <TabsTrigger value="picked" className="gap-1 text-xs sm:text-sm sm:gap-1.5">
+              <Truck className="w-3.5 h-3.5 hidden sm:block" />
+              Rec. ({counts.picked})
             </TabsTrigger>
-            <TabsTrigger value="delivered" className="gap-1.5">
-              <CheckCircle className="w-3.5 h-3.5" />
-              Entregadas ({counts.delivered})
+            <TabsTrigger value="delivered" className="gap-1 text-xs sm:text-sm sm:gap-1.5">
+              <CheckCircle className="w-3.5 h-3.5 hidden sm:block" />
+              Entr. ({counts.delivered})
             </TabsTrigger>
           </TabsList>
         </Tabs>

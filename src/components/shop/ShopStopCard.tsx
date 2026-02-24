@@ -26,16 +26,16 @@ export function ShopStopCard({ stop, onClick, className }: ShopStopCardProps) {
       )}
       onClick={onClick}
     >
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0 space-y-3">
+      <CardContent className="p-3 sm:p-4">
+        <div className="flex items-start justify-between gap-2 sm:gap-4">
+          <div className="flex-1 min-w-0 space-y-2 sm:space-y-3">
             {/* Client & Status */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <User className="w-4 h-4 text-muted-foreground" />
-                <span className="font-semibold">{stop.client_name}</span>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                <User className="w-4 h-4 text-muted-foreground shrink-0" />
+                <span className="font-semibold text-sm sm:text-base truncate">{stop.client_name}</span>
                 {stop.order_code && (
-                  <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+                  <span className="text-[10px] sm:text-xs font-mono bg-muted px-1 sm:px-1.5 py-0.5 rounded text-muted-foreground shrink-0">
                     {stop.order_code}
                   </span>
                 )}
@@ -44,19 +44,19 @@ export function ShopStopCard({ stop, onClick, className }: ShopStopCardProps) {
             </div>
 
             {/* Addresses */}
-            <div className="space-y-2 text-sm">
+            <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
               <div className="flex items-start gap-2">
                 <div className="w-2 h-2 rounded-full bg-primary mt-1.5 shrink-0" />
-                <span className="text-muted-foreground truncate">{stop.pickup_address}</span>
+                <span className="text-muted-foreground line-clamp-1">{stop.pickup_address}</span>
               </div>
               <div className="flex items-start gap-2">
                 <div className="w-2 h-2 rounded-full bg-status-delivered mt-1.5 shrink-0" />
-                <span className="text-muted-foreground truncate">{stop.delivery_address}</span>
+                <span className="text-muted-foreground line-clamp-1">{stop.delivery_address}</span>
               </div>
             </div>
 
             {/* Meta - NO driver info */}
-            <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+            <div className="flex items-center gap-2 sm:gap-4 text-[10px] sm:text-xs text-muted-foreground flex-wrap">
               {stop.distance_km != null && (
                 <span className="flex items-center gap-1 text-primary font-semibold">
                   <Route className="w-3 h-3" />

@@ -29,11 +29,11 @@ export function DriverCard({
       className={cn('cursor-pointer card-hover', className)}
       onClick={onClick}
     >
-      <CardContent className="p-4">
-        <div className="flex items-center gap-4">
+      <CardContent className="p-3 sm:p-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           {/* Avatar */}
           <div className="relative">
-            <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-secondary flex items-center justify-center">
               {driver.avatar_url ? (
                 <img 
                   src={driver.avatar_url} 

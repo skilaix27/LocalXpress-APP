@@ -27,7 +27,7 @@ export function ShopStopDetailDialog({ stop, open, onOpenChange }: ShopStopDetai
 
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setShowReceipt(false); }}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg w-[calc(100vw-2rem)] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span className="flex items-center gap-2">
