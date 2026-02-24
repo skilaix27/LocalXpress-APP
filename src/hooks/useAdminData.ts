@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import type { Stop, Profile, DriverLocation } from '@/lib/supabase-types';
+import type { Stop, Profile, DriverLocation, ProfileWithRole, AppRole } from '@/lib/supabase-types';
 
 export function useAdminData() {
   const [stops, setStops] = useState<Stop[]>([]);
   const [drivers, setDrivers] = useState<Profile[]>([]);
+  const [allUsers, setAllUsers] = useState<ProfileWithRole[]>([]);
   const [driverLocations, setDriverLocations] = useState<DriverLocation[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -17,22 +18,41 @@ export function useAdminData() {
 
       if (stopsData) setStops(stopsData as Stop[]);
 
-      const { data: driverRoles } = await supabase
+      // Fetch all roles and profiles
+      const { data: allRoles } = await supabase
         .from('user_roles')
-        .select('user_id')
-        .eq('role', 'driver');
+        .select('user_id, role');
 
-      if (driverRoles && driverRoles.length > 0) {
-        const driverUserIds = driverRoles.map((r) => r.user_id);
-        const { data: driversData } = await supabase
+      if (allRoles && allRoles.length > 0) {
+        const allUserIds = [...new Set(allRoles.map((r) => r.user_id))];
+        const driverUserIds = allRoles.filter((r) => r.role === 'driver').map((r) => r.user_id);
+
+        const { data: allProfilesData } = await supabase
           .from('profiles')
           .select('*')
-          .in('user_id', driverUserIds)
-          .eq('is_active', true);
+          .in('user_id', allUserIds);
 
-        if (driversData) setDrivers(driversData as Profile[]);
+        if (allProfilesData) {
+          // Build role map
+          const roleMap = new Map<string, AppRole>();
+          for (const r of allRoles) {
+            roleMap.set(r.user_id, r.role as AppRole);
+          }
+
+          const usersWithRoles: ProfileWithRole[] = allProfilesData.map((p) => ({
+            ...(p as Profile),
+            role: roleMap.get(p.user_id) || 'driver',
+          }));
+          setAllUsers(usersWithRoles);
+
+          // Keep drivers list for backward compat
+          const activeDrivers = (allProfilesData as Profile[])
+            .filter((p) => driverUserIds.includes(p.user_id) && p.is_active);
+          setDrivers(activeDrivers);
+        }
       } else {
         setDrivers([]);
+        setAllUsers([]);
       }
 
       const { data: locationsData } = await supabase
@@ -100,8 +120,9 @@ export function useAdminData() {
 
   return {
     stops: activeStops,
-    allStops: stops, // unfiltered for history
+    allStops: stops,
     drivers,
+    allUsers,
     driverLocations,
     loading,
     fetchData,

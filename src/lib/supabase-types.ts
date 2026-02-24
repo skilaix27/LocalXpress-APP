@@ -55,3 +55,7 @@ export interface DriverLocation {
 export interface StopWithDriver extends Stop {
   driver?: Profile;
 }
+
+export interface ProfileWithRole extends Profile {
+  role: AppRole;
+}
