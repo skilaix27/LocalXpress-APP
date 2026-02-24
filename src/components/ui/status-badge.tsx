@@ -1,7 +1,7 @@
 import { forwardRef } from "react";
 import { cn } from "@/lib/utils";
 import type { StopStatus } from "@/lib/supabase-types";
-import { Package, CheckCircle, Truck } from "lucide-react";
+import { Package, CheckCircle, Truck, UserCheck } from "lucide-react";
 
 interface StatusBadgeProps {
   status: StopStatus;
@@ -17,6 +17,11 @@ const statusConfig: Record<StopStatus, {
     label: 'Pendiente',
     className: 'bg-muted text-muted-foreground',
     icon: Package,
+  },
+  assigned: {
+    label: 'Asignado',
+    className: 'bg-status-assigned-bg text-status-assigned',
+    icon: UserCheck,
   },
   picked: {
     label: 'Recogido',

@@ -229,7 +229,7 @@ export default function DriverApp() {
     setViewMode('detail');
   };
 
-  const currentStop = stops.find(s => s.status === 'picked') || stops.find(s => s.status === 'pending');
+  const currentStop = stops.find(s => s.status === 'picked') || stops.find(s => s.status === 'assigned') || stops.find(s => s.status === 'pending');
   const queueStops = stops.filter(s => s.id !== currentStop?.id);
 
   if (loading) {

@@ -6,14 +6,14 @@ import { CreateShopStopDialog } from '@/components/shop/CreateShopStopDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Stop } from '@/lib/supabase-types';
-import { Plus, Package, Truck, CheckCircle, TrendingUp } from 'lucide-react';
+import { Plus, Package, Truck, CheckCircle, TrendingUp, UserCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 export default function ShopDashboard() {
   const {
     activeStops, deliveredToday, fetchData,
-    pendingCount, pickedCount, deliveredCount,
+    pendingCount, assignedCount, pickedCount, deliveredCount,
   } = useShopData();
 
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
@@ -23,6 +23,7 @@ export default function ShopDashboard() {
 
   const stats = [
     { label: 'Pendientes', value: pendingCount, icon: Package, color: 'text-muted-foreground', bg: 'bg-muted' },
+    { label: 'Asignados', value: assignedCount, icon: UserCheck, color: 'text-status-assigned', bg: 'bg-[hsl(var(--status-assigned-bg))]' },
     { label: 'En camino', value: pickedCount, icon: Truck, color: 'text-status-picked', bg: 'bg-[hsl(var(--status-picked-bg))]' },
     { label: 'Entregados', value: deliveredCount, icon: CheckCircle, color: 'text-status-delivered', bg: 'bg-[hsl(var(--status-delivered-bg))]' },
   ];
@@ -54,7 +55,7 @@ export default function ShopDashboard() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {stats.map((stat, i) => (
           <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
             <Card>

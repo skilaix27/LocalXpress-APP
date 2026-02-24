@@ -59,13 +59,25 @@ export function StopDetailDialog({
   const assignDriver = async (driverId: string) => {
     setAssigning(true);
     try {
+      const isUnassign = driverId === 'unassign';
+      const updateData: any = {
+        driver_id: isUnassign ? null : driverId,
+      };
+      // Auto-set status to 'assigned' when assigning a driver to a pending stop
+      if (!isUnassign && stop.status === 'pending') {
+        updateData.status = 'assigned';
+      }
+      // Revert to 'pending' when unassigning
+      if (isUnassign && stop.status === 'assigned') {
+        updateData.status = 'pending';
+      }
       const { error } = await supabase
         .from('stops')
-        .update({ driver_id: driverId === 'unassign' ? null : driverId })
+        .update(updateData)
         .eq('id', stop.id);
 
       if (error) throw error;
-      toast.success(driverId === 'unassign' ? 'Repartidor desasignado' : 'Repartidor asignado');
+      toast.success(isUnassign ? 'Repartidor desasignado' : 'Repartidor asignado');
       onUpdate();
     } catch (error: any) {
       toast.error('Error al asignar', { description: error.message });
@@ -208,7 +220,7 @@ export function StopDetailDialog({
             )}
 
             {/* Driver Assignment */}
-            {stop.status !== 'delivered' && (
+            {(stop.status === 'pending' || stop.status === 'assigned') && (
               <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center gap-2">
                   <Truck className="w-4 h-4" />

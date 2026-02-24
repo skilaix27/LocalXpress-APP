@@ -7,7 +7,7 @@ import { StopDetailDialog } from '@/components/admin/StopDetailDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Stop } from '@/lib/supabase-types';
-import { Plus, Package, Users, Truck, CheckCircle, TrendingUp } from 'lucide-react';
+import { Plus, Package, Users, Truck, CheckCircle, TrendingUp, UserCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAdminData } from '@/hooks/useAdminData';
 import { useNavigate } from 'react-router-dom';
@@ -16,7 +16,7 @@ export default function AdminDashboard() {
   const {
     stops, drivers, driverLocations, loading, fetchData,
     getDriverById, getDriverLocation, getDriverStopsCount,
-    pendingStops, pickedStops, deliveredStops, activeDrivers,
+    pendingStops, assignedStops, pickedStops, deliveredStops, activeDrivers,
   } = useAdminData();
 
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
@@ -25,7 +25,8 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
 
   const stats = [
-    { label: 'Pendientes', value: pendingStops, icon: Package, color: 'text-muted-foreground', bg: 'bg-muted' },
+    { label: 'Sin asignar', value: pendingStops, icon: Package, color: 'text-muted-foreground', bg: 'bg-muted' },
+    { label: 'Asignados', value: assignedStops, icon: UserCheck, color: 'text-status-assigned', bg: 'bg-[hsl(var(--status-assigned-bg))]' },
     { label: 'Recogidos', value: pickedStops, icon: Truck, color: 'text-status-picked', bg: 'bg-[hsl(var(--status-picked-bg))]' },
     { label: 'Entregados', value: deliveredStops, icon: CheckCircle, color: 'text-status-delivered', bg: 'bg-[hsl(var(--status-delivered-bg))]' },
     { label: 'Repartidores activos', value: activeDrivers, icon: Users, color: 'text-primary', bg: 'bg-primary/10' },
@@ -63,7 +64,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {stats.map((stat, i) => (
           <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
             <Card className="overflow-hidden">
