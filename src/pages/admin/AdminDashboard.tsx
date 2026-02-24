@@ -15,7 +15,7 @@ import { useNavigate } from 'react-router-dom';
 export default function AdminDashboard() {
   const {
     stops, drivers, driverLocations, loading, fetchData,
-    getDriverById, getDriverLocation, getDriverStopsCount,
+    getDriverById, getShopById, getDriverLocation, getDriverStopsCount,
     pendingStops, assignedStops, pickedStops, deliveredStops, activeDrivers,
   } = useAdminData();
 
@@ -138,7 +138,7 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent className="p-2 max-h-[280px] overflow-y-auto space-y-2">
               {stops.slice(0, 5).map((stop) => (
-                <StopCard key={stop.id} stop={stop} driver={getDriverById(stop.driver_id)} onClick={() => handleStopClick(stop)} />
+                <StopCard key={stop.id} stop={stop} driver={getDriverById(stop.driver_id)} shopName={getShopById(stop.shop_id)?.shop_name} onClick={() => handleStopClick(stop)} />
               ))}
               {stops.length === 0 && (
                 <p className="text-center text-muted-foreground py-8">No hay paradas aún</p>
@@ -174,7 +174,7 @@ export default function AdminDashboard() {
       </div>
 
       <CreateStopDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} drivers={drivers} onSuccess={fetchData} />
-      <StopDetailDialog stop={selectedStop} open={detailDialogOpen} onOpenChange={setDetailDialogOpen} drivers={drivers} onUpdate={fetchData} />
+      <StopDetailDialog stop={selectedStop} open={detailDialogOpen} onOpenChange={setDetailDialogOpen} drivers={drivers} onUpdate={fetchData} shopName={selectedStop ? getShopById(selectedStop.shop_id)?.shop_name : null} />
     </div>
   );
 }

@@ -12,7 +12,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Verify the caller is an admin
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "No autorizado" }), {
@@ -26,7 +25,6 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Verify caller is admin
     const callerClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
@@ -52,9 +50,8 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { email, password, full_name, phone, role } = body;
+    const { email, password, full_name, phone, role, shop_name, default_pickup_address, default_pickup_lat, default_pickup_lng } = body;
 
-    // Validation
     if (!email || !password || !full_name || !role) {
       return new Response(JSON.stringify({ error: "Faltan campos obligatorios: email, password, full_name, role" }), {
         status: 400,
@@ -76,7 +73,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Create auth user
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -96,13 +92,21 @@ Deno.serve(async (req) => {
 
     const userId = authData.user.id;
 
-    // Update profile with phone if provided
-    if (phone) {
-      // Wait briefly for the trigger to create the profile
-      await new Promise((r) => setTimeout(r, 500));
+    // Wait briefly for the trigger to create the profile
+    await new Promise((r) => setTimeout(r, 500));
+
+    // Update profile with additional fields
+    const profileUpdate: Record<string, any> = {};
+    if (phone) profileUpdate.phone = phone;
+    if (shop_name) profileUpdate.shop_name = shop_name;
+    if (default_pickup_address) profileUpdate.default_pickup_address = default_pickup_address;
+    if (default_pickup_lat != null) profileUpdate.default_pickup_lat = default_pickup_lat;
+    if (default_pickup_lng != null) profileUpdate.default_pickup_lng = default_pickup_lng;
+
+    if (Object.keys(profileUpdate).length > 0) {
       await supabaseAdmin
         .from("profiles")
-        .update({ phone })
+        .update(profileUpdate)
         .eq("user_id", userId);
     }
 

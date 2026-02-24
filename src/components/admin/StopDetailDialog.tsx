@@ -30,7 +30,7 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Stop, Profile } from '@/lib/supabase-types';
-import { MapPin, User, Phone, FileText, Trash2, Truck, Clock, Camera, Receipt, Route } from 'lucide-react';
+import { MapPin, User, Phone, FileText, Trash2, Truck, Clock, Camera, Receipt, Route, Store } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DeliveryReceipt } from './DeliveryReceipt';
@@ -41,6 +41,7 @@ interface StopDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   drivers: Profile[];
   onUpdate: () => void;
+  shopName?: string | null;
 }
 
 export function StopDetailDialog({
@@ -49,6 +50,7 @@ export function StopDetailDialog({
   onOpenChange,
   drivers,
   onUpdate,
+  shopName,
 }: StopDetailDialogProps) {
   const [deleting, setDeleting] = useState(false);
   const [assigning, setAssigning] = useState(false);
@@ -133,6 +135,14 @@ export function StopDetailDialog({
           <DeliveryReceipt stop={stop} driver={currentDriver} />
         ) : (
           <div className="space-y-4">
+            {/* Shop name */}
+            {shopName && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+                <Store className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium">{shopName}</span>
+              </div>
+            )}
+
             {/* Status */}
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Estado</span>

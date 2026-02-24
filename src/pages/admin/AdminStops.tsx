@@ -11,7 +11,7 @@ import type { Stop, StopStatus } from '@/lib/supabase-types';
 import { Plus, Search, Package, Truck, CheckCircle, ListFilter, UserCheck } from 'lucide-react';
 
 export default function AdminStops() {
-  const { stops, drivers, loading, fetchData, getDriverById } = useAdminData();
+  const { stops, drivers, loading, fetchData, getDriverById, getShopById } = useAdminData();
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -127,6 +127,7 @@ export default function AdminStops() {
                     key={stop.id}
                     stop={stop}
                     driver={getDriverById(stop.driver_id)}
+                    shopName={getShopById(stop.shop_id)?.shop_name}
                     onClick={() => handleStopClick(stop)}
                   />
                 ))}
@@ -147,6 +148,7 @@ export default function AdminStops() {
                     key={stop.id}
                     stop={stop}
                     driver={getDriverById(stop.driver_id)}
+                    shopName={getShopById(stop.shop_id)?.shop_name}
                     onClick={() => handleStopClick(stop)}
                   />
                 ))}
@@ -173,6 +175,7 @@ export default function AdminStops() {
               key={stop.id}
               stop={stop}
               driver={getDriverById(stop.driver_id)}
+              shopName={getShopById(stop.shop_id)?.shop_name}
               onClick={() => handleStopClick(stop)}
             />
           ))}
@@ -190,7 +193,7 @@ export default function AdminStops() {
       )}
 
       <CreateStopDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} drivers={drivers} onSuccess={fetchData} />
-      <StopDetailDialog stop={selectedStop} open={detailDialogOpen} onOpenChange={setDetailDialogOpen} drivers={drivers} onUpdate={fetchData} />
+      <StopDetailDialog stop={selectedStop} open={detailDialogOpen} onOpenChange={setDetailDialogOpen} drivers={drivers} onUpdate={fetchData} shopName={selectedStop ? getShopById(selectedStop.shop_id)?.shop_name : null} />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { MapPin, User, Phone, FileText, Loader2 } from 'lucide-react';
+import { MapPin, User, Phone, FileText, Loader2, Store } from 'lucide-react';
 import { useRouteDistance } from '@/hooks/useRouteDistance';
 import { AddressInput } from '@/components/admin/AddressInput';
 import type { PlaceDetails } from '@/hooks/useGooglePlaces';
@@ -47,7 +47,10 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
   const [pickupResolved, setPickupResolved] = useState(false);
   const [deliveryResolved, setDeliveryResolved] = useState(false);
   const [routeDistance, setRouteDistance] = useState<number | null>(null);
+  const [useDefaultPickup, setUseDefaultPickup] = useState(true);
   const { calculateDistance, loading: calculatingRoute } = useRouteDistance();
+
+  const hasDefaultPickup = !!(profile?.default_pickup_address && profile?.default_pickup_lat && profile?.default_pickup_lng);
 
   const form = useForm<StopFormData>({
     resolver: zodResolver(stopSchema),
@@ -57,6 +60,16 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
       client_name: '', client_phone: '', client_notes: '',
     },
   });
+
+  // Pre-fill default pickup when dialog opens
+  useEffect(() => {
+    if (open && hasDefaultPickup && useDefaultPickup) {
+      form.setValue('pickup_address', profile!.default_pickup_address!);
+      form.setValue('pickup_lat', profile!.default_pickup_lat!);
+      form.setValue('pickup_lng', profile!.default_pickup_lng!);
+      setPickupResolved(true);
+    }
+  }, [open, hasDefaultPickup, useDefaultPickup]);
 
   const handleAddressResolved = async (type: 'pickup' | 'delivery', details: PlaceDetails) => {
     if (type === 'pickup') {
@@ -82,6 +95,19 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
       if (route) setRouteDistance(route.distanceKm);
     }
   };
+
+  // When delivery is resolved and pickup was pre-filled, auto-calculate distance
+  useEffect(() => {
+    if (pickupResolved && deliveryResolved && routeDistance === null) {
+      const pLat = form.getValues('pickup_lat');
+      const pLng = form.getValues('pickup_lng');
+      const dLat = form.getValues('delivery_lat');
+      const dLng = form.getValues('delivery_lng');
+      calculateDistance(pLat, pLng, dLat, dLng).then(route => {
+        if (route) setRouteDistance(route.distanceKm);
+      });
+    }
+  }, [deliveryResolved]);
 
   const onSubmit = async (data: StopFormData) => {
     if (!pickupResolved || !deliveryResolved) {
@@ -116,12 +142,33 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
       setPickupResolved(false);
       setDeliveryResolved(false);
       setRouteDistance(null);
+      setUseDefaultPickup(true);
       onOpenChange(false);
       onSuccess?.();
     } catch (error: any) {
       toast.error('Error al crear pedido', { description: error.message });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSwitchToCustomPickup = () => {
+    setUseDefaultPickup(false);
+    setPickupResolved(false);
+    setRouteDistance(null);
+    form.setValue('pickup_address', '');
+    form.setValue('pickup_lat', 41.3851);
+    form.setValue('pickup_lng', 2.1734);
+  };
+
+  const handleSwitchToDefaultPickup = () => {
+    if (hasDefaultPickup) {
+      setUseDefaultPickup(true);
+      form.setValue('pickup_address', profile!.default_pickup_address!);
+      form.setValue('pickup_lat', profile!.default_pickup_lat!);
+      form.setValue('pickup_lng', profile!.default_pickup_lng!);
+      setPickupResolved(true);
+      setRouteDistance(null);
     }
   };
 
@@ -140,18 +187,41 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Pickup address */}
             <FormField control={form.control} name="pickup_address" render={({ field }) => (
               <FormItem>
                 <FormLabel className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-primary" /> Dirección de recogida
                 </FormLabel>
                 <FormControl>
-                  <AddressInput
-                    value={field.value} onChange={field.onChange}
-                    onResolved={(d) => handleAddressResolved('pickup', d)}
-                    onClear={() => setPickupResolved(false)} resolved={pickupResolved}
-                    placeholder="Ej: Carrer de Balmes 145, Barcelona"
-                  />
+                  {hasDefaultPickup && useDefaultPickup ? (
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                        <Store className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-primary">Dirección habitual</p>
+                          <p className="text-sm break-words">{profile!.default_pickup_address}</p>
+                        </div>
+                      </div>
+                      <Button type="button" variant="ghost" size="sm" className="text-xs h-7" onClick={handleSwitchToCustomPickup}>
+                        Usar otra dirección
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <AddressInput
+                        value={field.value} onChange={field.onChange}
+                        onResolved={(d) => handleAddressResolved('pickup', d)}
+                        onClear={() => setPickupResolved(false)} resolved={pickupResolved}
+                        placeholder="Ej: Carrer de Balmes 145, Barcelona"
+                      />
+                      {hasDefaultPickup && (
+                        <Button type="button" variant="ghost" size="sm" className="text-xs h-7" onClick={handleSwitchToDefaultPickup}>
+                          <Store className="w-3 h-3 mr-1" /> Usar dirección habitual
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </FormControl>
                 <FormMessage />
               </FormItem>
