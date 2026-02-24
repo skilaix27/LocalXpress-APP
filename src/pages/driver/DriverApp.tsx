@@ -247,8 +247,9 @@ export default function DriverApp() {
   return (
     <div className="h-[100dvh] flex flex-col bg-background overflow-hidden">
       {/* Header */}
-      <header className="bg-secondary text-secondary-foreground px-4 py-3 z-20 shrink-0 safe-area-top">
-        <div className="flex items-center justify-between">
+      <header className="bg-secondary text-secondary-foreground z-20 shrink-0">
+        <div className="safe-area-top bg-secondary" />
+        <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3 min-w-0">
             {viewMode === 'detail' && stops.length > 1 && (
               <button onClick={() => setViewMode('list')} className="p-1.5 -ml-1.5 rounded-xl active:bg-secondary-foreground/10 transition-colors">
