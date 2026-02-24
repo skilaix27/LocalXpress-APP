@@ -3,8 +3,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveDialog, ResponsiveDialogHeader, ResponsiveDialogTitle, ResponsiveDialogDescription,
+} from '@/components/ui/responsive-dialog';
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form';
@@ -61,7 +61,6 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
     },
   });
 
-  // Pre-fill default pickup when dialog opens
   useEffect(() => {
     if (open && hasDefaultPickup && useDefaultPickup) {
       form.setValue('pickup_address', profile!.default_pickup_address!);
@@ -96,7 +95,6 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
     }
   };
 
-  // When delivery is resolved and pickup was pre-filled, auto-calculate distance
   useEffect(() => {
     if (pickupResolved && deliveryResolved && routeDistance === null) {
       const pLat = form.getValues('pickup_lat');
@@ -174,128 +172,126 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg w-[calc(100vw-2rem)] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-primary" />
-            Nuevo Pedido
-          </DialogTitle>
-          <DialogDescription>
-            Introduce las direcciones de recogida y entrega para tu pedido.
-          </DialogDescription>
-        </DialogHeader>
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogHeader>
+        <ResponsiveDialogTitle className="flex items-center gap-2">
+          <MapPin className="w-5 h-5 text-primary" />
+          Nuevo Pedido
+        </ResponsiveDialogTitle>
+        <ResponsiveDialogDescription>
+          Introduce las direcciones de recogida y entrega para tu pedido.
+        </ResponsiveDialogDescription>
+      </ResponsiveDialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Pickup address */}
-            <FormField control={form.control} name="pickup_address" render={({ field }) => (
-              <FormItem>
-                <FormLabel className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-primary" /> Dirección de recogida
-                </FormLabel>
-                <FormControl>
-                  {hasDefaultPickup && useDefaultPickup ? (
-                    <div className="space-y-2">
-                      <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
-                        <Store className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium text-primary">Dirección habitual</p>
-                          <p className="text-sm break-words">{profile!.default_pickup_address}</p>
-                        </div>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          {/* Pickup address */}
+          <FormField control={form.control} name="pickup_address" render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-primary" /> Dirección de recogida
+              </FormLabel>
+              <FormControl>
+                {hasDefaultPickup && useDefaultPickup ? (
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                      <Store className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-primary">Dirección habitual</p>
+                        <p className="text-sm break-words">{profile!.default_pickup_address}</p>
                       </div>
-                      <Button type="button" variant="ghost" size="sm" className="text-xs h-7" onClick={handleSwitchToCustomPickup}>
-                        Usar otra dirección
+                    </div>
+                    <Button type="button" variant="ghost" size="sm" className="text-xs h-7" onClick={handleSwitchToCustomPickup}>
+                      Usar otra dirección
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <AddressInput
+                      value={field.value} onChange={field.onChange}
+                      onResolved={(d) => handleAddressResolved('pickup', d)}
+                      onClear={() => setPickupResolved(false)} resolved={pickupResolved}
+                      placeholder="Ej: Carrer de Balmes 145, Barcelona"
+                    />
+                    {hasDefaultPickup && (
+                      <Button type="button" variant="ghost" size="sm" className="text-xs h-7" onClick={handleSwitchToDefaultPickup}>
+                        <Store className="w-3 h-3 mr-1" /> Usar dirección habitual
                       </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <AddressInput
-                        value={field.value} onChange={field.onChange}
-                        onResolved={(d) => handleAddressResolved('pickup', d)}
-                        onClear={() => setPickupResolved(false)} resolved={pickupResolved}
-                        placeholder="Ej: Carrer de Balmes 145, Barcelona"
-                      />
-                      {hasDefaultPickup && (
-                        <Button type="button" variant="ghost" size="sm" className="text-xs h-7" onClick={handleSwitchToDefaultPickup}>
-                          <Store className="w-3 h-3 mr-1" /> Usar dirección habitual
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
+                    )}
+                  </div>
+                )}
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
 
-            <FormField control={form.control} name="delivery_address" render={({ field }) => (
-              <FormItem>
-                <FormLabel className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-status-delivered" /> Dirección de entrega
-                </FormLabel>
-                <FormControl>
-                  <AddressInput
-                    value={field.value} onChange={field.onChange}
-                    onResolved={(d) => handleAddressResolved('delivery', d)}
-                    onClear={() => setDeliveryResolved(false)} resolved={deliveryResolved}
-                    placeholder="Ej: Passeig de Gràcia 92, Barcelona"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
+          <FormField control={form.control} name="delivery_address" render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-status-delivered" /> Dirección de entrega
+              </FormLabel>
+              <FormControl>
+                <AddressInput
+                  value={field.value} onChange={field.onChange}
+                  onResolved={(d) => handleAddressResolved('delivery', d)}
+                  onClear={() => setDeliveryResolved(false)} resolved={deliveryResolved}
+                  placeholder="Ej: Passeig de Gràcia 92, Barcelona"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
 
-            <FormField control={form.control} name="client_name" render={({ field }) => (
-              <FormItem>
-                <FormLabel className="flex items-center gap-2"><User className="w-4 h-4" /> Nombre del cliente</FormLabel>
-                <FormControl><Input placeholder="Juan García" {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
+          <FormField control={form.control} name="client_name" render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2"><User className="w-4 h-4" /> Nombre del cliente</FormLabel>
+              <FormControl><Input placeholder="Juan García" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
 
-            <FormField control={form.control} name="client_phone" render={({ field }) => (
-              <FormItem>
-                <FormLabel className="flex items-center gap-2"><Phone className="w-4 h-4" /> Teléfono (opcional)</FormLabel>
-                <FormControl><Input placeholder="+34 612 345 678" {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
+          <FormField control={form.control} name="client_phone" render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2"><Phone className="w-4 h-4" /> Teléfono (opcional)</FormLabel>
+              <FormControl><Input placeholder="+34 612 345 678" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
 
-            <FormField control={form.control} name="client_notes" render={({ field }) => (
-              <FormItem>
-                <FormLabel className="flex items-center gap-2"><FileText className="w-4 h-4" /> Notas (opcional)</FormLabel>
-                <FormControl>
-                  <Textarea placeholder="Instrucciones especiales, código de portal, etc." className="resize-none" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
+          <FormField control={form.control} name="client_notes" render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2"><FileText className="w-4 h-4" /> Notas (opcional)</FormLabel>
+              <FormControl>
+                <Textarea placeholder="Instrucciones especiales, código de portal, etc." className="resize-none" rows={2} {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
 
-            {routeDistance !== null && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 text-sm">
-                <MapPin className="w-4 h-4 text-primary" />
-                <span className="text-primary font-bold">{adjustDistance(routeDistance)} km</span>
-                <span className="font-medium">· {getDeliveryZone(routeDistance)}</span>
-              </div>
-            )}
-            {calculatingRoute && routeDistance === null && (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 text-sm">
-                <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                <span className="text-muted-foreground">Calculando ruta...</span>
-              </div>
-            )}
-
-            <div className="flex gap-3 pt-4">
-              <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" className="flex-1" disabled={loading}>
-                {loading ? 'Creando...' : 'Crear pedido'}
-              </Button>
+          {routeDistance !== null && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+              <MapPin className="w-4 h-4 text-primary" />
+              <span className="text-primary font-bold">{adjustDistance(routeDistance)} km</span>
+              <span className="font-medium">· {getDeliveryZone(routeDistance)}</span>
             </div>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+          )}
+          {calculatingRoute && routeDistance === null && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+              <Loader2 className="w-4 h-4 animate-spin text-primary" />
+              <span className="text-muted-foreground">Calculando ruta...</span>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-4">
+            <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" className="flex-1" disabled={loading}>
+              {loading ? 'Creando...' : 'Crear pedido'}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </ResponsiveDialog>
   );
 }
