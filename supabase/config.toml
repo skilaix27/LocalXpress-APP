@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.calculate-route]
 verify_jwt = false
+
+[functions.create-stop-api]
+verify_jwt = false
