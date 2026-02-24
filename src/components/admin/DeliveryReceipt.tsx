@@ -70,20 +70,6 @@ export const DeliveryReceipt = forwardRef<HTMLDivElement, DeliveryReceiptProps>(
               </div>
             </div>
 
-            <Separator />
-
-            {/* Driver */}
-            <div className="flex items-center gap-3">
-              <Truck className="w-5 h-5 text-primary shrink-0" />
-              <div>
-                <p className="text-xs text-muted-foreground">Repartidor</p>
-                <p className="font-semibold">{driver?.full_name || 'No asignado'}</p>
-                {driver?.phone && (
-                  <p className="text-sm text-muted-foreground">{driver.phone}</p>
-                )}
-              </div>
-            </div>
-
             {/* Timestamps */}
             <div className="flex items-center gap-3">
               <Clock className="w-5 h-5 text-primary shrink-0" />
