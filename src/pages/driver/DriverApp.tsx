@@ -30,6 +30,7 @@ import {
   Clock,
   List,
   ArrowLeft,
+  Store,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -385,6 +386,12 @@ export default function DriverApp() {
                     <h2 className="text-base font-bold truncate">{selectedStop.client_name}</h2>
                     <StatusBadge status={selectedStop.status} />
                   </div>
+                  {selectedStop.shop_name && (
+                    <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground font-medium">
+                      <Store className="w-3 h-3" />
+                      {selectedStop.shop_name}
+                    </div>
+                  )}
                   {(selectedStop as any).scheduled_pickup_at && (
                     <div className="flex items-center gap-1 mt-0.5 text-sm text-primary font-medium">
                       <Clock className="w-3.5 h-3.5" />

@@ -133,6 +133,7 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
         distance_km: routeDistance,
         order_code: orderCode,
         shop_id: profile.id,
+        shop_name: profile.shop_name || profile.full_name,
       } as any);
 
       if (error) throw error;

@@ -1,7 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/ui/status-badge';
 import type { Stop } from '@/lib/supabase-types';
-import { User, Phone, Clock, ChevronRight, Route, MapPin } from 'lucide-react';
+import { User, Phone, Clock, ChevronRight, Route, MapPin, Store } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -42,6 +42,12 @@ export function ShopStopCard({ stop, onClick, className }: ShopStopCardProps) {
               </div>
               <StatusBadge status={stop.status} />
             </div>
+            {stop.shop_name && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
+                <Store className="w-3 h-3" />
+                {stop.shop_name}
+              </div>
+            )}
 
             {/* Addresses */}
             <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">

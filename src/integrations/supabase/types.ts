@@ -119,6 +119,7 @@ export type Database = {
           proof_photo_url: string | null
           scheduled_pickup_at: string | null
           shop_id: string | null
+          shop_name: string | null
           status: Database["public"]["Enums"]["stop_status"]
           updated_at: string
         }
@@ -143,6 +144,7 @@ export type Database = {
           proof_photo_url?: string | null
           scheduled_pickup_at?: string | null
           shop_id?: string | null
+          shop_name?: string | null
           status?: Database["public"]["Enums"]["stop_status"]
           updated_at?: string
         }
@@ -167,6 +169,7 @@ export type Database = {
           proof_photo_url?: string | null
           scheduled_pickup_at?: string | null
           shop_id?: string | null
+          shop_name?: string | null
           status?: Database["public"]["Enums"]["stop_status"]
           updated_at?: string
         }

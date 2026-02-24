@@ -45,6 +45,7 @@ export interface Stop {
   created_by: string | null;
   proof_photo_url: string | null;
   distance_km: number | null;
+  shop_name: string | null;
 }
 
 export interface DriverLocation {

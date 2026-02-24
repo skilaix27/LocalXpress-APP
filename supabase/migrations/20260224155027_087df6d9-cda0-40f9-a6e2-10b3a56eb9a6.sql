@@ -1,0 +1,1 @@
+ALTER TABLE public.stops ADD COLUMN IF NOT EXISTS shop_name text;
