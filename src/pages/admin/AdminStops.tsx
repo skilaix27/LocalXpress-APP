@@ -127,7 +127,7 @@ export default function AdminStops() {
                     key={stop.id}
                     stop={stop}
                     driver={getDriverById(stop.driver_id)}
-                    shopName={getShopById(stop.shop_id)?.shop_name}
+                    shopName={stop.shop_name}
                     onClick={() => handleStopClick(stop)}
                   />
                 ))}
@@ -148,7 +148,7 @@ export default function AdminStops() {
                     key={stop.id}
                     stop={stop}
                     driver={getDriverById(stop.driver_id)}
-                    shopName={getShopById(stop.shop_id)?.shop_name}
+                    shopName={stop.shop_name}
                     onClick={() => handleStopClick(stop)}
                   />
                 ))}
@@ -193,7 +193,7 @@ export default function AdminStops() {
       )}
 
       <CreateStopDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} drivers={drivers} onSuccess={fetchData} />
-      <StopDetailDialog stop={selectedStop} open={detailDialogOpen} onOpenChange={setDetailDialogOpen} drivers={drivers} onUpdate={fetchData} shopName={selectedStop ? getShopById(selectedStop.shop_id)?.shop_name : null} />
+      <StopDetailDialog stop={selectedStop} open={detailDialogOpen} onOpenChange={setDetailDialogOpen} drivers={drivers} onUpdate={fetchData} shopName={selectedStop?.shop_name} />
     </div>
   );
 }

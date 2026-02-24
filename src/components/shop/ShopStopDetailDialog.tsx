@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { DeliveryReceipt } from '@/components/admin/DeliveryReceipt';
 import type { Stop } from '@/lib/supabase-types';
-import { MapPin, User, Phone, FileText, Clock, Route, Image, Receipt } from 'lucide-react';
+import { MapPin, User, Phone, FileText, Clock, Route, Image, Receipt, Store } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { adjustDistance, getDeliveryZone } from '@/lib/delivery-zones';
@@ -55,12 +55,20 @@ export function ShopStopDetailDialog({ stop, open, onOpenChange }: ShopStopDetai
         ) : (
 
         <div className="space-y-3">
-          {/* Order code */}
-          {stop.order_code && (
-            <div className="text-center">
-              <span className="text-lg font-mono font-bold bg-primary/10 text-primary px-4 py-2 rounded-lg inline-block">
-                {stop.order_code}
-              </span>
+          {/* Order code & Shop name */}
+          {(stop.order_code || stop.shop_name) && (
+            <div className="text-center space-y-1">
+              {stop.order_code && (
+                <span className="text-lg font-mono font-bold bg-primary/10 text-primary px-4 py-2 rounded-lg inline-block">
+                  {stop.order_code}
+                </span>
+              )}
+              {stop.shop_name && (
+                <div className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground font-medium">
+                  <Store className="w-3.5 h-3.5" />
+                  {stop.shop_name}
+                </div>
+              )}
             </div>
           )}
 

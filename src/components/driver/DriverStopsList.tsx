@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { motion } from 'framer-motion';
-import { MapPin, Clock, Package, ChevronRight } from 'lucide-react';
+import { MapPin, Clock, Package, ChevronRight, Store } from 'lucide-react';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Card, CardContent } from '@/components/ui/card';
 import type { Stop } from '@/lib/supabase-types';
@@ -67,6 +67,12 @@ export function DriverStopsList({ stops, onSelectStop }: DriverStopsListProps) {
                         )}
                         <StatusBadge status={stop.status} />
                       </div>
+                      {stop.shop_name && (
+                        <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground font-medium">
+                          <Store className="w-3 h-3" />
+                          {stop.shop_name}
+                        </div>
+                      )}
                       {(stop as any).scheduled_pickup_at && (
                         <div className="flex items-center gap-1 mt-0.5 text-xs text-primary font-medium">
                           <Clock className="w-3 h-3" />
