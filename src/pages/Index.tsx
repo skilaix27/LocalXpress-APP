@@ -24,6 +24,8 @@ export default function Index() {
     return <Navigate to="/admin" replace />;
   } else if (role === 'driver') {
     return <Navigate to="/driver" replace />;
+  } else if (role === 'shop') {
+    return <Navigate to="/shop" replace />;
   }
 
   // No role assigned - show pending message

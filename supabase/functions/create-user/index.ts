@@ -62,8 +62,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!["admin", "driver"].includes(role)) {
-      return new Response(JSON.stringify({ error: "Rol inválido. Debe ser 'admin' o 'driver'" }), {
+    if (!["admin", "driver", "shop"].includes(role)) {
+      return new Response(JSON.stringify({ error: "Rol inválido. Debe ser 'admin', 'driver' o 'shop'" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

@@ -106,6 +106,7 @@ export type Database = {
           pickup_lng: number
           proof_photo_url: string | null
           scheduled_pickup_at: string | null
+          shop_id: string | null
           status: Database["public"]["Enums"]["stop_status"]
           updated_at: string
         }
@@ -129,6 +130,7 @@ export type Database = {
           pickup_lng: number
           proof_photo_url?: string | null
           scheduled_pickup_at?: string | null
+          shop_id?: string | null
           status?: Database["public"]["Enums"]["stop_status"]
           updated_at?: string
         }
@@ -152,6 +154,7 @@ export type Database = {
           pickup_lng?: number
           proof_photo_url?: string | null
           scheduled_pickup_at?: string | null
+          shop_id?: string | null
           status?: Database["public"]["Enums"]["stop_status"]
           updated_at?: string
         }
@@ -159,6 +162,13 @@ export type Database = {
           {
             foreignKeyName: "stops_driver_id_fkey"
             columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stops_shop_id_fkey"
+            columns: ["shop_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]

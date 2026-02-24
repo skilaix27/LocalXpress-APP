@@ -33,9 +33,10 @@ export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDi
     email: '',
     password: '',
     phone: '',
-    role: 'driver' as 'admin' | 'driver',
+    role: 'driver' as 'admin' | 'driver' | 'shop',
   });
 
+  const roleLabels: Record<string, string> = { admin: 'Administrador', driver: 'Repartidor', shop: 'Tienda' };
   const resetForm = () => {
     setForm({ full_name: '', email: '', password: '', phone: '', role: 'driver' });
   };
@@ -69,7 +70,7 @@ export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDi
       if (data?.error) throw new Error(data.error);
 
       toast.success('Usuario creado correctamente', {
-        description: `${form.full_name} (${form.role === 'admin' ? 'Administrador' : 'Repartidor'})`,
+        description: `${form.full_name} (${roleLabels[form.role]})`,
       });
       resetForm();
       onOpenChange(false);
@@ -159,12 +160,13 @@ export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDi
             <Label className="flex items-center gap-1.5">
               <Shield className="w-3.5 h-3.5" /> Rol *
             </Label>
-            <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v as 'admin' | 'driver' })}>
+            <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v as 'admin' | 'driver' | 'shop' })}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="driver">🚴 Repartidor</SelectItem>
+                <SelectItem value="shop">🏪 Tienda</SelectItem>
                 <SelectItem value="admin">👑 Administrador</SelectItem>
               </SelectContent>
             </Select>
