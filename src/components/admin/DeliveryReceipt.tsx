@@ -22,8 +22,8 @@ export const DeliveryReceipt = forwardRef<HTMLDivElement, DeliveryReceiptProps>(
             <img src={logoLocalxpress} alt="LocalXpress" className="h-8 mx-auto" />
             <CheckCircle className="w-6 h-6 text-status-delivered mx-auto" />
             <h3 className="text-lg font-bold">Justificante de Entrega</h3>
-            <p className="text-xs text-muted-foreground">
-              ID: {stop.id.slice(0, 8).toUpperCase()}
+            <p className="text-sm font-mono font-bold">
+              {stop.order_code || stop.id.slice(0, 8).toUpperCase()}
             </p>
           </div>
 
