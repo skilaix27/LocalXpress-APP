@@ -1,12 +1,15 @@
+import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
+import { DeliveryReceipt } from '@/components/admin/DeliveryReceipt';
 import type { Stop } from '@/lib/supabase-types';
-import { MapPin, User, Phone, FileText, Clock, Route, Image } from 'lucide-react';
+import { MapPin, User, Phone, FileText, Clock, Route, Image, Receipt } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { adjustDistance, getDeliveryZone } from '@/lib/delivery-zones';
@@ -18,10 +21,12 @@ interface ShopStopDetailDialogProps {
 }
 
 export function ShopStopDetailDialog({ stop, open, onOpenChange }: ShopStopDetailDialogProps) {
+  const [showReceipt, setShowReceipt] = useState(false);
+
   if (!stop) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setShowReceipt(false); }}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
@@ -32,6 +37,22 @@ export function ShopStopDetailDialog({ stop, open, onOpenChange }: ShopStopDetai
             <StatusBadge status={stop.status} />
           </DialogTitle>
         </DialogHeader>
+
+        {/* Receipt toggle for delivered stops */}
+        {stop.status === 'delivered' && (
+          <Button
+            variant={showReceipt ? 'default' : 'outline'}
+            className="w-full"
+            onClick={() => setShowReceipt(!showReceipt)}
+          >
+            <Receipt className="w-4 h-4 mr-2" />
+            {showReceipt ? 'Volver al detalle' : 'Ver justificante de entrega'}
+          </Button>
+        )}
+
+        {showReceipt && stop.status === 'delivered' ? (
+          <DeliveryReceipt stop={stop} />
+        ) : (
 
         <div className="space-y-4">
           {/* Order code */}
@@ -127,6 +148,7 @@ export function ShopStopDetailDialog({ stop, open, onOpenChange }: ShopStopDetai
             </div>
           )}
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );
