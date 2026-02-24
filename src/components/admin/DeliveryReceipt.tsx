@@ -25,12 +25,21 @@ export const DeliveryReceipt = forwardRef<HTMLDivElement, DeliveryReceiptProps>(
       if (!el) return;
       setDownloading(true);
       try {
-        const canvas = await html2canvas(el, { scale: 2, useCORS: true });
+        const canvas = await html2canvas(el, {
+          scale: 3,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+        });
         const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+
+        const margin = 10;
+        const imgWidth = 190; // A4 width (210) minus margins
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        const pageHeight = imgHeight + margin * 2;
+
+        const pdf = new jsPDF('p', 'mm', [imgWidth + margin * 2, pageHeight]);
+        pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
         pdf.save(`justificante-${stop.order_code || stop.id.slice(0, 8)}.pdf`);
       } catch {
         console.error('Error generating PDF');
