@@ -501,7 +501,7 @@ export default function DriverApp() {
 
               {/* Action Buttons - large touch targets */}
               <div className="flex gap-3">
-                {selectedStop.status === 'pending' && (
+                {(selectedStop.status === 'pending' || selectedStop.status === 'assigned') && (
                   <Button
                     onClick={markAsPicked}
                     disabled={updating}
