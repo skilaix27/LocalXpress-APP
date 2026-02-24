@@ -63,6 +63,7 @@ export function DeliveryMap({
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const userInteractedRef = useRef(false);
   const initialFitDoneRef = useRef(false);
+  const lastStopIdsRef = useRef<string>('');
 
   // Initialize map
   useEffect(() => {
@@ -182,16 +183,25 @@ export function DeliveryMap({
     });
   }, [stops, driverLocations, selectedStopId, showRoute, onStopClick]);
 
-  // Center map — only on explicit centerOn changes or initial load
+  // Center map — only on explicit centerOn changes or when stops change
   useEffect(() => {
     if (!mapInstanceRef.current) return;
 
+    // Detect if the set of stops changed (different stop selected, etc.)
+    const currentStopIds = stops.map(s => s.id).sort().join(',');
+    const stopsChanged = currentStopIds !== lastStopIdsRef.current;
+    if (stopsChanged) {
+      lastStopIdsRef.current = currentStopIds;
+      userInteractedRef.current = false;
+      initialFitDoneRef.current = false;
+    }
+
     if (centerOn) {
-      // Explicit center request (e.g. clicking a stop) always applies
+      // Explicit center request (e.g. clicking re-center button) always applies
       userInteractedRef.current = false;
       mapInstanceRef.current.setView([centerOn.lat, centerOn.lng], 15, { animate: true });
     } else if (stops.length > 0 && !initialFitDoneRef.current && !userInteractedRef.current) {
-      // Only fit bounds on first load
+      // Fit bounds on first load or when stops change
       const bounds = L.latLngBounds(
         stops.flatMap((stop) => [
           [stop.pickup_lat, stop.pickup_lng] as [number, number],

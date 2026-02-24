@@ -318,7 +318,7 @@ export default function DriverApp() {
               : []
           }
           showRoute={true}
-          centerOn={mapCenter}
+          centerOn={null}
           className="h-full"
         />
 

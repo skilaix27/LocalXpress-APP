@@ -58,76 +58,76 @@ export function ShopStopDetailDialog({ stop, open, onOpenChange }: ShopStopDetai
           {/* Order code */}
           {stop.order_code && (
             <div className="text-center">
-              <span className="text-lg font-mono font-bold bg-muted px-3 py-1.5 rounded-lg">
+              <span className="text-lg font-mono font-bold bg-primary/10 text-primary px-4 py-2 rounded-2xl inline-block">
                 {stop.order_code}
               </span>
             </div>
           )}
 
           {/* Client */}
-          <div className="space-y-2">
-            <h3 className="font-semibold text-sm text-muted-foreground flex items-center gap-1.5">
-              <User className="w-4 h-4" /> Cliente
+          <div className="bg-muted/40 rounded-2xl p-4 space-y-2">
+            <h3 className="font-semibold text-xs text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider">
+              <User className="w-3.5 h-3.5" /> Cliente
             </h3>
-            <p className="font-medium">{stop.client_name}</p>
+            <p className="font-semibold text-base">{stop.client_name}</p>
             {stop.client_phone && (
-              <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+              <a href={`tel:${stop.client_phone}`} className="text-sm text-primary flex items-center gap-1.5 font-medium">
                 <Phone className="w-3.5 h-3.5" /> {stop.client_phone}
-              </p>
+              </a>
             )}
           </div>
 
           {/* Addresses */}
-          <div className="space-y-3">
-            <div className="flex items-start gap-2">
-              <div className="w-3 h-3 rounded-full bg-primary mt-1 shrink-0" />
+          <div className="space-y-2">
+            <div className="flex items-start gap-3 bg-primary/5 rounded-2xl p-4 border border-primary/10">
+              <div className="w-3 h-3 rounded-full bg-primary mt-1 shrink-0 ring-4 ring-primary/20" />
               <div>
-                <p className="text-xs font-semibold text-muted-foreground">Recogida</p>
-                <p className="text-sm">{stop.pickup_address}</p>
+                <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Recogida</p>
+                <p className="text-sm mt-0.5">{stop.pickup_address}</p>
               </div>
             </div>
-            <div className="flex items-start gap-2">
-              <div className="w-3 h-3 rounded-full bg-status-delivered mt-1 shrink-0" />
+            <div className="flex items-start gap-3 bg-status-delivered/5 rounded-2xl p-4 border border-status-delivered/10">
+              <div className="w-3 h-3 rounded-full bg-status-delivered mt-1 shrink-0 ring-4 ring-status-delivered/20" />
               <div>
-                <p className="text-xs font-semibold text-muted-foreground">Entrega</p>
-                <p className="text-sm">{stop.delivery_address}</p>
+                <p className="text-[10px] font-bold text-status-delivered uppercase tracking-wider">Entrega</p>
+                <p className="text-sm mt-0.5">{stop.delivery_address}</p>
               </div>
             </div>
           </div>
 
           {/* Distance */}
           {stop.distance_km != null && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 text-sm">
-              <Route className="w-4 h-4 text-primary" />
-              <span className="text-primary font-bold">{adjustDistance(stop.distance_km)} km</span>
-              <span className="font-medium">· {getDeliveryZone(stop.distance_km)}</span>
+            <div className="flex items-center gap-3 p-4 rounded-2xl bg-primary/5 border border-primary/10">
+              <Route className="w-5 h-5 text-primary" />
+              <span className="text-primary font-bold text-base">{adjustDistance(stop.distance_km)} km</span>
+              <span className="font-medium text-muted-foreground">· {getDeliveryZone(stop.distance_km)}</span>
             </div>
           )}
 
           {/* Notes */}
           {stop.client_notes && (
-            <div className="space-y-1">
-              <h3 className="font-semibold text-sm text-muted-foreground flex items-center gap-1.5">
-                <FileText className="w-4 h-4" /> Notas
+            <div className="space-y-1.5">
+              <h3 className="font-semibold text-xs text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider">
+                <FileText className="w-3.5 h-3.5" /> Notas
               </h3>
-              <p className="text-sm bg-muted/50 p-3 rounded-lg">{stop.client_notes}</p>
+              <p className="text-sm bg-muted/40 p-4 rounded-2xl">{stop.client_notes}</p>
             </div>
           )}
 
           {/* Timestamps */}
-          <div className="space-y-2 text-sm">
+          <div className="bg-muted/40 rounded-2xl p-4 space-y-2 text-sm">
             <div className="flex items-center gap-2 text-muted-foreground">
               <Clock className="w-3.5 h-3.5" />
               Creado: {format(new Date(stop.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
             </div>
             {stop.picked_at && (
-              <div className="flex items-center gap-2 text-status-picked">
+              <div className="flex items-center gap-2 text-status-picked font-medium">
                 <Clock className="w-3.5 h-3.5" />
                 Recogido: {format(new Date(stop.picked_at), "dd/MM/yyyy HH:mm", { locale: es })}
               </div>
             )}
             {stop.delivered_at && (
-              <div className="flex items-center gap-2 text-status-delivered">
+              <div className="flex items-center gap-2 text-status-delivered font-medium">
                 <Clock className="w-3.5 h-3.5" />
                 Entregado: {format(new Date(stop.delivered_at), "dd/MM/yyyy HH:mm", { locale: es })}
               </div>
@@ -137,13 +137,13 @@ export function ShopStopDetailDialog({ stop, open, onOpenChange }: ShopStopDetai
           {/* Proof photo */}
           {stop.proof_photo_url && (
             <div className="space-y-2">
-              <h3 className="font-semibold text-sm text-muted-foreground flex items-center gap-1.5">
-                <Image className="w-4 h-4" /> Prueba de entrega
+              <h3 className="font-semibold text-xs text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider">
+                <Image className="w-3.5 h-3.5" /> Prueba de entrega
               </h3>
               <img
                 src={stop.proof_photo_url}
                 alt="Prueba de entrega"
-                className="w-full rounded-lg border"
+                className="w-full rounded-2xl border shadow-sm"
               />
             </div>
           )}
