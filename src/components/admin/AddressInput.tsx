@@ -76,10 +76,6 @@ export function AddressInput({
       <div className="relative">
         <Input
           ref={inputRef}
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="none"
-          spellCheck={false}
           placeholder={placeholder}
           value={value}
           onChange={(e) => handleInputChange(e.target.value)}
@@ -125,7 +121,7 @@ export function AddressInput({
 
       {/* Google predictions dropdown */}
       {open && predictions.length > 0 && (
-        <div className="absolute z-50 mt-1 w-full max-h-56 overflow-y-auto rounded-lg border bg-popover shadow-lg overflow-hidden">
+        <div className="absolute z-50 mt-1 w-full rounded-lg border bg-popover shadow-lg overflow-hidden">
           {predictions.map((p) => (
             <button
               key={p.placeId}

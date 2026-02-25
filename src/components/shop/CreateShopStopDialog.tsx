@@ -196,7 +196,7 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
       </ResponsiveDialogHeader>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} autoComplete="off" className="space-y-4 [&_input]:text-base sm:[&_input]:text-sm [&_textarea]:text-base sm:[&_textarea]:text-sm">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           {/* Pickup address - segmented toggle */}
           <div className="space-y-3">
             <FormLabel className="flex items-center gap-2 text-sm font-semibold">
