@@ -64,10 +64,12 @@ export default function AdminMap() {
       <div className="flex-1 relative">
         <DeliveryMap
           stops={filteredStops}
-          driverLocations={driverLocations.map((loc) => ({
-            ...loc,
-            driver: getDriverById(loc.driver_id) || undefined,
-          }))}
+          driverLocations={driverLocations
+            .filter((loc) => new Date(loc.updated_at).getTime() > Date.now() - 5 * 60 * 1000)
+            .map((loc) => ({
+              ...loc,
+              driver: getDriverById(loc.driver_id) || undefined,
+            }))}
           selectedStopId={selectedStop?.id}
           onStopClick={handleStopClick}
         />
