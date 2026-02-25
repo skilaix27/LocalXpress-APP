@@ -253,11 +253,14 @@
 /* Fix mobile keyboard whitespace & drawer stability */
 html, body {
   overflow-x: hidden;
+  overflow-y: auto;
+  height: 100%;
 }
 
-/* Keep drawer anchored (no vertical drag translation on content touch) */
+/* Keep drawer anchored — prevent wrapper translation that causes white gaps */
 [vaul-drawer-wrapper] {
   transform: none !important;
+  min-height: 100% !important;
 }
 
 /* Prevent drag gesture conflicts while filling form fields */
@@ -265,9 +268,11 @@ html, body {
   touch-action: pan-y;
 }
 
-/* Prevent visual viewport resize artifacts on iOS */
-@supports (height: 100dvh) {
-  .fixed {
-    will-change: auto;
-  }
+/* Drawer overlay must cover everything, including behind keyboard area */
+[vaul-overlay] {
+  background: rgba(0, 0, 0, 0.8) !important;
+  position: fixed !important;
+  inset: 0 !important;
+  height: 100vh !important;
+  height: 100lvh !important;
 }
