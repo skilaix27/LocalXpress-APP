@@ -81,8 +81,8 @@ export default function ShopDashboard() {
 
       {/* Active stops */}
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Pedidos activos</CardTitle>
+        <CardHeader className="pb-2 px-3 pt-4 sm:px-6">
+          <CardTitle className="text-base sm:text-lg">Pedidos activos</CardTitle>
         </CardHeader>
         <CardContent className="p-3 space-y-2">
           {activeStops.map((stop) => (
@@ -103,11 +103,11 @@ export default function ShopDashboard() {
       {/* Today delivered */}
       {deliveredToday.length > 0 && (
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center justify-between">
-              Entregados hoy
-              <Button variant="ghost" size="sm" onClick={() => navigate('/shop/history')}>
-                Ver historial completo
+          <CardHeader className="pb-2 px-3 pt-4 sm:px-6">
+            <CardTitle className="text-base sm:text-lg flex items-center justify-between gap-2">
+              <span>Entregados hoy</span>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/shop/history')} className="shrink-0 text-xs sm:text-sm">
+                Ver historial
               </Button>
             </CardTitle>
           </CardHeader>

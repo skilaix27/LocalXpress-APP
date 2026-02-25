@@ -30,8 +30,8 @@ export default function ShopNewStop() {
       </div>
 
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Pedidos activos ({activeStops.length})</CardTitle>
+        <CardHeader className="pb-2 px-3 pt-4 sm:px-6">
+          <CardTitle className="text-base sm:text-lg">Pedidos activos ({activeStops.length})</CardTitle>
         </CardHeader>
         <CardContent className="p-3 space-y-2">
           {activeStops.map((stop) => (

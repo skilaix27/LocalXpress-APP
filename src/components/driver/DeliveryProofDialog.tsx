@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, forwardRef } from 'react';
 import {
   ResponsiveDialog, ResponsiveDialogHeader, ResponsiveDialogTitle, ResponsiveDialogDescription,
 } from '@/components/ui/responsive-dialog';
@@ -15,7 +15,7 @@ interface DeliveryProofDialogProps {
   onSuccess: () => void;
 }
 
-export function DeliveryProofDialog({ stop, open, onOpenChange, onSuccess }: DeliveryProofDialogProps) {
+export const DeliveryProofDialog = forwardRef<HTMLDivElement, DeliveryProofDialogProps>(function DeliveryProofDialog({ stop, open, onOpenChange, onSuccess }, _ref) {
   const [photo, setPhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -126,4 +126,4 @@ export function DeliveryProofDialog({ stop, open, onOpenChange, onSuccess }: Del
       </div>
     </ResponsiveDialog>
   );
-}
+});
