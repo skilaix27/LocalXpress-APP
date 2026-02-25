@@ -1,7 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/ui/status-badge';
 import type { Stop } from '@/lib/supabase-types';
-import { User, Phone, Clock, ChevronRight, Route, MapPin, Store } from 'lucide-react';
+import { User, Phone, Clock, ChevronRight, Route, MapPin, Store, CalendarClock } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -61,8 +61,14 @@ export function ShopStopCard({ stop, onClick, className }: ShopStopCardProps) {
               </div>
             </div>
 
-            {/* Meta - NO driver info */}
+            {/* Meta */}
             <div className="flex items-center gap-2 sm:gap-4 text-[10px] sm:text-xs text-muted-foreground flex-wrap">
+              {stop.scheduled_pickup_at && (
+                <span className="flex items-center gap-1 text-primary font-semibold">
+                  <CalendarClock className="w-3 h-3" />
+                  {format(new Date(stop.scheduled_pickup_at), "d MMM · HH:mm", { locale: es })}
+                </span>
+              )}
               {stop.distance_km != null && (
                 <span className="flex items-center gap-1 text-primary font-semibold">
                   <Route className="w-3 h-3" />
