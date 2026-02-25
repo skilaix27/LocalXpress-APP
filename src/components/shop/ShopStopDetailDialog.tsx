@@ -66,7 +66,7 @@ export function ShopStopDetailDialog({ stop, open, onOpenChange }: ShopStopDetai
             </div>
           )}
 
-          <div className="bg-muted/40 rounded-lg p-3 space-y-1.5">
+          <div className="bg-muted rounded-lg p-3 space-y-1.5">
             <h3 className="font-semibold text-xs text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider">
               <User className="w-3.5 h-3.5" /> Cliente
             </h3>
@@ -79,14 +79,14 @@ export function ShopStopDetailDialog({ stop, open, onOpenChange }: ShopStopDetai
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-start gap-3 bg-muted/30 rounded-lg p-3">
+            <div className="flex items-start gap-3 bg-muted rounded-lg p-3">
               <div className="w-2.5 h-2.5 rounded-full bg-primary mt-1.5 shrink-0" />
               <div className="min-w-0">
                 <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Recogida</p>
                 <p className="text-sm mt-0.5 break-words">{stop.pickup_address}</p>
               </div>
             </div>
-            <div className="flex items-start gap-3 bg-muted/30 rounded-lg p-3">
+            <div className="flex items-start gap-3 bg-muted rounded-lg p-3">
               <div className="w-2.5 h-2.5 rounded-full bg-status-delivered mt-1.5 shrink-0" />
               <div className="min-w-0">
                 <p className="text-[10px] font-bold text-status-delivered uppercase tracking-wider">Entrega</p>
@@ -96,7 +96,7 @@ export function ShopStopDetailDialog({ stop, open, onOpenChange }: ShopStopDetai
           </div>
 
           {stop.distance_km != null && (
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30">
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted">
               <Route className="w-4 h-4 text-primary" />
               <span className="text-primary font-bold text-sm">{adjustDistance(stop.distance_km)} km</span>
               <span className="font-medium text-muted-foreground text-sm">· {getDeliveryZone(stop.distance_km)}</span>
@@ -108,11 +108,11 @@ export function ShopStopDetailDialog({ stop, open, onOpenChange }: ShopStopDetai
               <h3 className="font-semibold text-xs text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider">
                 <FileText className="w-3.5 h-3.5" /> Notas
               </h3>
-              <p className="text-sm bg-muted/40 p-3 rounded-lg">{stop.client_notes}</p>
+              <p className="text-sm bg-muted p-3 rounded-lg">{stop.client_notes}</p>
             </div>
           )}
 
-          <div className="bg-muted/40 rounded-lg p-3 space-y-1.5 text-sm">
+          <div className="bg-muted rounded-lg p-3 space-y-1.5 text-sm">
             {stop.scheduled_pickup_at && (
               <div className="flex items-center gap-2 text-primary font-semibold">
                 <CalendarClock className="w-3.5 h-3.5" />
