@@ -57,14 +57,14 @@ export default function AdminDashboard() {
           <h1 className="text-xl sm:text-2xl font-bold">Panel de control</h1>
           <p className="text-muted-foreground text-sm hidden sm:block">Visión global de tu flota en tiempo real</p>
         </div>
-        <Button onClick={() => setCreateDialogOpen(true)} size="sm" className="shrink-0 sm:size-default">
+        <Button onClick={() => setCreateDialogOpen(true)} size="sm" className="shrink-0">
           <Plus className="w-4 h-4 sm:mr-2" />
           <span className="hidden sm:inline">Nueva parada</span>
         </Button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4">
+      <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4">
         {stats.map((stat, i) => (
           <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
             <Card className="overflow-hidden">
@@ -102,7 +102,7 @@ export default function AdminDashboard() {
       {/* Map + Recent */}
       <div className="grid lg:grid-cols-3 gap-4 sm:gap-6">
         <div className="lg:col-span-2">
-          <Card className="h-[300px] sm:h-[500px] overflow-hidden">
+          <Card className="h-[250px] sm:h-[500px] overflow-hidden">
             <CardHeader className="pb-2 px-3 sm:px-6">
               <CardTitle className="text-base sm:text-lg flex items-center justify-between">
                 Mapa en tiempo real
@@ -128,7 +128,7 @@ export default function AdminDashboard() {
         <div className="space-y-4 sm:space-y-6">
           {/* Recent stops */}
           <Card>
-            <CardHeader className="pb-2 px-3 sm:px-6">
+            <CardHeader className="pb-2 px-3 pt-4 sm:px-6">
               <CardTitle className="text-base sm:text-lg flex items-center justify-between">
                 Paradas recientes
                 <Button variant="ghost" size="sm" onClick={() => navigate('/admin/stops')}>
@@ -148,7 +148,7 @@ export default function AdminDashboard() {
 
           {/* Drivers */}
           <Card>
-            <CardHeader className="pb-2 px-3 sm:px-6">
+            <CardHeader className="pb-2 px-3 pt-4 sm:px-6">
               <CardTitle className="text-base sm:text-lg flex items-center justify-between">
                 Repartidores
                 <Button variant="ghost" size="sm" onClick={() => navigate('/admin/drivers')}>
