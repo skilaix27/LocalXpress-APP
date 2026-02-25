@@ -196,7 +196,12 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
       </ResponsiveDialogHeader>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" onFocus={(e) => {
+          // Scroll the focused input into view smoothly on mobile to prevent layout jumps
+          setTimeout(() => {
+            (e.target as HTMLElement).scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+          }, 300);
+        }}>
           {/* Pickup address - segmented toggle */}
           <div className="space-y-3">
             <FormLabel className="flex items-center gap-2 text-sm font-semibold">

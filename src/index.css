@@ -249,3 +249,20 @@
 .leaflet-control-zoom a {
   border: none !important;
 }
+
+/* Fix mobile keyboard whitespace & drawer stability */
+html, body {
+  overflow-x: hidden;
+}
+
+/* Prevent body scroll when drawer is open */
+[vaul-drawer-wrapper] {
+  transform: none !important;
+}
+
+/* Prevent visual viewport resize artifacts on iOS */
+@supports (height: 100dvh) {
+  .fixed {
+    will-change: auto;
+  }
+}

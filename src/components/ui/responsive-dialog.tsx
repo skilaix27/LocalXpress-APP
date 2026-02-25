@@ -31,8 +31,8 @@ export function ResponsiveDialog({ open, onOpenChange, children, className }: Re
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className={cn("max-h-[92dvh]", className)}>
-          <div className="overflow-y-auto px-4 pb-6 pt-2">
+        <DrawerContent className={cn("max-h-[85dvh]", className)}>
+          <div className="overflow-y-auto overscroll-contain px-4 pb-8 pt-2" style={{ WebkitOverflowScrolling: 'touch' }}>
             {children}
           </div>
         </DrawerContent>
