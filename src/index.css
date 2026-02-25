@@ -255,9 +255,14 @@ html, body {
   overflow-x: hidden;
 }
 
-/* Prevent body scroll when drawer is open */
+/* Keep drawer anchored (no vertical drag translation on content touch) */
 [vaul-drawer-wrapper] {
   transform: none !important;
+}
+
+/* Prevent drag gesture conflicts while filling form fields */
+[data-vaul-no-drag] {
+  touch-action: pan-y;
 }
 
 /* Prevent visual viewport resize artifacts on iOS */
