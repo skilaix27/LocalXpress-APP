@@ -35,12 +35,14 @@ const createIcon = (color: string, isDriver = false) => {
 
 const pickupIcon = createIcon('#f97316'); // Orange
 const deliveryIcon = createIcon('#22c55e'); // Green
-const driverIcon = L.icon({
-  iconUrl: '/images/driver-marker.png',
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-  popupAnchor: [0, -16],
-  className: 'rounded-full',
+const driverIcon = L.divIcon({
+  html: `<div style="width:36px;height:36px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;overflow:hidden;border:2px solid #f97316;">
+    <img src="/images/driver-marker.png" style="width:24px;height:24px;object-fit:contain;" alt="driver" />
+  </div>`,
+  className: '',
+  iconSize: [36, 36],
+  iconAnchor: [18, 18],
+  popupAnchor: [0, -18],
 });
 
 interface DeliveryMapProps {
