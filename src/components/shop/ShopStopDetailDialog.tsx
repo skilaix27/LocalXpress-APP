@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { DeliveryReceipt } from '@/components/admin/DeliveryReceipt';
 import type { Stop } from '@/lib/supabase-types';
-import { MapPin, User, Phone, FileText, Clock, Route, Image, Receipt, Store } from 'lucide-react';
+import { MapPin, User, Phone, FileText, Clock, Route, Image, Receipt, Store, CalendarClock } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { adjustDistance, getDeliveryZone } from '@/lib/delivery-zones';
@@ -113,6 +113,12 @@ export function ShopStopDetailDialog({ stop, open, onOpenChange }: ShopStopDetai
           )}
 
           <div className="bg-muted/40 rounded-lg p-3 space-y-1.5 text-sm">
+            {stop.scheduled_pickup_at && (
+              <div className="flex items-center gap-2 text-primary font-semibold">
+                <CalendarClock className="w-3.5 h-3.5" />
+                Recogida programada: {format(new Date(stop.scheduled_pickup_at), "dd/MM/yyyy HH:mm", { locale: es })}
+              </div>
+            )}
             <div className="flex items-center gap-2 text-muted-foreground">
               <Clock className="w-3.5 h-3.5" />
               Creado: {format(new Date(stop.created_at), "dd/MM/yyyy HH:mm", { locale: es })}
