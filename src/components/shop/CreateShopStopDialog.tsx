@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { MapPin, User, Phone, FileText, Loader2, Store } from 'lucide-react';
+import { MapPin, User, Phone, FileText, Loader2, Store, Clock, Navigation } from 'lucide-react';
 import { useRouteDistance } from '@/hooks/useRouteDistance';
 import { AddressInput } from '@/components/admin/AddressInput';
 import type { PlaceDetails } from '@/hooks/useGooglePlaces';
@@ -31,6 +31,7 @@ const stopSchema = z.object({
   client_name: z.string().min(1, 'Nombre del cliente requerido'),
   client_phone: z.string().optional(),
   client_notes: z.string().optional(),
+  scheduled_pickup_time: z.string().min(1, 'Hora de recogida requerida'),
 });
 
 type StopFormData = z.infer<typeof stopSchema>;
@@ -58,6 +59,7 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
       pickup_address: '', pickup_lat: 41.3851, pickup_lng: 2.1734,
       delivery_address: '', delivery_lat: 41.3920, delivery_lng: 2.1650,
       client_name: '', client_phone: '', client_notes: '',
+      scheduled_pickup_time: '',
     },
   });
 
@@ -118,6 +120,15 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
     try {
       const orderCode = await generateOrderCode();
 
+      // Build scheduled_pickup_at from time input
+      const today = new Date();
+      const [hours, minutes] = data.scheduled_pickup_time.split(':').map(Number);
+      const scheduledDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hours, minutes);
+      // If time is in the past, assume tomorrow
+      if (scheduledDate < new Date()) {
+        scheduledDate.setDate(scheduledDate.getDate() + 1);
+      }
+
       const { error } = await supabase.from('stops').insert({
         pickup_address: data.pickup_address,
         pickup_lat: data.pickup_lat,
@@ -132,6 +143,7 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
         order_code: orderCode,
         shop_id: profile.id,
         shop_name: profile.shop_name || profile.full_name,
+        scheduled_pickup_at: scheduledDate.toISOString(),
       } as any);
 
       if (error) throw error;
@@ -185,45 +197,52 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          {/* Pickup address */}
-          <FormField control={form.control} name="pickup_address" render={({ field }) => (
-            <FormItem>
-              <FormLabel className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-primary" /> Dirección de recogida
-              </FormLabel>
-              <FormControl>
-                {hasDefaultPickup && useDefaultPickup ? (
-                  <div className="space-y-2">
+          {/* Pickup address - segmented toggle */}
+          <div className="space-y-3">
+            <FormLabel className="flex items-center gap-2 text-sm font-semibold">
+              <Store className="w-4 h-4 text-primary" /> Dirección de recogida
+            </FormLabel>
+            
+            {hasDefaultPickup && (
+              <div className="grid grid-cols-2 gap-1 p-1 rounded-lg bg-muted">
+                <button
+                  type="button"
+                  onClick={handleSwitchToDefaultPickup}
+                  className={`text-xs font-medium py-2 px-3 rounded-md transition-all ${useDefaultPickup ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  📍 Mi tienda
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSwitchToCustomPickup}
+                  className={`text-xs font-medium py-2 px-3 rounded-md transition-all ${!useDefaultPickup ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  <Navigation className="w-3 h-3 inline mr-1" /> Otra dirección
+                </button>
+              </div>
+            )}
+
+            <FormField control={form.control} name="pickup_address" render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  {hasDefaultPickup && useDefaultPickup ? (
                     <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
                       <Store className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-primary">Dirección habitual</p>
-                        <p className="text-sm break-words">{profile!.default_pickup_address}</p>
-                      </div>
+                      <p className="text-sm break-words">{profile!.default_pickup_address}</p>
                     </div>
-                    <Button type="button" variant="ghost" size="sm" className="text-xs h-7" onClick={handleSwitchToCustomPickup}>
-                      Usar otra dirección
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
+                  ) : (
                     <AddressInput
                       value={field.value} onChange={field.onChange}
                       onResolved={(d) => handleAddressResolved('pickup', d)}
                       onClear={() => setPickupResolved(false)} resolved={pickupResolved}
                       placeholder="Ej: Carrer de Balmes 145, Barcelona"
                     />
-                    {hasDefaultPickup && (
-                      <Button type="button" variant="ghost" size="sm" className="text-xs h-7" onClick={handleSwitchToDefaultPickup}>
-                        <Store className="w-3 h-3 mr-1" /> Usar dirección habitual
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
+                  )}
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+          </div>
 
           <FormField control={form.control} name="delivery_address" render={({ field }) => (
             <FormItem>
@@ -237,6 +256,19 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
                   onClear={() => setDeliveryResolved(false)} resolved={deliveryResolved}
                   placeholder="Ej: Passeig de Gràcia 92, Barcelona"
                 />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+
+          {/* Scheduled pickup time */}
+          <FormField control={form.control} name="scheduled_pickup_time" render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-primary" /> Hora de recogida
+              </FormLabel>
+              <FormControl>
+                <Input type="time" {...field} className="w-full" />
               </FormControl>
               <FormMessage />
             </FormItem>
