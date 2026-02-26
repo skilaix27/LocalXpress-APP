@@ -216,6 +216,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_old_driver_locations: { Args: never; Returns: undefined }
       get_profile_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
