@@ -5,17 +5,19 @@ import { StopDetailDialog } from '@/components/admin/StopDetailDialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import type { Stop } from '@/lib/supabase-types';
-import { Search, History, Package, Download } from 'lucide-react';
+import { Search, History, Package, Download, CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { format } from 'date-fns';
+import { format, startOfDay, endOfDay, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 
 export default function AdminHistory() {
   const { allStops, drivers, loading, fetchData, getDriverById, getShopById } = useAdminData();
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [search, setSearch] = useState('');
-
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   // History: delivered + expired (scheduled for past day and not picked)
   const historyStops = useMemo(() => {
     const todayStart = new Date();
@@ -26,6 +28,12 @@ export default function AdminHistory() {
       (s.scheduled_pickup_at && new Date(s.scheduled_pickup_at) < todayStart && s.status !== 'picked');
 
     let result = allStops.filter((s) => isExpiredOrDone(s));
+    if (selectedDate) {
+      result = result.filter((s) => {
+        const d = new Date(s.delivered_at || s.scheduled_pickup_at || s.updated_at);
+        return isSameDay(d, selectedDate);
+      });
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(
@@ -39,7 +47,7 @@ export default function AdminHistory() {
     return result.sort(
       (a, b) => new Date(b.delivered_at || b.scheduled_pickup_at || b.updated_at).getTime() - new Date(a.delivered_at || a.scheduled_pickup_at || a.updated_at).getTime()
     );
-  }, [allStops, search]);
+  }, [allStops, search, selectedDate]);
 
   const handleStopClick = (stop: Stop) => {
     setSelectedStop(stop);
@@ -97,10 +105,38 @@ export default function AdminHistory() {
             {historyStops.length} registros en historial
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={exportCSV} disabled={historyStops.length === 0} className="shrink-0">
-          <Download className="w-4 h-4 sm:mr-2" />
-          <span className="hidden sm:inline">Exportar CSV</span>
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className={selectedDate ? 'text-foreground' : 'text-muted-foreground'}>
+                <CalendarIcon className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">
+                  {selectedDate ? format(selectedDate, 'dd/MM/yyyy', { locale: es }) : 'Filtrar fecha'}
+                </span>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                locale={es}
+                initialFocus
+              />
+              {selectedDate && (
+                <div className="p-2 border-t">
+                  <Button variant="ghost" size="sm" className="w-full" onClick={() => setSelectedDate(undefined)}>
+                    Limpiar filtro
+                  </Button>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
+          <Button variant="outline" size="sm" onClick={exportCSV} disabled={historyStops.length === 0} className="shrink-0">
+            <Download className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Exportar CSV</span>
+          </Button>
+        </div>
       </div>
 
       <div className="relative">
