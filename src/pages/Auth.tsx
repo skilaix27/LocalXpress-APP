@@ -21,6 +21,13 @@ export default function Auth() {
 
     let email = identifier.trim();
 
+    // Input length validation
+    if (email.length > 254 || password.length > 128) {
+      toast.error('Datos inválidos');
+      setLoading(false);
+      return;
+    }
+
     // If no "@", look up email by name
     if (!email.includes('@')) {
       try {
