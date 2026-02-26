@@ -19,13 +19,25 @@ export async function generateOrderCode(): Promise<string> {
   const endOfDay = new Date(now);
   endOfDay.setHours(23, 59, 59, 999);
 
-  const { count } = await supabase
+  // Get the highest P number from today's stops
+  const { data: todayStops } = await supabase
     .from('stops')
-    .select('*', { count: 'exact', head: true })
+    .select('order_code')
     .gte('created_at', startOfDay.toISOString())
-    .lte('created_at', endOfDay.toISOString());
+    .lte('created_at', endOfDay.toISOString())
+    .not('order_code', 'is', null);
 
-  const orderNumber = ((count ?? 0) + 1) * 5;
+  let maxP = 0;
+  if (todayStops) {
+    for (const s of todayStops) {
+      const match = s.order_code?.match(/-P(\d+)$/);
+      if (match) maxP = Math.max(maxP, parseInt(match[1], 10));
+    }
+  }
+
+  // Start above 27, then add random increment (1-3)
+  const randomIncrement = Math.floor(Math.random() * 3) + 1;
+  const orderNumber = maxP < 27 ? 27 + randomIncrement : maxP + randomIncrement;
 
   return `LX-D${dayCode}${monthLetter}-P${orderNumber}`;
 }
