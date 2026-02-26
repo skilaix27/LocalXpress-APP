@@ -127,7 +127,7 @@ export function useAdminData() {
   const pickedStops = activeStops.filter((s) => s.status === 'picked').length;
   const deliveredStops = stops.filter((s) => s.status === 'delivered').length;
   const activeDrivers = driverLocations.filter(
-    (loc) => new Date(loc.updated_at).getTime() > Date.now() - 5 * 60 * 1000
+    (loc) => new Date(loc.updated_at).getTime() > Date.now() - 2 * 60 * 60 * 1000
   ).length;
 
   return {
