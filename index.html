@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
@@ -7,23 +7,39 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="theme-color" content="#f97316" />
+
+    <!-- Security headers -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+    <meta http-equiv="Permissions-Policy" content="camera=(self), microphone=(), geolocation=(self), payment=()" />
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co;
+      style-src 'self' 'unsafe-inline' https://unpkg.com;
+      img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org https://unpkg.com https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev;
+      font-src 'self' data:;
+      connect-src 'self' https://*.supabase.co wss://*.supabase.co https://routes.googleapis.com https://places.googleapis.com https://api.resend.com;
+      frame-ancestors 'none';
+      base-uri 'self';
+      form-action 'self';
+      object-src 'none';
+    " />
+
     <title>LocalXpress - Gestión de Repartos</title>
     <meta name="description" content="LocalXpress - Plataforma de gestión de repartos locales">
     <meta name="author" content="LocalXpress" />
 
-    
-    
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ff63887c-5ce1-4d1d-8b13-b1d24e090a26/id-preview-ab827c06--c83ec73d-3fb6-4ef3-b2ea-64b2c414957d.lovable.app-1771841121770.png">
-
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@Lovable" />
     <meta name="twitter:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ff63887c-5ce1-4d1d-8b13-b1d24e090a26/id-preview-ab827c06--c83ec73d-3fb6-4ef3-b2ea-64b2c414957d.lovable.app-1771841121770.png">
     <meta property="og:title" content="LocalXpress - Gestión de Repartos">
-  <meta name="twitter:title" content="LocalXpress - Gestión de Repartos">
-  <meta property="og:description" content="LocalXpress - Plataforma de gestión de repartos locales">
-  <meta name="twitter:description" content="LocalXpress - Plataforma de gestión de repartos locales">
-</head>
+    <meta name="twitter:title" content="LocalXpress - Gestión de Repartos">
+    <meta property="og:description" content="LocalXpress - Plataforma de gestión de repartos locales">
+    <meta name="twitter:description" content="LocalXpress - Plataforma de gestión de repartos locales">
+  </head>
 
   <body>
     <div id="root"></div>

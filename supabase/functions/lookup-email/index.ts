@@ -22,38 +22,49 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Reject if input contains suspicious patterns
+    if (/[<>'";\-\-\/\*]/.test(username)) {
+      return new Response(JSON.stringify({ error: "Caracteres no permitidos" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Sanitize input for ilike pattern matching
-    const sanitized = username.replace(/[%_\\]/g, "");
+    // Sanitize input for ilike pattern matching - escape all special chars
+    const sanitized = username.trim().replace(/[%_\\]/g, "\\$&");
 
-    // Search by full_name (case-insensitive)
+    // Search by full_name (case-insensitive) - limit results
     const { data: profiles } = await supabaseAdmin
       .from("profiles")
-      .select("user_id, full_name")
-      .ilike("full_name", `%${sanitized}%`);
+      .select("user_id")
+      .ilike("full_name", `${sanitized}`)
+      .limit(1);
 
     if (!profiles || profiles.length === 0) {
-      return new Response(JSON.stringify({ error: "Usuario no encontrado" }), {
+      // Generic error to prevent user enumeration
+      return new Response(JSON.stringify({ error: "Credenciales inválidas" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Get the auth email for the first match
+    // Get the auth email for the exact match
     const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(profiles[0].user_id);
 
     if (!user?.email) {
-      return new Response(JSON.stringify({ error: "Usuario no encontrado" }), {
+      return new Response(JSON.stringify({ error: "Credenciales inválidas" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(JSON.stringify({ email: user.email, full_name: profiles[0].full_name }), {
+    // Only return the email, nothing else
+    return new Response(JSON.stringify({ email: user.email }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

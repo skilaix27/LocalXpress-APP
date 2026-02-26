@@ -12,6 +12,43 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Verify authenticated user with shop role
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "No autorizado" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    const callerClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: { user: caller } } = await callerClient.auth.getUser();
+    if (!caller) {
+      return new Response(JSON.stringify({ error: "No autorizado" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Verify caller is shop or admin
+    const { data: isShop } = await supabaseAdmin.rpc("has_role", { _user_id: caller.id, _role: "shop" });
+    const { data: isAdmin } = await supabaseAdmin.rpc("has_role", { _user_id: caller.id, _role: "admin" });
+    if (!isShop && !isAdmin) {
+      return new Response(JSON.stringify({ error: "No autorizado" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     if (!RESEND_API_KEY) {
       console.error("[notify-new-stop] RESEND_API_KEY not configured");
@@ -22,7 +59,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { order_code, shop_name, client_name, pickup_address, delivery_address, scheduled_pickup_at, distance_km } = body;
+    const { order_code, shop_name, client_name, pickup_address, delivery_address } = body;
 
     if (!order_code || !client_name || !pickup_address || !delivery_address) {
       return new Response(JSON.stringify({ error: "Datos del pedido incompletos" }), {
@@ -31,34 +68,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get admin emails from the database
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
-    const adminEmails: string[] = [];
-
-    const { data: adminRoles, error: rolesError } = await supabaseAdmin
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "admin");
-
-    console.log("[notify-new-stop] Admin roles query:", { adminRoles, rolesError });
-
-    if (adminRoles && adminRoles.length > 0) {
-      for (const role of adminRoles) {
-        const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(role.user_id);
-        if (user?.email) adminEmails.push(user.email);
-      }
-    }
-
-    console.log("[notify-new-stop] Admin emails found:", adminEmails);
-
-    if (adminEmails.length === 0) {
-      console.warn("[notify-new-stop] No admin emails from DB, cannot send notification");
-      return new Response(JSON.stringify({ success: false, reason: "No se encontraron emails de admin" }), {
-        status: 200,
+    // Validate string lengths
+    if (typeof order_code !== 'string' || order_code.length > 50 ||
+        typeof client_name !== 'string' || client_name.length > 200 ||
+        typeof pickup_address !== 'string' || pickup_address.length > 500 ||
+        typeof delivery_address !== 'string' || delivery_address.length > 500) {
+      return new Response(JSON.stringify({ error: "Datos inválidos" }), {
+        status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -79,17 +95,16 @@ Deno.serve(async (req) => {
     });
 
     const resendBody = await emailRes.json();
-    console.log("[notify-new-stop] Resend response:", { status: emailRes.status, ok: emailRes.ok, body: resendBody });
 
     if (!emailRes.ok) {
       console.error("[notify-new-stop] Resend error:", resendBody);
-      return new Response(JSON.stringify({ success: false, reason: "Error al enviar email", details: resendBody }), {
+      return new Response(JSON.stringify({ success: false, reason: "Error al enviar email" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(JSON.stringify({ success: true, sent_to: adminEmails.length }), {
+    return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
