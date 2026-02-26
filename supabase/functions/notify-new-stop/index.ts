@@ -63,18 +63,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Format scheduled time
-    let scheduledTime = "";
-    if (scheduled_pickup_at) {
-      const d = new Date(scheduled_pickup_at);
-      scheduledTime = d.toLocaleString("es-ES", { 
-        hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" 
-      });
-    }
-
-    const distanceText = distance_km ? `${distance_km} km` : "No calculada";
-
-    // Send email via Resend
+    // Send simple email via Resend
     const emailRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -84,50 +73,8 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         from: "LocalXpress <onboarding@resend.dev>",
         to: ["robertogarcia2772@gmail.com"],
-        subject: `🆕 Nuevo pedido ${order_code} — ${shop_name || "Tienda"}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border-radius: 12px; padding: 24px; color: white; margin-bottom: 24px;">
-              <h1 style="margin: 0 0 8px 0; font-size: 22px;">📦 Nuevo Pedido</h1>
-              <p style="margin: 0; font-size: 28px; font-weight: bold;">${order_code}</p>
-            </div>
-            
-            <div style="background: #f8fafc; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
-              <table style="width: 100%; border-collapse: collapse;">
-                <tr>
-                  <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Tienda</td>
-                  <td style="padding: 8px 0; font-weight: 600; text-align: right;">${shop_name || "—"}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Cliente</td>
-                  <td style="padding: 8px 0; font-weight: 600; text-align: right;">${client_name}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 0; color: #64748b; font-size: 14px;">⏰ Recogida</td>
-                  <td style="padding: 8px 0; font-weight: 600; text-align: right;">${scheduledTime || "Sin programar"}</td>
-                </tr>
-                <tr>
-                  <td style="padding: 8px 0; color: #64748b; font-size: 14px;">📏 Distancia</td>
-                  <td style="padding: 8px 0; font-weight: 600; text-align: right;">${distanceText}</td>
-                </tr>
-              </table>
-            </div>
-            
-            <div style="background: #fef3c7; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
-              <p style="margin: 0 0 4px 0; font-weight: 600; color: #92400e;">📍 Recogida</p>
-              <p style="margin: 0; font-size: 14px; color: #78350f;">${pickup_address}</p>
-            </div>
-            
-            <div style="background: #d1fae5; border-radius: 12px; padding: 16px; margin-bottom: 24px;">
-              <p style="margin: 0 0 4px 0; font-weight: 600; color: #065f46;">🏠 Entrega</p>
-              <p style="margin: 0; font-size: 14px; color: #064e3b;">${delivery_address}</p>
-            </div>
-            
-            <div style="text-align: center;">
-              <p style="color: #94a3b8; font-size: 13px;">Entra al panel de admin para asignar un repartidor.</p>
-            </div>
-          </div>
-        `,
+        subject: `Nuevo pedido ${order_code} — ${shop_name || "Tienda"}`,
+        html: `<p>Nueva parada solicitada por <strong>${shop_name || "una tienda"}</strong>.</p><p>Código: <strong>${order_code}</strong></p>`,
       }),
     });
 
