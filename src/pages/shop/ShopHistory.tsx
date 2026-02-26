@@ -11,13 +11,13 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export default function ShopHistory() {
-  const { deliveredStops } = useShopData();
+  const { deliveredStops: historyStops } = useShopData();
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
-    let result = [...deliveredStops];
+    let result = [...historyStops];
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(
@@ -31,7 +31,7 @@ export default function ShopHistory() {
     return result.sort(
       (a, b) => new Date(b.delivered_at || b.updated_at).getTime() - new Date(a.delivered_at || a.updated_at).getTime()
     );
-  }, [deliveredStops, search]);
+  }, [historyStops, search]);
 
   const exportCSV = () => {
     if (filtered.length === 0) return;

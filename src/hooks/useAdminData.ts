@@ -112,12 +112,19 @@ export function useAdminData() {
     [stops]
   );
 
-  // Filter: only non-delivered stops for main views (all delivered go to history)
-  const activeStops = stops.filter((s) => s.status !== 'delivered');
+  // A stop goes to history if: delivered OR scheduled for a previous day and still not delivered
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
 
-  const pendingStops = stops.filter((s) => s.status === 'pending').length;
-  const assignedStops = stops.filter((s) => s.status === 'assigned').length;
-  const pickedStops = stops.filter((s) => s.status === 'picked').length;
+  const isExpiredOrDone = (s: Stop) =>
+    s.status === 'delivered' ||
+    (s.scheduled_pickup_at && new Date(s.scheduled_pickup_at) < todayStart && s.status !== 'picked');
+
+  const activeStops = stops.filter((s) => !isExpiredOrDone(s));
+
+  const pendingStops = activeStops.filter((s) => s.status === 'pending').length;
+  const assignedStops = activeStops.filter((s) => s.status === 'assigned').length;
+  const pickedStops = activeStops.filter((s) => s.status === 'picked').length;
   const deliveredStops = stops.filter((s) => s.status === 'delivered').length;
   const activeDrivers = driverLocations.filter(
     (loc) => new Date(loc.updated_at).getTime() > Date.now() - 5 * 60 * 1000
