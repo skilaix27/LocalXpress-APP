@@ -14,7 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 export default function ShopDashboard() {
   const { profile } = useAuth();
   const {
-    activeStops, deliveredStops, fetchData,
+    activeStops, todayDelivered, olderDelivered, fetchData,
     pendingCount, assignedCount, pickedCount, deliveredCount,
   } = useShopData();
 
@@ -100,11 +100,28 @@ export default function ShopDashboard() {
         </CardContent>
       </Card>
 
+      {/* Today's delivered */}
+      {todayDelivered.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2 px-3 pt-4 sm:px-6">
+            <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-status-delivered" />
+              Entregados hoy ({todayDelivered.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-3 space-y-2">
+            {todayDelivered.map((stop) => (
+              <ShopStopCard key={stop.id} stop={stop} onClick={() => handleClick(stop)} />
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Link to history */}
-      {deliveredStops.length > 0 && (
+      {olderDelivered.length > 0 && (
         <div className="text-center">
           <Button variant="outline" onClick={() => navigate('/shop/history')}>
-            Ver historial ({deliveredCount} entregas)
+            Ver historial ({olderDelivered.length} entregas anteriores)
           </Button>
         </div>
       )}

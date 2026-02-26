@@ -79,12 +79,25 @@ export function useShopData() {
   const pendingCount = activeStops.filter((s) => s.status === 'pending').length;
   const assignedCount = activeStops.filter((s) => s.status === 'assigned').length;
   const pickedCount = activeStops.filter((s) => s.status === 'picked').length;
+
+  // Split delivered: today vs older
+  const todayDelivered = deliveredStops.filter((s) => {
+    const d = new Date(s.delivered_at || s.updated_at);
+    return d >= todayStart;
+  });
+  const olderDelivered = deliveredStops.filter((s) => {
+    const d = new Date(s.delivered_at || s.updated_at);
+    return d < todayStart;
+  });
+
   const deliveredCount = deliveredStops.length;
 
   return {
     stops,
     activeStops,
     deliveredStops,
+    todayDelivered,
+    olderDelivered,
     loading,
     fetchData,
     pendingCount,
