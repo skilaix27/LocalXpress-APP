@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ProofImage } from '@/components/ui/ProofImage';
 import {
   ResponsiveDialog, ResponsiveDialogHeader, ResponsiveDialogTitle,
 } from '@/components/ui/responsive-dialog';
@@ -142,11 +143,7 @@ export function ShopStopDetailDialog({ stop, open, onOpenChange }: ShopStopDetai
               <h3 className="font-semibold text-xs text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider">
                 <Image className="w-3.5 h-3.5" /> Prueba de entrega
               </h3>
-              <img
-                src={stop.proof_photo_url}
-                alt="Prueba de entrega"
-                className="w-full rounded-lg border shadow-sm"
-              />
+              <ProofImage proofPhotoUrl={stop.proof_photo_url} />
             </div>
           )}
         </div>

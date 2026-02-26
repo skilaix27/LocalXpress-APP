@@ -1,4 +1,5 @@
 import { forwardRef, useRef, useState } from 'react';
+import { ProofImage } from '@/components/ui/ProofImage';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -131,11 +132,7 @@ export const DeliveryReceipt = forwardRef<HTMLDivElement, DeliveryReceiptProps>(
                     <Camera className="w-4 h-4 text-status-delivered" />
                     Prueba fotográfica
                   </div>
-                  <img
-                    src={stop.proof_photo_url}
-                    alt="Prueba de entrega"
-                    className="w-full rounded-lg border max-h-72 object-cover"
-                  />
+                  <ProofImage proofPhotoUrl={stop.proof_photo_url} />
                 </div>
               </>
             )}
