@@ -63,15 +63,22 @@ export function useShopData() {
     };
   }, [fetchData]);
 
-  // Active stops: only non-delivered (all delivered go to history)
-  const activeStops = stops.filter((s) => s.status !== 'delivered');
+  // A stop goes to history if: delivered OR scheduled for a previous day and not picked/in-transit
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
 
-  // All delivered (history)
-  const deliveredStops = stops.filter((s) => s.status === 'delivered');
+  const isExpiredOrDone = (s: Stop) =>
+    s.status === 'delivered' ||
+    (s.scheduled_pickup_at && new Date(s.scheduled_pickup_at) < todayStart && s.status !== 'picked');
 
-  const pendingCount = stops.filter((s) => s.status === 'pending').length;
-  const assignedCount = stops.filter((s) => s.status === 'assigned').length;
-  const pickedCount = stops.filter((s) => s.status === 'picked').length;
+  const activeStops = stops.filter((s) => !isExpiredOrDone(s));
+
+  // History: all that are NOT active
+  const deliveredStops = stops.filter((s) => isExpiredOrDone(s));
+
+  const pendingCount = activeStops.filter((s) => s.status === 'pending').length;
+  const assignedCount = activeStops.filter((s) => s.status === 'assigned').length;
+  const pickedCount = activeStops.filter((s) => s.status === 'picked').length;
   const deliveredCount = deliveredStops.length;
 
   return {

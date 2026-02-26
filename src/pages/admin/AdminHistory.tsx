@@ -16,9 +16,16 @@ export default function AdminHistory() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [search, setSearch] = useState('');
 
-  // Only delivered stops (full history)
-  const deliveredStops = useMemo(() => {
-    let result = allStops.filter((s) => s.status === 'delivered');
+  // History: delivered + expired (scheduled for past day and not picked)
+  const historyStops = useMemo(() => {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const isExpiredOrDone = (s: Stop) =>
+      s.status === 'delivered' ||
+      (s.scheduled_pickup_at && new Date(s.scheduled_pickup_at) < todayStart && s.status !== 'picked');
+
+    let result = allStops.filter((s) => isExpiredOrDone(s));
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(
@@ -29,9 +36,8 @@ export default function AdminHistory() {
           (s.order_code && s.order_code.toLowerCase().includes(q))
       );
     }
-    // Sort by delivered_at descending
     return result.sort(
-      (a, b) => new Date(b.delivered_at || b.updated_at).getTime() - new Date(a.delivered_at || a.updated_at).getTime()
+      (a, b) => new Date(b.delivered_at || b.scheduled_pickup_at || b.updated_at).getTime() - new Date(a.delivered_at || a.scheduled_pickup_at || a.updated_at).getTime()
     );
   }, [allStops, search]);
 
@@ -41,12 +47,12 @@ export default function AdminHistory() {
   };
 
   const exportCSV = () => {
-    if (deliveredStops.length === 0) return;
+    if (historyStops.length === 0) return;
     const headers = [
       'Referencia', 'Cliente', 'Teléfono', 'Dirección Recogida', 'Dirección Entrega',
       'Hora Recogida', 'Hora Entrega', 'Repartidor', 'Distancia (km)', 'Notas'
     ];
-    const rows = deliveredStops.map((s) => {
+    const rows = historyStops.map((s) => {
       const driver = getDriverById(s.driver_id);
       return [
         s.order_code || '',
@@ -88,10 +94,10 @@ export default function AdminHistory() {
             Historial
           </h1>
           <p className="text-muted-foreground text-sm">
-            {deliveredStops.length} entregas completadas
+            {historyStops.length} registros en historial
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={exportCSV} disabled={deliveredStops.length === 0} className="shrink-0">
+        <Button variant="outline" size="sm" onClick={exportCSV} disabled={historyStops.length === 0} className="shrink-0">
           <Download className="w-4 h-4 sm:mr-2" />
           <span className="hidden sm:inline">Exportar CSV</span>
         </Button>
@@ -108,7 +114,7 @@ export default function AdminHistory() {
       </div>
 
       <div className="space-y-3">
-        {deliveredStops.map((stop) => (
+        {historyStops.map((stop) => (
           <StopCard
             key={stop.id}
             stop={stop}
@@ -117,7 +123,7 @@ export default function AdminHistory() {
             onClick={() => handleStopClick(stop)}
           />
         ))}
-        {deliveredStops.length === 0 && (
+        {historyStops.length === 0 && (
           <Card>
             <CardContent className="py-12 text-center">
               <Package className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
