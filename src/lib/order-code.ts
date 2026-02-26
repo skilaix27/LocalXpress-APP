@@ -35,9 +35,9 @@ export async function generateOrderCode(): Promise<string> {
     }
   }
 
-  // Start above 27, then add random increment (1-3)
+  // Start above 65, then add random increment (1-3)
   const randomIncrement = Math.floor(Math.random() * 3) + 1;
-  const orderNumber = maxP < 27 ? 27 + randomIncrement : maxP + randomIncrement;
+  const orderNumber = maxP < 65 ? 65 + randomIncrement : maxP + randomIncrement;
 
   return `LX-D${dayCode}${monthLetter}-P${orderNumber}`;
 }
