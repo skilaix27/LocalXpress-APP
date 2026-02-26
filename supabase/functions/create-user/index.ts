@@ -6,6 +6,16 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function isValidCoord(val: unknown): boolean {
+  return typeof val === 'number' && isFinite(val) && val >= -90 && val <= 90;
+}
+
+function isValidLng(val: unknown): boolean {
+  return typeof val === 'number' && isFinite(val) && val >= -180 && val <= 180;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -59,6 +69,22 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Validate email format
+    if (typeof email !== 'string' || !EMAIL_REGEX.test(email) || email.length > 254) {
+      return new Response(JSON.stringify({ error: "Formato de email inválido" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Validate full_name
+    if (typeof full_name !== 'string' || full_name.trim().length < 1 || full_name.length > 200) {
+      return new Response(JSON.stringify({ error: "Nombre inválido" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     if (!["admin", "driver", "shop"].includes(role)) {
       return new Response(JSON.stringify({ error: "Rol inválido. Debe ser 'admin', 'driver' o 'shop'" }), {
         status: 400,
@@ -73,17 +99,39 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Validate optional phone
+    if (phone !== undefined && phone !== null && (typeof phone !== 'string' || phone.length > 30)) {
+      return new Response(JSON.stringify({ error: "Teléfono inválido" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Validate optional coordinates
+    if (default_pickup_lat != null && !isValidCoord(default_pickup_lat)) {
+      return new Response(JSON.stringify({ error: "Latitud de recogida inválida" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (default_pickup_lng != null && !isValidLng(default_pickup_lng)) {
+      return new Response(JSON.stringify({ error: "Longitud de recogida inválida" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
-      user_metadata: { full_name },
+      user_metadata: { full_name: full_name.trim() },
     });
 
     if (authError) {
       const msg = authError.message.includes("already been registered")
         ? "Este email ya está registrado"
-        : authError.message;
+        : "Error al crear el usuario";
       return new Response(JSON.stringify({ error: msg }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -117,7 +165,8 @@ Deno.serve(async (req) => {
     });
 
     if (roleError) {
-      return new Response(JSON.stringify({ error: `Usuario creado pero error al asignar rol: ${roleError.message}` }), {
+      console.error("[create-user] Role assignment error:", roleError);
+      return new Response(JSON.stringify({ error: "Usuario creado pero error al asignar rol" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -128,7 +177,8 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    console.error("[create-user] Internal error:", err);
+    return new Response(JSON.stringify({ error: "Error al procesar la solicitud" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
