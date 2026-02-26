@@ -15,12 +15,12 @@
     <meta http-equiv="Permissions-Policy" content="camera=(self), microphone=(), geolocation=(self), payment=()" />
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co;
-      style-src 'self' 'unsafe-inline' https://unpkg.com;
-      img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org https://unpkg.com https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev;
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co https://unpkg.com https://cdnjs.cloudflare.com;
+      style-src 'self' 'unsafe-inline' https://unpkg.com https://cdnjs.cloudflare.com;
+      img-src 'self' data: blob: https://*.supabase.co https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://unpkg.com https://cdnjs.cloudflare.com https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev;
       font-src 'self' data:;
-      connect-src 'self' https://*.supabase.co wss://*.supabase.co https://routes.googleapis.com https://places.googleapis.com https://api.resend.com;
-      frame-ancestors 'none';
+      connect-src 'self' https://*.supabase.co wss://*.supabase.co https://routes.googleapis.com https://places.googleapis.com https://api.resend.com https://*.tile.openstreetmap.org https://tile.openstreetmap.org;
+      frame-ancestors 'self' https://*.lovable.app https://lovable.dev https://*.lovable.dev;
       base-uri 'self';
       form-action 'self';
       object-src 'none';
