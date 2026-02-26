@@ -14,7 +14,7 @@ import { useAuth } from '@/hooks/useAuth';
 export default function ShopDashboard() {
   const { profile } = useAuth();
   const {
-    activeStops, deliveredToday, fetchData,
+    activeStops, deliveredStops, fetchData,
     pendingCount, assignedCount, pickedCount, deliveredCount,
   } = useShopData();
 
@@ -35,7 +35,7 @@ export default function ShopDashboard() {
     setDetailOpen(true);
   };
 
-  if (!activeStops && !deliveredToday) {
+  if (!activeStops) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
@@ -100,23 +100,13 @@ export default function ShopDashboard() {
         </CardContent>
       </Card>
 
-      {/* Today delivered */}
-      {deliveredToday.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2 px-3 pt-4 sm:px-6">
-            <CardTitle className="text-base sm:text-lg flex items-center justify-between gap-2">
-              <span>Entregados hoy</span>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/shop/history')} className="shrink-0 text-xs sm:text-sm">
-                Ver historial
-              </Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-3 space-y-2">
-            {deliveredToday.map((stop) => (
-              <ShopStopCard key={stop.id} stop={stop} onClick={() => handleClick(stop)} />
-            ))}
-          </CardContent>
-        </Card>
+      {/* Link to history */}
+      {deliveredStops.length > 0 && (
+        <div className="text-center">
+          <Button variant="outline" onClick={() => navigate('/shop/history')}>
+            Ver historial ({deliveredCount} entregas)
+          </Button>
+        </div>
       )}
 
       <CreateShopStopDialog open={createOpen} onOpenChange={setCreateOpen} onSuccess={fetchData} />

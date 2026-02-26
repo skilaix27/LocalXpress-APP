@@ -112,16 +112,13 @@ export function useAdminData() {
     [stops]
   );
 
-  // Filter: hide delivered stops from previous days in main views
-  const todayStr = new Date().toDateString();
-  const activeStops = stops.filter(
-    (s) => s.status !== 'delivered' || new Date(s.delivered_at || s.updated_at).toDateString() === todayStr
-  );
+  // Filter: only non-delivered stops for main views (all delivered go to history)
+  const activeStops = stops.filter((s) => s.status !== 'delivered');
 
   const pendingStops = stops.filter((s) => s.status === 'pending').length;
   const assignedStops = stops.filter((s) => s.status === 'assigned').length;
   const pickedStops = stops.filter((s) => s.status === 'picked').length;
-  const deliveredStops = activeStops.filter((s) => s.status === 'delivered').length;
+  const deliveredStops = stops.filter((s) => s.status === 'delivered').length;
   const activeDrivers = driverLocations.filter(
     (loc) => new Date(loc.updated_at).getTime() > Date.now() - 5 * 60 * 1000
   ).length;

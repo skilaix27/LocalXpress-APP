@@ -63,15 +63,8 @@ export function useShopData() {
     };
   }, [fetchData]);
 
-  const todayStr = new Date().toDateString();
-
-  // Active stops: pending + assigned + picked
+  // Active stops: only non-delivered (all delivered go to history)
   const activeStops = stops.filter((s) => s.status !== 'delivered');
-
-  // Delivered today
-  const deliveredToday = stops.filter(
-    (s) => s.status === 'delivered' && new Date(s.delivered_at || s.updated_at).toDateString() === todayStr
-  );
 
   // All delivered (history)
   const deliveredStops = stops.filter((s) => s.status === 'delivered');
@@ -84,7 +77,6 @@ export function useShopData() {
   return {
     stops,
     activeStops,
-    deliveredToday,
     deliveredStops,
     loading,
     fetchData,
