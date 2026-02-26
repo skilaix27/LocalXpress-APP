@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,23 +7,38 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
-// Pages
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import NotFound from "./pages/NotFound";
-import AdminLayout from "./pages/admin/AdminLayout";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminStops from "./pages/admin/AdminStops";
-import AdminDrivers from "./pages/admin/AdminDrivers";
-import AdminMap from "./pages/admin/AdminMap";
-import AdminHistory from "./pages/admin/AdminHistory";
-import ShopLayout from "./pages/shop/ShopLayout";
-import ShopDashboard from "./pages/shop/ShopDashboard";
-import ShopNewStop from "./pages/shop/ShopNewStop";
-import ShopHistory from "./pages/shop/ShopHistory";
-import DriverApp from "./pages/driver/DriverApp";
+// Lazy-loaded pages for code splitting
+const Index = lazy(() => import("./pages/Index"));
+const Auth = lazy(() => import("./pages/Auth"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminStops = lazy(() => import("./pages/admin/AdminStops"));
+const AdminDrivers = lazy(() => import("./pages/admin/AdminDrivers"));
+const AdminMap = lazy(() => import("./pages/admin/AdminMap"));
+const AdminHistory = lazy(() => import("./pages/admin/AdminHistory"));
+const ShopLayout = lazy(() => import("./pages/shop/ShopLayout"));
+const ShopDashboard = lazy(() => import("./pages/shop/ShopDashboard"));
+const ShopNewStop = lazy(() => import("./pages/shop/ShopNewStop"));
+const ShopHistory = lazy(() => import("./pages/shop/ShopHistory"));
+const DriverApp = lazy(() => import("./pages/driver/DriverApp"));
 
-const queryClient = new QueryClient();
+const PageLoader = () => (
+  <div className="h-[100dvh] flex items-center justify-center bg-background">
+    <div className="animate-spin w-8 h-8 border-3 border-primary border-t-transparent rounded-full" />
+  </div>
+);
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,       // 30s — avoid refetching data that's still fresh
+      gcTime: 5 * 60_000,      // 5min — keep unused data in cache
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -31,6 +47,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* Public routes */}
             <Route path="/auth" element={<Auth />} />
@@ -81,6 +98,7 @@ const App = () => (
             {/* Catch all */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

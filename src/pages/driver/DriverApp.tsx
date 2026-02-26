@@ -1,4 +1,4 @@
-import { useState, useEffect, forwardRef, useCallback } from 'react';
+import { useState, useEffect, forwardRef, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { DeliveryMap } from '@/components/map/DeliveryMap';
@@ -141,14 +141,24 @@ export default function DriverApp() {
     return () => navigator.geolocation.clearWatch(watchId);
   }, [profile, updateLocation]);
 
+  // Debounce realtime events
+  const debouncedFetchStopsRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedFetchStops = useCallback(() => {
+    if (debouncedFetchStopsRef.current) clearTimeout(debouncedFetchStopsRef.current);
+    debouncedFetchStopsRef.current = setTimeout(() => fetchStops(), 500);
+  }, [fetchStops]);
+
   useEffect(() => {
     fetchStops();
     const channel = supabase
       .channel('driver-stops')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'stops' }, () => fetchStops())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stops' }, () => debouncedFetchStops())
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [profile, fetchStops]);
+    return () => {
+      if (debouncedFetchStopsRef.current) clearTimeout(debouncedFetchStopsRef.current);
+      supabase.removeChannel(channel);
+    };
+  }, [profile, fetchStops, debouncedFetchStops]);
 
   const markAsPicked = async () => {
     if (!selectedStop) return;

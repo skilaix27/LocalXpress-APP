@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { Stop, Profile, DriverLocation, ProfileWithRole, AppRole } from '@/lib/supabase-types';
 import { toast } from 'sonner';
@@ -98,24 +98,32 @@ export function useAdminData() {
     }
   }, []);
 
+  // Debounced fetchData for realtime — coalesce rapid events
+  const debouncedFetchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedFetch = useCallback(() => {
+    if (debouncedFetchRef.current) clearTimeout(debouncedFetchRef.current);
+    debouncedFetchRef.current = setTimeout(() => fetchData(), 500);
+  }, [fetchData]);
+
   useEffect(() => {
     fetchData();
 
     const stopsChannel = supabase
       .channel('stops-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'stops' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stops' }, () => debouncedFetch())
       .subscribe();
 
     const locationsChannel = supabase
       .channel('locations-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'driver_locations' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'driver_locations' }, () => debouncedFetch())
       .subscribe();
 
     return () => {
+      if (debouncedFetchRef.current) clearTimeout(debouncedFetchRef.current);
       supabase.removeChannel(stopsChannel);
       supabase.removeChannel(locationsChannel);
     };
-  }, [fetchData]);
+  }, [fetchData, debouncedFetch]);
 
   const getDriverById = useCallback(
     (driverId: string | null) => {
@@ -143,23 +151,27 @@ export function useAdminData() {
     [stops]
   );
 
-  // A stop goes to history if: delivered OR scheduled for a previous day and still not delivered
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  // Memoize derived data to avoid re-computing on every render
+  const todayStart = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
-  const isExpiredOrDone = (s: Stop) =>
+  const isExpiredOrDone = useCallback((s: Stop) =>
     s.status === 'delivered' ||
-    (s.scheduled_pickup_at && new Date(s.scheduled_pickup_at) < todayStart && s.status !== 'picked');
+    (s.scheduled_pickup_at && new Date(s.scheduled_pickup_at) < todayStart && s.status !== 'picked'),
+  [todayStart]);
 
-  const activeStops = stops.filter((s) => !isExpiredOrDone(s));
+  const activeStops = useMemo(() => stops.filter((s) => !isExpiredOrDone(s)), [stops, isExpiredOrDone]);
 
-  const pendingStops = activeStops.filter((s) => s.status === 'pending').length;
-  const assignedStops = activeStops.filter((s) => s.status === 'assigned').length;
-  const pickedStops = activeStops.filter((s) => s.status === 'picked').length;
-  const deliveredStops = stops.filter((s) => s.status === 'delivered').length;
-  const activeDrivers = driverLocations.filter(
+  const pendingStops = useMemo(() => activeStops.filter((s) => s.status === 'pending').length, [activeStops]);
+  const assignedStops = useMemo(() => activeStops.filter((s) => s.status === 'assigned').length, [activeStops]);
+  const pickedStops = useMemo(() => activeStops.filter((s) => s.status === 'picked').length, [activeStops]);
+  const deliveredStops = useMemo(() => stops.filter((s) => s.status === 'delivered').length, [stops]);
+  const activeDrivers = useMemo(() => driverLocations.filter(
     (loc) => new Date(loc.updated_at).getTime() > Date.now() - 2 * 60 * 60 * 1000
-  ).length;
+  ).length, [driverLocations]);
 
   return {
     stops: activeStops,
