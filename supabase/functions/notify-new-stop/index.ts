@@ -37,27 +37,26 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { data: adminRoles } = await supabaseAdmin
+    const adminEmails: string[] = [];
+
+    const { data: adminRoles, error: rolesError } = await supabaseAdmin
       .from("user_roles")
       .select("user_id")
       .eq("role", "admin");
 
-    if (!adminRoles || adminRoles.length === 0) {
-      console.error("[notify-new-stop] No admin users found");
-      return new Response(JSON.stringify({ success: false, reason: "No hay administradores" }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    console.log("[notify-new-stop] Admin roles query:", { adminRoles, rolesError });
+
+    if (adminRoles && adminRoles.length > 0) {
+      for (const role of adminRoles) {
+        const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(role.user_id);
+        if (user?.email) adminEmails.push(user.email);
+      }
     }
 
-    // Get admin emails
-    const adminEmails: string[] = [];
-    for (const role of adminRoles) {
-      const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(role.user_id);
-      if (user?.email) adminEmails.push(user.email);
-    }
+    console.log("[notify-new-stop] Admin emails found:", adminEmails);
 
     if (adminEmails.length === 0) {
+      console.warn("[notify-new-stop] No admin emails from DB, cannot send notification");
       return new Response(JSON.stringify({ success: false, reason: "No se encontraron emails de admin" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -84,7 +83,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         from: "LocalXpress <onboarding@resend.dev>",
-        to: adminEmails,
+        to: ["robertogarcia2772@gmail.com"],
         subject: `🆕 Nuevo pedido ${order_code} — ${shop_name || "Tienda"}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -132,10 +131,12 @@ Deno.serve(async (req) => {
       }),
     });
 
+    const resendBody = await emailRes.json();
+    console.log("[notify-new-stop] Resend response:", { status: emailRes.status, ok: emailRes.ok, body: resendBody });
+
     if (!emailRes.ok) {
-      const errorData = await emailRes.json();
-      console.error("[notify-new-stop] Resend error:", errorData);
-      return new Response(JSON.stringify({ success: false, reason: "Error al enviar email" }), {
+      console.error("[notify-new-stop] Resend error:", resendBody);
+      return new Response(JSON.stringify({ success: false, reason: "Error al enviar email", details: resendBody }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
