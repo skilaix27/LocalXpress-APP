@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { Stop } from '@/lib/supabase-types';
@@ -50,45 +50,53 @@ export function useShopData() {
     }
   }, [profile]);
 
+  const debouncedFetchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedFetch = useCallback(() => {
+    if (debouncedFetchRef.current) clearTimeout(debouncedFetchRef.current);
+    debouncedFetchRef.current = setTimeout(() => fetchData(), 500);
+  }, [fetchData]);
+
   useEffect(() => {
     fetchData();
 
     const channel = supabase
       .channel('shop-stops-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'stops' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stops' }, () => debouncedFetch())
       .subscribe();
 
     return () => {
+      if (debouncedFetchRef.current) clearTimeout(debouncedFetchRef.current);
       supabase.removeChannel(channel);
     };
-  }, [fetchData]);
+  }, [fetchData, debouncedFetch]);
 
-  // A stop goes to history if: delivered OR scheduled for a previous day and not picked/in-transit
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  const todayStart = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
-  const isExpiredOrDone = (s: Stop) =>
+  const isExpiredOrDone = useCallback((s: Stop) =>
     s.status === 'delivered' ||
-    (s.scheduled_pickup_at && new Date(s.scheduled_pickup_at) < todayStart && s.status !== 'picked');
+    (s.scheduled_pickup_at && new Date(s.scheduled_pickup_at) < todayStart && s.status !== 'picked'),
+  [todayStart]);
 
-  const activeStops = stops.filter((s) => !isExpiredOrDone(s));
+  const activeStops = useMemo(() => stops.filter((s) => !isExpiredOrDone(s)), [stops, isExpiredOrDone]);
+  const deliveredStops = useMemo(() => stops.filter((s) => isExpiredOrDone(s)), [stops, isExpiredOrDone]);
 
-  // History: all that are NOT active
-  const deliveredStops = stops.filter((s) => isExpiredOrDone(s));
+  const pendingCount = useMemo(() => activeStops.filter((s) => s.status === 'pending').length, [activeStops]);
+  const assignedCount = useMemo(() => activeStops.filter((s) => s.status === 'assigned').length, [activeStops]);
+  const pickedCount = useMemo(() => activeStops.filter((s) => s.status === 'picked').length, [activeStops]);
 
-  const pendingCount = activeStops.filter((s) => s.status === 'pending').length;
-  const assignedCount = activeStops.filter((s) => s.status === 'assigned').length;
-  const pickedCount = activeStops.filter((s) => s.status === 'picked').length;
-
-  // Split delivered: today vs older
-  const todayDelivered = deliveredStops.filter((s) => {
+  const todayDelivered = useMemo(() => deliveredStops.filter((s) => {
     const d = new Date(s.delivered_at || s.updated_at);
     return d >= todayStart;
-  });
-  const olderDelivered = deliveredStops.filter((s) => {
+  }), [deliveredStops, todayStart]);
+
+  const olderDelivered = useMemo(() => deliveredStops.filter((s) => {
     const d = new Date(s.delivered_at || s.updated_at);
     return d < todayStart;
-  });
+  }), [deliveredStops, todayStart]);
 
   const deliveredCount = deliveredStops.length;
 
