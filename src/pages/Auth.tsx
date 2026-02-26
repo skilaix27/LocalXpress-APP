@@ -132,6 +132,11 @@ export default function Auth() {
             Contacta con tu administrador si no tienes acceso
           </p>
         </div>
+
+        {/* Legal notice */}
+        <p className="text-center text-muted-foreground/70 text-xs mt-6 max-w-sm mx-auto leading-relaxed">
+          Los datos personales recogidos se utilizarán exclusivamente con fines profesionales de gestión de repartos, conforme al RGPD. No se cederán a terceros.
+        </p>
       </motion.div>
     </div>
   );
