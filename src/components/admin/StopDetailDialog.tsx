@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ProofImage } from '@/components/ui/ProofImage';
 import { getDeliveryZone, adjustDistance } from '@/lib/delivery-zones';
 import {
   ResponsiveDialog, ResponsiveDialogHeader, ResponsiveDialogTitle, ResponsiveDialogDescription,
@@ -271,7 +272,7 @@ export function StopDetailDialog({ stop, open, onOpenChange, drivers, onUpdate, 
               <div className="flex items-center gap-2 text-sm font-medium">
                 <Camera className="w-4 h-4 text-status-delivered" /> Foto de entrega
               </div>
-              <img src={stop.proof_photo_url} alt="Prueba de entrega" className="w-full rounded-lg border max-h-64 object-cover" />
+              <ProofImage proofPhotoUrl={stop.proof_photo_url} />
             </div>
           )}
 

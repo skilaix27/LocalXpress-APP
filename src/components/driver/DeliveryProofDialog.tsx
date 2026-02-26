@@ -53,14 +53,12 @@ export const DeliveryProofDialog = forwardRef<HTMLDivElement, DeliveryProofDialo
         .upload(filePath, photo, { contentType: photo.type });
       if (uploadError) throw uploadError;
 
-      const { data: urlData } = supabase.storage.from('delivery-proofs').getPublicUrl(filePath);
-
       const { error: updateError } = await supabase
         .from('stops')
         .update({
           status: 'delivered',
           delivered_at: new Date().toISOString(),
-          proof_photo_url: urlData.publicUrl,
+          proof_photo_url: filePath,
           updated_at: new Date().toISOString(),
         })
         .eq('id', stop.id);
