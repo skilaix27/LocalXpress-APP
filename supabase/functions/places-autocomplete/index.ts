@@ -13,15 +13,25 @@ serve(async (req) => {
   try {
     const GOOGLE_MAPS_API_KEY = Deno.env.get('GOOGLE_MAPS_API_KEY');
     if (!GOOGLE_MAPS_API_KEY) {
-      throw new Error('GOOGLE_MAPS_API_KEY is not configured');
+      console.error('[places-autocomplete] GOOGLE_MAPS_API_KEY not configured');
+      return new Response(JSON.stringify({ error: 'Servicio no disponible' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const { input, action, placeId } = await req.json();
 
-    // Action: "autocomplete" or "details"
+    // Action: "details"
     if (action === 'details' && placeId) {
-      // Place Details to get precise coordinates
-      const url = `https://places.googleapis.com/v1/places/${placeId}`;
+      if (typeof placeId !== 'string' || placeId.length > 300) {
+        return new Response(JSON.stringify({ error: 'ID de lugar inválido' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const url = `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`;
       const res = await fetch(url, {
         headers: {
           'Content-Type': 'application/json',
@@ -33,7 +43,7 @@ serve(async (req) => {
       const data = await res.json();
       if (!res.ok) {
         console.error('Places Details error:', JSON.stringify(data));
-        return new Response(JSON.stringify({ error: data.error?.message || 'Places API error' }), {
+        return new Response(JSON.stringify({ error: 'Error al obtener detalles del lugar' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -52,7 +62,7 @@ serve(async (req) => {
     }
 
     // Default: Autocomplete
-    if (!input || input.trim().length < 2) {
+    if (!input || typeof input !== 'string' || input.trim().length < 2 || input.length > 500) {
       return new Response(JSON.stringify({ predictions: [] }), {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -83,7 +93,7 @@ serve(async (req) => {
 
     if (!res.ok) {
       console.error('Places Autocomplete error:', JSON.stringify(data));
-      return new Response(JSON.stringify({ error: data.error?.message || 'Places API error' }), {
+      return new Response(JSON.stringify({ error: 'Error en la búsqueda de direcciones' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -104,7 +114,7 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error('Places proxy error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: 'Error al procesar la solicitud' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

@@ -53,8 +53,22 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { profile_id, full_name, phone, password, is_active } = body;
 
-    if (!profile_id) {
+    if (!profile_id || typeof profile_id !== 'string') {
       return new Response(JSON.stringify({ error: "Se requiere profile_id" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Validate optional fields
+    if (full_name !== undefined && (typeof full_name !== 'string' || full_name.trim().length < 1 || full_name.length > 200)) {
+      return new Response(JSON.stringify({ error: "Nombre inválido" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (phone !== undefined && phone !== null && phone !== '' && (typeof phone !== 'string' || phone.length > 30)) {
+      return new Response(JSON.stringify({ error: "Teléfono inválido" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -76,7 +90,7 @@ Deno.serve(async (req) => {
 
     // Update profile fields
     const profileUpdates: Record<string, unknown> = {};
-    if (full_name !== undefined) profileUpdates.full_name = full_name;
+    if (full_name !== undefined) profileUpdates.full_name = full_name.trim();
     if (phone !== undefined) profileUpdates.phone = phone || null;
     if (is_active !== undefined) profileUpdates.is_active = is_active;
 
@@ -87,7 +101,8 @@ Deno.serve(async (req) => {
         .eq("id", profile_id);
 
       if (updateError) {
-        return new Response(JSON.stringify({ error: `Error al actualizar perfil: ${updateError.message}` }), {
+        console.error("[update-user] Profile update error:", updateError);
+        return new Response(JSON.stringify({ error: "Error al actualizar perfil" }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -109,7 +124,8 @@ Deno.serve(async (req) => {
       );
 
       if (authError) {
-        return new Response(JSON.stringify({ error: `Error al cambiar contraseña: ${authError.message}` }), {
+        console.error("[update-user] Password update error:", authError);
+        return new Response(JSON.stringify({ error: "Error al cambiar contraseña" }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -121,7 +137,8 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    console.error("[update-user] Internal error:", err);
+    return new Response(JSON.stringify({ error: "Error al procesar la solicitud" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

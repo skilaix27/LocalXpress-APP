@@ -13,8 +13,10 @@ Deno.serve(async (req) => {
 
   try {
     const { username } = await req.json();
-    if (!username) {
-      return new Response(JSON.stringify({ error: "Username required" }), {
+
+    // Input validation
+    if (!username || typeof username !== "string" || username.trim().length < 1 || username.length > 100) {
+      return new Response(JSON.stringify({ error: "Nombre de usuario inválido" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -25,11 +27,14 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // Sanitize input for ilike pattern matching
+    const sanitized = username.replace(/[%_\\]/g, "");
+
     // Search by full_name (case-insensitive)
     const { data: profiles } = await supabaseAdmin
       .from("profiles")
       .select("user_id, full_name")
-      .ilike("full_name", `%${username}%`);
+      .ilike("full_name", `%${sanitized}%`);
 
     if (!profiles || profiles.length === 0) {
       return new Response(JSON.stringify({ error: "Usuario no encontrado" }), {
@@ -52,7 +57,8 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    console.error("[lookup-email] Internal error:", err);
+    return new Response(JSON.stringify({ error: "Error al procesar la solicitud" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
