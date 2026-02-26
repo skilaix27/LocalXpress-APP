@@ -11,11 +11,14 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import type { Stop, Profile } from '@/lib/supabase-types';
-import { MapPin, User, Phone, FileText, Trash2, Truck, Clock, Camera, Receipt, Route, Store, CalendarClock } from 'lucide-react';
+import type { Stop, Profile, StopStatus } from '@/lib/supabase-types';
+import { MapPin, User, Phone, FileText, Trash2, Truck, Clock, Camera, Receipt, Route, Store, CalendarClock, Pencil, Save, X } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DeliveryReceipt } from './DeliveryReceipt';
@@ -33,8 +36,63 @@ export function StopDetailDialog({ stop, open, onOpenChange, drivers, onUpdate, 
   const [deleting, setDeleting] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Edit form state
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editStatus, setEditStatus] = useState<StopStatus>('pending');
 
   if (!stop) return null;
+
+  const startEditing = () => {
+    setEditName(stop.client_name);
+    setEditPhone(stop.client_phone || '');
+    setEditNotes(stop.client_notes || '');
+    setEditStatus(stop.status);
+    setEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setEditing(false);
+  };
+
+  const saveChanges = async () => {
+    setSaving(true);
+    try {
+      const updateData: Record<string, any> = {
+        client_name: editName.trim(),
+        client_phone: editPhone.trim() || null,
+        client_notes: editNotes.trim() || null,
+        status: editStatus,
+      };
+
+      // If status changed to delivered, set delivered_at
+      if (editStatus === 'delivered' && stop.status !== 'delivered') {
+        updateData.delivered_at = new Date().toISOString();
+      }
+      // If status changed from delivered to something else, clear delivered_at
+      if (editStatus !== 'delivered' && stop.status === 'delivered') {
+        updateData.delivered_at = null;
+      }
+      // If changing to pending, clear driver
+      if (editStatus === 'pending') {
+        updateData.driver_id = null;
+      }
+
+      const { error } = await supabase.from('stops').update(updateData).eq('id', stop.id);
+      if (error) throw error;
+      toast.success('Parada actualizada');
+      setEditing(false);
+      onUpdate();
+    } catch (error: any) {
+      toast.error('Error al guardar', { description: error.message });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const assignDriver = async (driverId: string) => {
     setAssigning(true);
@@ -73,7 +131,7 @@ export function StopDetailDialog({ stop, open, onOpenChange, drivers, onUpdate, 
   const currentDriver = drivers.find((d) => d.id === stop.driver_id);
 
   return (
-    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+    <ResponsiveDialog open={open} onOpenChange={(o) => { if (!o) setEditing(false); onOpenChange(o); }}>
       <ResponsiveDialogHeader>
         <ResponsiveDialogTitle className="flex items-center gap-2">
           <User className="w-5 h-5 text-primary" />
@@ -85,16 +143,55 @@ export function StopDetailDialog({ stop, open, onOpenChange, drivers, onUpdate, 
         <ResponsiveDialogDescription>Detalle de la parada</ResponsiveDialogDescription>
       </ResponsiveDialogHeader>
 
-      {stop.status === 'delivered' && (
+      {stop.status === 'delivered' && !editing && (
         <Button variant={showReceipt ? 'default' : 'outline'} className="w-full" onClick={() => setShowReceipt(!showReceipt)}>
           <Receipt className="w-4 h-4 mr-2" />
           {showReceipt ? 'Volver al detalle' : 'Ver justificante de entrega'}
         </Button>
       )}
 
-      {showReceipt && stop.status === 'delivered' ? (
+      {showReceipt && stop.status === 'delivered' && !editing ? (
         <DeliveryReceipt stop={stop} driver={currentDriver} />
+      ) : editing ? (
+        /* ─── EDIT MODE ─── */
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Nombre del cliente</Label>
+            <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Teléfono</Label>
+            <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Opcional" />
+          </div>
+          <div className="space-y-2">
+            <Label>Notas</Label>
+            <Textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} placeholder="Opcional" rows={3} />
+          </div>
+          <div className="space-y-2">
+            <Label>Estado</Label>
+            <Select value={editStatus} onValueChange={(v) => setEditStatus(v as StopStatus)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">Pendiente</SelectItem>
+                <SelectItem value="assigned">Asignado</SelectItem>
+                <SelectItem value="picked">Recogido</SelectItem>
+                <SelectItem value="delivered">Entregado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex gap-2">
+            <Button className="flex-1" onClick={saveChanges} disabled={saving || !editName.trim()}>
+              <Save className="w-4 h-4 mr-2" />
+              {saving ? 'Guardando...' : 'Guardar'}
+            </Button>
+            <Button variant="outline" onClick={cancelEditing} disabled={saving}>
+              <X className="w-4 h-4 mr-2" />
+              Cancelar
+            </Button>
+          </div>
+        </div>
       ) : (
+        /* ─── VIEW MODE ─── */
         <div className="space-y-4">
           {shopName && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
@@ -195,7 +292,12 @@ export function StopDetailDialog({ stop, open, onOpenChange, drivers, onUpdate, 
             </div>
           )}
 
-          <div className="pt-2 border-t">
+          {/* Admin actions: Edit + Delete */}
+          <div className="pt-2 border-t space-y-2">
+            <Button variant="outline" className="w-full" onClick={startEditing}>
+              <Pencil className="w-4 h-4 mr-2" />
+              Editar parada
+            </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" className="w-full" disabled={deleting}>
