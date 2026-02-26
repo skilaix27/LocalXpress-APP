@@ -5,16 +5,20 @@ import { ShopStopDetailDialog } from '@/components/shop/ShopStopDetailDialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { Stop } from '@/lib/supabase-types';
-import { Search, History, Package, Download } from 'lucide-react';
-import { format } from 'date-fns';
+import { Search, History, Package, Download, CalendarIcon, X } from 'lucide-react';
+import { format, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 export default function ShopHistory() {
   const { deliveredStops: historyStops } = useShopData();
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
 
   const filtered = useMemo(() => {
     let result = [...historyStops];
@@ -28,10 +32,16 @@ export default function ShopHistory() {
           (s.order_code && s.order_code.toLowerCase().includes(q))
       );
     }
+    if (selectedDate) {
+      result = result.filter((s) => {
+        const d = new Date(s.delivered_at || s.updated_at);
+        return isSameDay(d, selectedDate);
+      });
+    }
     return result.sort(
       (a, b) => new Date(b.delivered_at || b.updated_at).getTime() - new Date(a.delivered_at || a.updated_at).getTime()
     );
-  }, [historyStops, search]);
+  }, [historyStops, search, selectedDate]);
 
   const exportCSV = () => {
     if (filtered.length === 0) return;
@@ -70,14 +80,46 @@ export default function ShopHistory() {
         </Button>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar por cliente, dirección..."
-          value={search} onChange={(e) => setSearch(e.target.value)}
-          className="pl-10"
-        />
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por cliente, dirección..."
+            value={search} onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="icon" className={cn("shrink-0", selectedDate && "border-primary text-primary")}>
+              <CalendarIcon className="w-4 h-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="end">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={setSelectedDate}
+              initialFocus
+              className={cn("p-3 pointer-events-auto")}
+              locale={es}
+            />
+            {selectedDate && (
+              <div className="p-2 pt-0 text-center">
+                <Button variant="ghost" size="sm" onClick={() => setSelectedDate(undefined)} className="text-xs">
+                  <X className="w-3 h-3 mr-1" /> Limpiar filtro
+                </Button>
+              </div>
+            )}
+          </PopoverContent>
+        </Popover>
       </div>
+
+      {selectedDate && (
+        <div className="text-xs text-muted-foreground">
+          Filtrando: <span className="font-medium text-foreground">{format(selectedDate, "d 'de' MMMM yyyy", { locale: es })}</span>
+        </div>
+      )}
 
       <div className="space-y-3">
         {filtered.map((stop) => (
@@ -88,7 +130,7 @@ export default function ShopHistory() {
             <CardContent className="py-12 text-center">
               <Package className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
               <p className="text-muted-foreground">
-                {search ? 'No se encontraron entregas' : 'No hay entregas completadas aún'}
+                {search || selectedDate ? 'No se encontraron entregas' : 'No hay entregas completadas aún'}
               </p>
             </CardContent>
           </Card>
