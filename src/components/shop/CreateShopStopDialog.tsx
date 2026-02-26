@@ -148,6 +148,19 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
 
       if (error) throw error;
 
+      // Notify admin via email (fire-and-forget, don't block UI)
+      supabase.functions.invoke('notify-new-stop', {
+        body: {
+          order_code: orderCode,
+          shop_name: profile.shop_name || profile.full_name,
+          client_name: data.client_name,
+          pickup_address: data.pickup_address,
+          delivery_address: data.delivery_address,
+          scheduled_pickup_at: scheduledDate.toISOString(),
+          distance_km: routeDistance,
+        },
+      }).catch(console.error);
+
       toast.success('Pedido creado correctamente');
       form.reset();
       setPickupResolved(false);
