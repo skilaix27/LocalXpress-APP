@@ -22,7 +22,7 @@ export function DriverCard({
   className 
 }: DriverCardProps) {
   const isOnline = location && 
-    new Date(location.updated_at).getTime() > Date.now() - 5 * 60 * 1000; // 5 mins
+    new Date(location.updated_at).getTime() > Date.now() - 2 * 60 * 60 * 1000; // 2 hours
 
   return (
     <Card 

@@ -65,7 +65,7 @@ export default function AdminMap() {
         <DeliveryMap
           stops={filteredStops}
           driverLocations={driverLocations
-            .filter((loc) => new Date(loc.updated_at).getTime() > Date.now() - 5 * 60 * 1000)
+            .filter((loc) => new Date(loc.updated_at).getTime() > Date.now() - 2 * 60 * 60 * 1000)
             .map((loc) => ({
               ...loc,
               driver: getDriverById(loc.driver_id) || undefined,

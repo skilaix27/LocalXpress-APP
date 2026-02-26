@@ -114,7 +114,9 @@ export default function AdminDashboard() {
             <CardContent className="p-2 h-[calc(100%-60px)]">
               <DeliveryMap
                 stops={stops.filter((s) => s.status !== 'delivered')}
-                driverLocations={driverLocations.map((loc) => ({
+                driverLocations={driverLocations
+                  .filter((loc) => new Date(loc.updated_at).getTime() > Date.now() - 2 * 60 * 60 * 1000)
+                  .map((loc) => ({
                   ...loc,
                   driver: getDriverById(loc.driver_id) || undefined,
                 }))}
