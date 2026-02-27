@@ -63,6 +63,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           phone: string | null
+          privacy_accepted_at: string | null
           shop_name: string | null
           updated_at: string
           user_id: string
@@ -77,6 +78,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           phone?: string | null
+          privacy_accepted_at?: string | null
           shop_name?: string | null
           updated_at?: string
           user_id: string
@@ -91,6 +93,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           phone?: string | null
+          privacy_accepted_at?: string | null
           shop_name?: string | null
           updated_at?: string
           user_id?: string

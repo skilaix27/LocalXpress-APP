@@ -11,9 +11,11 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
   isAdmin: boolean;
   isDriver: boolean;
   isShop: boolean;
+  privacyAccepted: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -100,6 +102,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRole(null);
   };
 
+  const refreshProfile = async () => {
+    if (user) {
+      await fetchUserData(user.id);
+    }
+  };
+
   const value = {
     user,
     session,
@@ -108,9 +116,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     signIn,
     signOut,
+    refreshProfile,
     isAdmin: role === 'admin',
     isDriver: role === 'driver',
     isShop: role === 'shop',
+    privacyAccepted: !!(profile as any)?.privacy_accepted_at,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

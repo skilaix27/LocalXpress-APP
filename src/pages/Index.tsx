@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { PrivacyConsentDialog } from '@/components/shared/PrivacyConsentDialog';
 
 export default function Index() {
-  const { user, role, loading } = useAuth();
+  const { user, role, profile, loading, privacyAccepted, refreshProfile } = useAuth();
+  const [justAccepted, setJustAccepted] = useState(false);
 
   if (loading) {
     return (
@@ -19,6 +22,24 @@ export default function Index() {
     return <Navigate to="/auth" replace />;
   }
 
+  // Show privacy consent for drivers and shops on first login
+  const needsConsent = (role === 'driver' || role === 'shop') && !privacyAccepted && !justAccepted;
+
+  if (needsConsent && profile) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <PrivacyConsentDialog
+          open={true}
+          profileId={profile.id}
+          onAccepted={() => {
+            setJustAccepted(true);
+            refreshProfile();
+          }}
+        />
+      </div>
+    );
+  }
+
   // Redirect based on role
   if (role === 'admin') {
     return <Navigate to="/admin" replace />;
@@ -33,28 +54,15 @@ export default function Index() {
     <div className="h-screen flex items-center justify-center bg-background">
       <div className="text-center max-w-md p-6">
         <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-          <svg
-            className="w-8 h-8 text-primary"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
+          <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
         <h2 className="text-xl font-bold mb-2">Cuenta pendiente</h2>
         <p className="text-muted-foreground mb-4">
           Tu cuenta está pendiente de asignación de rol. Un administrador te asignará como repartidor o admin pronto.
         </p>
-        <button
-          onClick={() => window.location.reload()}
-          className="text-primary hover:underline text-sm"
-        >
+        <button onClick={() => window.location.reload()} className="text-primary hover:underline text-sm">
           Refrescar página
         </button>
       </div>
