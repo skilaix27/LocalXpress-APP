@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Shield } from 'lucide-react';
@@ -46,8 +45,8 @@ export function PrivacyConsentDialog({ open, profileId, onAccepted }: PrivacyCon
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 max-h-[50dvh] pr-4">
-          <div className="space-y-4 text-sm text-muted-foreground leading-relaxed pb-6">
+        <div className="flex-1 min-h-0 max-h-[50dvh] overflow-y-auto pr-4">
+          <div className="space-y-4 text-sm text-muted-foreground leading-relaxed pb-8">
             <p className="font-semibold text-foreground">
               Antes de continuar, es necesario que leas y aceptes nuestra política de privacidad y cookies conforme al Reglamento General de Protección de Datos (RGPD) y la Ley Orgánica 3/2018, de 5 de diciembre, de Protección de Datos Personales y garantía de los derechos digitales (LOPDGDD).
             </p>
@@ -141,7 +140,7 @@ export function PrivacyConsentDialog({ open, profileId, onAccepted }: PrivacyCon
               </p>
             </section>
           </div>
-        </ScrollArea>
+        </div>
 
         <div className="flex items-start gap-3 pt-2 border-t">
           <Checkbox
