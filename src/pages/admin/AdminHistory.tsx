@@ -1,20 +1,28 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useAdminData } from '@/hooks/useAdminData';
 import { StopCard } from '@/components/admin/StopCard';
 import { StopDetailDialog } from '@/components/admin/StopDetailDialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import type { Stop } from '@/lib/supabase-types';
-import { Search, History, Package, Download, CalendarIcon, User, X, Store, ArrowUpDown, SlidersHorizontal } from 'lucide-react';
+import { Search, History, Package, Download, CalendarIcon, User, X, Store, ArrowUpDown, SlidersHorizontal, Trash2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 type SortOption = 'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'distance_asc' | 'distance_desc';
+
+const PAGE_SIZE = 30;
 
 export default function AdminHistory() {
   const { allStops, drivers, loading, fetchData, getDriverById } = useAdminData();
@@ -29,6 +37,9 @@ export default function AdminHistory() {
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [showFilters, setShowFilters] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [deleting, setDeleting] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const historyStops = useMemo(() => {
     const todayStart = new Date();
@@ -40,18 +51,11 @@ export default function AdminHistory() {
 
     let result = allStops.filter((s) => isExpiredOrDone(s));
 
-    if (selectedDriverId !== 'all') {
-      result = result.filter((s) => s.driver_id === selectedDriverId);
-    }
-    if (selectedShopName !== 'all') {
-      result = result.filter((s) => s.shop_name === selectedShopName);
-    }
-    if (selectedPackageSize !== 'all') {
-      result = result.filter((s) => s.package_size === selectedPackageSize);
-    }
-    if (selectedStatus !== 'all') {
-      result = result.filter((s) => s.status === selectedStatus);
-    }
+    if (selectedDriverId !== 'all') result = result.filter((s) => s.driver_id === selectedDriverId);
+    if (selectedShopName !== 'all') result = result.filter((s) => s.shop_name === selectedShopName);
+    if (selectedPackageSize !== 'all') result = result.filter((s) => s.package_size === selectedPackageSize);
+    if (selectedStatus !== 'all') result = result.filter((s) => s.status === selectedStatus);
+
     if (dateFrom || dateTo) {
       result = result.filter((s) => {
         const d = new Date(s.delivered_at || s.scheduled_pickup_at || s.updated_at);
@@ -90,6 +94,29 @@ export default function AdminHistory() {
     return result;
   }, [allStops, search, dateFrom, dateTo, selectedDriverId, selectedShopName, selectedPackageSize, selectedStatus, sortBy]);
 
+  // Reset visible count when filters change
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [search, dateFrom, dateTo, selectedDriverId, selectedShopName, selectedPackageSize, selectedStatus, sortBy]);
+
+  // Infinite scroll with IntersectionObserver
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && visibleCount < historyStops.length) {
+          setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, historyStops.length));
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [visibleCount, historyStops.length]);
+
+  const visibleStops = useMemo(() => historyStops.slice(0, visibleCount), [historyStops, visibleCount]);
+
   const driversInHistory = useMemo(() => {
     const ids = new Set(allStops.filter(s => s.driver_id).map(s => s.driver_id!));
     return drivers.filter(d => ids.has(d.id));
@@ -112,6 +139,41 @@ export default function AdminHistory() {
   };
 
   const hasActiveFilters = selectedDriverId !== 'all' || selectedShopName !== 'all' || selectedPackageSize !== 'all' || selectedStatus !== 'all' || dateFrom || dateTo || search || sortBy !== 'newest';
+
+  const deleteFilteredHistory = useCallback(async () => {
+    if (historyStops.length === 0) return;
+    setDeleting(true);
+    try {
+      const stopIds = historyStops.map(s => s.id);
+      const proofUrls = historyStops
+        .filter(s => s.proof_photo_url)
+        .map(s => s.proof_photo_url!);
+
+      // Delete proof photos from storage in batches
+      if (proofUrls.length > 0) {
+        const batchSize = 50;
+        for (let i = 0; i < proofUrls.length; i += batchSize) {
+          const batch = proofUrls.slice(i, i + batchSize);
+          await supabase.storage.from('delivery-proofs').remove(batch);
+        }
+      }
+
+      // Delete stops in batches (Supabase has limits)
+      const batchSize = 100;
+      for (let i = 0; i < stopIds.length; i += batchSize) {
+        const batch = stopIds.slice(i, i + batchSize);
+        const { error } = await supabase.from('stops').delete().in('id', batch);
+        if (error) throw error;
+      }
+
+      toast.success(`${stopIds.length} registros eliminados del historial`);
+      fetchData();
+    } catch (error: any) {
+      toast.error('Error al eliminar', { description: error.message });
+    } finally {
+      setDeleting(false);
+    }
+  }, [historyStops, fetchData]);
 
   const exportCSV = () => {
     if (historyStops.length === 0) return;
@@ -180,8 +242,32 @@ export default function AdminHistory() {
           </Button>
           <Button variant="outline" size="sm" onClick={exportCSV} disabled={historyStops.length === 0} className="shrink-0">
             <Download className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">Exportar CSV</span>
+            <span className="hidden sm:inline">CSV</span>
           </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm" disabled={historyStops.length === 0 || deleting} className="shrink-0">
+                {deleting ? <Loader2 className="w-4 h-4 animate-spin sm:mr-2" /> : <Trash2 className="w-4 h-4 sm:mr-2" />}
+                <span className="hidden sm:inline">{deleting ? 'Borrando...' : 'Borrar'}</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Borrar historial?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Se eliminarán permanentemente <strong>{historyStops.length} registros</strong>
+                  {hasActiveFilters ? ' que coinciden con los filtros actuales' : ' del historial completo'},
+                  incluyendo sus fotos de prueba de entrega. Esta acción no se puede deshacer.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={deleteFilteredHistory} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Borrar {historyStops.length} registros
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 
@@ -201,7 +287,6 @@ export default function AdminHistory() {
         <Card>
           <CardContent className="p-3 sm:p-4 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {/* Driver */}
               <Select value={selectedDriverId} onValueChange={setSelectedDriverId}>
                 <SelectTrigger>
                   <User className="w-4 h-4 mr-2 text-muted-foreground shrink-0" />
@@ -215,7 +300,6 @@ export default function AdminHistory() {
                 </SelectContent>
               </Select>
 
-              {/* Shop */}
               <Select value={selectedShopName} onValueChange={setSelectedShopName}>
                 <SelectTrigger>
                   <Store className="w-4 h-4 mr-2 text-muted-foreground shrink-0" />
@@ -229,7 +313,6 @@ export default function AdminHistory() {
                 </SelectContent>
               </Select>
 
-              {/* Package size */}
               <Select value={selectedPackageSize} onValueChange={setSelectedPackageSize}>
                 <SelectTrigger>
                   <Package className="w-4 h-4 mr-2 text-muted-foreground shrink-0" />
@@ -243,7 +326,6 @@ export default function AdminHistory() {
                 </SelectContent>
               </Select>
 
-              {/* Status */}
               <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                 <SelectTrigger>
                   <SelectValue placeholder="Estado" />
@@ -256,7 +338,6 @@ export default function AdminHistory() {
                 </SelectContent>
               </Select>
 
-              {/* Sort */}
               <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
                 <SelectTrigger>
                   <ArrowUpDown className="w-4 h-4 mr-2 text-muted-foreground shrink-0" />
@@ -320,7 +401,7 @@ export default function AdminHistory() {
       )}
 
       <div className="space-y-3">
-        {historyStops.map((stop) => (
+        {visibleStops.map((stop) => (
           <StopCard
             key={stop.id}
             stop={stop}
@@ -329,6 +410,14 @@ export default function AdminHistory() {
             onClick={() => { setSelectedStop(stop); setDetailDialogOpen(true); }}
           />
         ))}
+
+        {/* Infinite scroll sentinel */}
+        {visibleCount < historyStops.length && (
+          <div ref={sentinelRef} className="flex justify-center py-4">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        )}
+
         {historyStops.length === 0 && (
           <Card>
             <CardContent className="py-12 text-center">
