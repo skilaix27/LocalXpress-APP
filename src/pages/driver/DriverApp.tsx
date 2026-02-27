@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { DeliveryMap } from '@/components/map/DeliveryMap';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { DeliveryProofDialog } from '@/components/driver/DeliveryProofDialog';
+import { ChangePasswordDialog } from '@/components/shared/ChangePasswordDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { Stop } from '@/lib/supabase-types';
@@ -31,6 +32,8 @@ import {
   List,
   ArrowLeft,
   Store,
+  Lock,
+  MoreVertical,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -51,6 +54,7 @@ export default function DriverApp() {
   const [proofDialogOpen, setProofDialogOpen] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
   const [gpsStatus, setGpsStatus] = useState<'loading' | 'active' | 'denied' | 'unavailable'>('loading');
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
 
   const fetchStops = useCallback(async () => {
@@ -293,9 +297,21 @@ export default function DriverApp() {
                 <List className="w-4.5 h-4.5" />
               </Button>
             )}
-            <Button variant="ghost" size="icon" onClick={signOut} className="h-9 w-9 rounded-xl text-secondary-foreground/70 hover:text-secondary-foreground hover:bg-secondary-foreground/10">
-              <LogOut className="w-4.5 h-4.5" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-secondary-foreground/70 hover:text-secondary-foreground hover:bg-secondary-foreground/10">
+                  <MoreVertical className="w-4.5 h-4.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setPasswordDialogOpen(true)} className="cursor-pointer">
+                  <Lock className="w-4 h-4 mr-2" /> Cambiar contraseña
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={signOut} className="cursor-pointer text-destructive">
+                  <LogOut className="w-4 h-4 mr-2" /> Cerrar sesión
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -570,6 +586,8 @@ export default function DriverApp() {
           onSuccess={fetchStops}
         />
       )}
+
+      <ChangePasswordDialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen} />
     </div>
   );
 }
