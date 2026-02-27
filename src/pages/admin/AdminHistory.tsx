@@ -5,12 +5,14 @@ import { StopDetailDialog } from '@/components/admin/StopDetailDialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import type { Stop } from '@/lib/supabase-types';
-import { Search, History, Package, Download, CalendarIcon } from 'lucide-react';
+import { Search, History, Package, Download, CalendarIcon, User, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { format, startOfDay, endOfDay, isSameDay } from 'date-fns';
+import { format, isSameDay, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 
 export default function AdminHistory() {
   const { allStops, drivers, loading, fetchData, getDriverById, getShopById } = useAdminData();
@@ -18,7 +20,11 @@ export default function AdminHistory() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  // History: delivered + expired (scheduled for past day and not picked)
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [selectedDriverId, setSelectedDriverId] = useState<string>('all');
+
+  // History: delivered + expired
   const historyStops = useMemo(() => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -28,12 +34,33 @@ export default function AdminHistory() {
       (s.scheduled_pickup_at && new Date(s.scheduled_pickup_at) < todayStart && s.status !== 'picked');
 
     let result = allStops.filter((s) => isExpiredOrDone(s));
-    if (selectedDate) {
+
+    // Filter by driver
+    if (selectedDriverId !== 'all') {
+      result = result.filter((s) => s.driver_id === selectedDriverId);
+    }
+
+    // Filter by single date
+    if (selectedDate && !dateFrom && !dateTo) {
       result = result.filter((s) => {
         const d = new Date(s.delivered_at || s.scheduled_pickup_at || s.updated_at);
         return isSameDay(d, selectedDate);
       });
     }
+
+    // Filter by date range
+    if (dateFrom || dateTo) {
+      result = result.filter((s) => {
+        const d = new Date(s.delivered_at || s.scheduled_pickup_at || s.updated_at);
+        if (dateFrom && dateTo) {
+          return isWithinInterval(d, { start: startOfDay(dateFrom), end: endOfDay(dateTo) });
+        }
+        if (dateFrom) return d >= startOfDay(dateFrom);
+        if (dateTo) return d <= endOfDay(dateTo);
+        return true;
+      });
+    }
+
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(
@@ -47,12 +74,28 @@ export default function AdminHistory() {
     return result.sort(
       (a, b) => new Date(b.delivered_at || b.scheduled_pickup_at || b.updated_at).getTime() - new Date(a.delivered_at || a.scheduled_pickup_at || a.updated_at).getTime()
     );
-  }, [allStops, search, selectedDate]);
+  }, [allStops, search, selectedDate, dateFrom, dateTo, selectedDriverId]);
+
+  // Drivers that appear in history
+  const driversInHistory = useMemo(() => {
+    const ids = new Set(allStops.filter(s => s.driver_id).map(s => s.driver_id!));
+    return drivers.filter(d => ids.has(d.id));
+  }, [allStops, drivers]);
 
   const handleStopClick = (stop: Stop) => {
     setSelectedStop(stop);
     setDetailDialogOpen(true);
   };
+
+  const clearFilters = () => {
+    setSelectedDate(undefined);
+    setDateFrom(undefined);
+    setDateTo(undefined);
+    setSelectedDriverId('all');
+    setSearch('');
+  };
+
+  const hasActiveFilters = selectedDriverId !== 'all' || selectedDate || dateFrom || dateTo || search;
 
   const exportCSV = () => {
     if (historyStops.length === 0) return;
@@ -102,47 +145,94 @@ export default function AdminHistory() {
             Historial
           </h1>
           <p className="text-muted-foreground text-sm">
-            {historyStops.length} registros en historial
+            {historyStops.length} registros
+            {selectedDriverId !== 'all' && ` · ${driversInHistory.find(d => d.id === selectedDriverId)?.full_name}`}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className={selectedDate ? 'text-foreground' : 'text-muted-foreground'}>
-                <CalendarIcon className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">
-                  {selectedDate ? format(selectedDate, 'dd/MM/yyyy', { locale: es }) : 'Filtrar fecha'}
-                </span>
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={setSelectedDate}
-                locale={es}
-                initialFocus
-              />
-              {selectedDate && (
-                <div className="p-2 border-t">
-                  <Button variant="ghost" size="sm" className="w-full" onClick={() => setSelectedDate(undefined)}>
-                    Limpiar filtro
-                  </Button>
-                </div>
-              )}
-            </PopoverContent>
-          </Popover>
-          <Button variant="outline" size="sm" onClick={exportCSV} disabled={historyStops.length === 0} className="shrink-0">
-            <Download className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">Exportar CSV</span>
-          </Button>
-        </div>
+        <Button variant="outline" size="sm" onClick={exportCSV} disabled={historyStops.length === 0} className="shrink-0">
+          <Download className="w-4 h-4 sm:mr-2" />
+          <span className="hidden sm:inline">Exportar CSV</span>
+        </Button>
       </div>
 
+      {/* Filters row */}
+      <div className="flex flex-col sm:flex-row gap-2">
+        {/* Driver filter */}
+        <Select value={selectedDriverId} onValueChange={setSelectedDriverId}>
+          <SelectTrigger className="sm:w-[200px]">
+            <User className="w-4 h-4 mr-2 text-muted-foreground shrink-0" />
+            <SelectValue placeholder="Repartidor" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos los repartidores</SelectItem>
+            {driversInHistory.map((d) => (
+              <SelectItem key={d.id} value={d.id}>{d.full_name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Date from */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="default" className={cn("justify-start sm:w-[160px]", dateFrom ? 'text-foreground' : 'text-muted-foreground')}>
+              <CalendarIcon className="w-4 h-4 mr-2 shrink-0" />
+              {dateFrom ? format(dateFrom, 'dd/MM/yyyy', { locale: es }) : 'Desde'}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={dateFrom}
+              onSelect={(d) => { setDateFrom(d); setSelectedDate(undefined); }}
+              locale={es}
+              initialFocus
+              className={cn("p-3 pointer-events-auto")}
+            />
+            {dateFrom && (
+              <div className="p-2 border-t">
+                <Button variant="ghost" size="sm" className="w-full" onClick={() => setDateFrom(undefined)}>Limpiar</Button>
+              </div>
+            )}
+          </PopoverContent>
+        </Popover>
+
+        {/* Date to */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="default" className={cn("justify-start sm:w-[160px]", dateTo ? 'text-foreground' : 'text-muted-foreground')}>
+              <CalendarIcon className="w-4 h-4 mr-2 shrink-0" />
+              {dateTo ? format(dateTo, 'dd/MM/yyyy', { locale: es }) : 'Hasta'}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={dateTo}
+              onSelect={(d) => { setDateTo(d); setSelectedDate(undefined); }}
+              locale={es}
+              initialFocus
+              className={cn("p-3 pointer-events-auto")}
+            />
+            {dateTo && (
+              <div className="p-2 border-t">
+                <Button variant="ghost" size="sm" className="w-full" onClick={() => setDateTo(undefined)}>Limpiar</Button>
+              </div>
+            )}
+          </PopoverContent>
+        </Popover>
+
+        {hasActiveFilters && (
+          <Button variant="ghost" size="icon" onClick={clearFilters} className="shrink-0" title="Limpiar filtros">
+            <X className="w-4 h-4" />
+          </Button>
+        )}
+      </div>
+
+      {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
-          placeholder="Buscar por cliente, dirección..."
+          placeholder="Buscar por cliente, dirección, referencia..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="pl-10"
@@ -164,7 +254,7 @@ export default function AdminHistory() {
             <CardContent className="py-12 text-center">
               <Package className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
               <p className="text-muted-foreground">
-                {search ? 'No se encontraron entregas' : 'No hay entregas completadas aún'}
+                {hasActiveFilters ? 'No se encontraron entregas con estos filtros' : 'No hay entregas completadas aún'}
               </p>
             </CardContent>
           </Card>
