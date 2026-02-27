@@ -19,7 +19,8 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Stop, Profile, StopStatus } from '@/lib/supabase-types';
-import { MapPin, User, Phone, FileText, Trash2, Truck, Clock, Camera, Receipt, Route, Store, CalendarClock, Pencil, Save, X } from 'lucide-react';
+import { MapPin, User, Phone, FileText, Trash2, Truck, Clock, Camera, Receipt, Route, Store, CalendarClock, Pencil, Save, X, Package } from 'lucide-react';
+import { getPackageSizeLabel } from '@/lib/package-size';
 import { formatDistanceToNow, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DeliveryReceipt } from './DeliveryReceipt';
@@ -239,6 +240,13 @@ export function StopDetailDialog({ stop, open, onOpenChange, drivers, onUpdate, 
             <div className="flex items-start gap-2 text-sm">
               <FileText className="w-4 h-4 text-muted-foreground mt-0.5" />
               <p className="text-muted-foreground">{stop.client_notes}</p>
+            </div>
+          )}
+
+          {stop.package_size && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+              <Package className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">{getPackageSizeLabel(stop.package_size)}</span>
             </div>
           )}
 
