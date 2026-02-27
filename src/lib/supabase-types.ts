@@ -1,5 +1,6 @@
 export type AppRole = 'admin' | 'driver' | 'shop';
 export type StopStatus = 'pending' | 'assigned' | 'picked' | 'delivered';
+export type PackageSize = 'small' | 'medium' | 'large';
 
 export interface Profile {
   id: string;
@@ -47,6 +48,7 @@ export interface Stop {
   distance_km: number | null;
   shop_name: string | null;
   scheduled_pickup_at: string | null;
+  package_size: PackageSize | null;
 }
 
 export interface DriverLocation {

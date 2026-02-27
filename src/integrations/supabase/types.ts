@@ -115,6 +115,7 @@ export type Database = {
           driver_id: string | null
           id: string
           order_code: string | null
+          package_size: Database["public"]["Enums"]["package_size"] | null
           picked_at: string | null
           pickup_address: string
           pickup_lat: number
@@ -140,6 +141,7 @@ export type Database = {
           driver_id?: string | null
           id?: string
           order_code?: string | null
+          package_size?: Database["public"]["Enums"]["package_size"] | null
           picked_at?: string | null
           pickup_address: string
           pickup_lat: number
@@ -165,6 +167,7 @@ export type Database = {
           driver_id?: string | null
           id?: string
           order_code?: string | null
+          package_size?: Database["public"]["Enums"]["package_size"] | null
           picked_at?: string | null
           pickup_address?: string
           pickup_lat?: number
@@ -231,6 +234,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "driver" | "shop"
+      package_size: "small" | "medium" | "large"
       stop_status: "pending" | "picked" | "delivered" | "assigned"
     }
     CompositeTypes: {
@@ -360,6 +364,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "driver", "shop"],
+      package_size: ["small", "medium", "large"],
       stop_status: ["pending", "picked", "delivered", "assigned"],
     },
   },
