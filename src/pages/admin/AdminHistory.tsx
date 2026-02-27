@@ -5,7 +5,7 @@ import { StopDetailDialog } from '@/components/admin/StopDetailDialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import type { Stop } from '@/lib/supabase-types';
-import { Search, History, Package, Download, CalendarIcon, User, X } from 'lucide-react';
+import { Search, History, Package, Download, CalendarIcon, User, X, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { format, isSameDay, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -23,6 +23,7 @@ export default function AdminHistory() {
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [selectedDriverId, setSelectedDriverId] = useState<string>('all');
+  const [selectedShopName, setSelectedShopName] = useState<string>('all');
 
   // History: delivered + expired
   const historyStops = useMemo(() => {
@@ -38,6 +39,11 @@ export default function AdminHistory() {
     // Filter by driver
     if (selectedDriverId !== 'all') {
       result = result.filter((s) => s.driver_id === selectedDriverId);
+    }
+
+    // Filter by shop
+    if (selectedShopName !== 'all') {
+      result = result.filter((s) => s.shop_name === selectedShopName);
     }
 
     // Filter by single date
@@ -74,13 +80,19 @@ export default function AdminHistory() {
     return result.sort(
       (a, b) => new Date(b.delivered_at || b.scheduled_pickup_at || b.updated_at).getTime() - new Date(a.delivered_at || a.scheduled_pickup_at || a.updated_at).getTime()
     );
-  }, [allStops, search, selectedDate, dateFrom, dateTo, selectedDriverId]);
+  }, [allStops, search, selectedDate, dateFrom, dateTo, selectedDriverId, selectedShopName]);
 
   // Drivers that appear in history
   const driversInHistory = useMemo(() => {
     const ids = new Set(allStops.filter(s => s.driver_id).map(s => s.driver_id!));
     return drivers.filter(d => ids.has(d.id));
   }, [allStops, drivers]);
+
+  // Unique shop names in history
+  const shopNamesInHistory = useMemo(() => {
+    const names = new Set(allStops.filter(s => s.shop_name).map(s => s.shop_name!));
+    return Array.from(names).sort();
+  }, [allStops]);
 
   const handleStopClick = (stop: Stop) => {
     setSelectedStop(stop);
@@ -92,10 +104,11 @@ export default function AdminHistory() {
     setDateFrom(undefined);
     setDateTo(undefined);
     setSelectedDriverId('all');
+    setSelectedShopName('all');
     setSearch('');
   };
 
-  const hasActiveFilters = selectedDriverId !== 'all' || selectedDate || dateFrom || dateTo || search;
+  const hasActiveFilters = selectedDriverId !== 'all' || selectedShopName !== 'all' || selectedDate || dateFrom || dateTo || search;
 
   const exportCSV = () => {
     if (historyStops.length === 0) return;
@@ -147,6 +160,7 @@ export default function AdminHistory() {
           <p className="text-muted-foreground text-sm">
             {historyStops.length} registros
             {selectedDriverId !== 'all' && ` · ${driversInHistory.find(d => d.id === selectedDriverId)?.full_name}`}
+            {selectedShopName !== 'all' && ` · ${selectedShopName}`}
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={exportCSV} disabled={historyStops.length === 0} className="shrink-0">
@@ -167,6 +181,20 @@ export default function AdminHistory() {
             <SelectItem value="all">Todos los repartidores</SelectItem>
             {driversInHistory.map((d) => (
               <SelectItem key={d.id} value={d.id}>{d.full_name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Shop filter */}
+        <Select value={selectedShopName} onValueChange={setSelectedShopName}>
+          <SelectTrigger className="sm:w-[200px]">
+            <Store className="w-4 h-4 mr-2 text-muted-foreground shrink-0" />
+            <SelectValue placeholder="Tienda" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas las tiendas</SelectItem>
+            {shopNamesInHistory.map((name) => (
+              <SelectItem key={name} value={name}>{name}</SelectItem>
             ))}
           </SelectContent>
         </Select>

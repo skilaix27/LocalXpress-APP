@@ -21,7 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Profile } from '@/lib/supabase-types';
-import { MapPin, User, Phone, FileText, Loader2, CalendarIcon, Clock, Package } from 'lucide-react';
+import { MapPin, User, Phone, FileText, Loader2, CalendarIcon, Clock, Package, Store } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
@@ -41,6 +41,7 @@ const stopSchema = z.object({
   client_name: z.string().min(1, 'Nombre del cliente requerido'),
   client_phone: z.string().optional(),
   client_notes: z.string().optional(),
+  shop_name: z.string().min(1, 'Nombre de tienda requerido'),
   driver_id: z.string().optional(),
   scheduled_date: z.date().optional(),
   scheduled_time: z.string().optional(),
@@ -69,6 +70,7 @@ export function CreateStopDialog({ open, onOpenChange, drivers, onSuccess }: Cre
       pickup_address: '', pickup_lat: 41.3851, pickup_lng: 2.1734,
       delivery_address: '', delivery_lat: 41.3920, delivery_lng: 2.1650,
       client_name: '', client_phone: '', client_notes: '',
+      shop_name: '',
       driver_id: '', scheduled_date: undefined, scheduled_time: '',
       package_size: undefined,
     },
@@ -138,6 +140,7 @@ export function CreateStopDialog({ open, onOpenChange, drivers, onSuccess }: Cre
         scheduled_pickup_at: scheduledPickupAt,
         order_code: orderCode,
         package_size: data.package_size || null,
+        shop_name: data.shop_name,
       } as any);
 
       if (error) throw error;
@@ -226,6 +229,14 @@ export function CreateStopDialog({ open, onOpenChange, drivers, onSuccess }: Cre
               <FormControl>
                 <Textarea placeholder="Instrucciones especiales, código de portal, etc." className="resize-none" rows={2} {...field} />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+
+          <FormField control={form.control} name="shop_name" render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2"><Store className="w-4 h-4" /> Nombre de la tienda</FormLabel>
+              <FormControl><Input placeholder="Ej: Floristería Rosa" {...field} /></FormControl>
               <FormMessage />
             </FormItem>
           )} />
