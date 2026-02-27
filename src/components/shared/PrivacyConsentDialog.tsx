@@ -46,8 +46,8 @@ export function PrivacyConsentDialog({ open, profileId, onAccepted }: PrivacyCon
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 max-h-[55dvh] pr-4">
-          <div className="space-y-4 text-sm text-muted-foreground leading-relaxed pb-4">
+        <ScrollArea className="flex-1 max-h-[50dvh] pr-4">
+          <div className="space-y-4 text-sm text-muted-foreground leading-relaxed pb-6">
             <p className="font-semibold text-foreground">
               Antes de continuar, es necesario que leas y aceptes nuestra política de privacidad y cookies conforme al Reglamento General de Protección de Datos (RGPD) y la Ley Orgánica 3/2018, de 5 de diciembre, de Protección de Datos Personales y garantía de los derechos digitales (LOPDGDD).
             </p>
