@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { DeliveryReceipt } from '@/components/admin/DeliveryReceipt';
 import type { Stop } from '@/lib/supabase-types';
-import { MapPin, User, Phone, FileText, Clock, Route, Image, Receipt, Store, CalendarClock } from 'lucide-react';
+import { MapPin, User, Phone, FileText, Clock, Route, Image, Receipt, Store, CalendarClock, Package } from 'lucide-react';
+import { getPackageSizeLabel } from '@/lib/package-size';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { adjustDistance, getDeliveryZone } from '@/lib/delivery-zones';
@@ -110,6 +111,13 @@ export function ShopStopDetailDialog({ stop, open, onOpenChange }: ShopStopDetai
                 <FileText className="w-3.5 h-3.5" /> Notas
               </h3>
               <p className="text-sm bg-muted p-3 rounded-lg">{stop.client_notes}</p>
+            </div>
+          )}
+
+          {stop.package_size && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-muted">
+              <Package className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-sm font-medium">{getPackageSizeLabel(stop.package_size)}</span>
             </div>
           )}
 

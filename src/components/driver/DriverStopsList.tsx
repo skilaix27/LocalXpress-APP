@@ -2,6 +2,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 import { MapPin, Clock, Package, ChevronRight, Store } from 'lucide-react';
+import { getPackageSizeLabel } from '@/lib/package-size';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Card, CardContent } from '@/components/ui/card';
 import type { Stop } from '@/lib/supabase-types';
@@ -83,6 +84,12 @@ export function DriverStopsList({ stops, onSelectStop }: DriverStopsListProps) {
                         <MapPin className="w-3 h-3 shrink-0" />
                         <span className="truncate">{stop.pickup_address}</span>
                       </div>
+                      {stop.package_size && (
+                        <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground font-medium">
+                          <Package className="w-3 h-3" />
+                          {getPackageSizeLabel(stop.package_size)}
+                        </div>
+                      )}
                     </div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
