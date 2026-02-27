@@ -1,9 +1,9 @@
 import type { PackageSize } from './supabase-types';
 
 export const PACKAGE_SIZE_LABELS: Record<PackageSize, string> = {
-  small: '🎒 Pequeño',
-  medium: '🏍️ Mediano',
-  large: '🚗 Grande',
+  small: '📦 Pequeño',
+  medium: '📦 Mediano',
+  large: '📦 Grande',
 };
 
 export const PACKAGE_SIZE_DESCRIPTIONS: Record<PackageSize, string> = {
