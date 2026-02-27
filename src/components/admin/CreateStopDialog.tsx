@@ -21,7 +21,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Profile } from '@/lib/supabase-types';
-import { MapPin, User, Phone, FileText, Loader2, CalendarIcon, Clock } from 'lucide-react';
+import { MapPin, User, Phone, FileText, Loader2, CalendarIcon, Clock, Package } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { useRouteDistance } from '@/hooks/useRouteDistance';
 import { AddressInput } from '@/components/admin/AddressInput';
@@ -42,6 +44,7 @@ const stopSchema = z.object({
   driver_id: z.string().optional(),
   scheduled_date: z.date().optional(),
   scheduled_time: z.string().optional(),
+  package_size: z.enum(['small', 'medium', 'large']).optional(),
 });
 
 type StopFormData = z.infer<typeof stopSchema>;
@@ -67,6 +70,7 @@ export function CreateStopDialog({ open, onOpenChange, drivers, onSuccess }: Cre
       delivery_address: '', delivery_lat: 41.3920, delivery_lng: 2.1650,
       client_name: '', client_phone: '', client_notes: '',
       driver_id: '', scheduled_date: undefined, scheduled_time: '',
+      package_size: undefined,
     },
   });
 
@@ -133,6 +137,7 @@ export function CreateStopDialog({ open, onOpenChange, drivers, onSuccess }: Cre
         distance_km: routeDistance,
         scheduled_pickup_at: scheduledPickupAt,
         order_code: orderCode,
+        package_size: data.package_size || null,
       } as any);
 
       if (error) throw error;
@@ -261,6 +266,39 @@ export function CreateStopDialog({ open, onOpenChange, drivers, onSuccess }: Cre
               </FormItem>
             )} />
           </div>
+
+          {/* Package size */}
+          <FormField control={form.control} name="package_size" render={({ field }) => (
+            <FormItem>
+              <FormLabel className="flex items-center gap-2">
+                <Package className="w-4 h-4" /> Tamaño del paquete (opcional)
+              </FormLabel>
+              <FormControl>
+                <RadioGroup onValueChange={field.onChange} value={field.value} className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: 'small', label: '📦 Pequeño', desc: 'Sobre o caja pequeña' },
+                    { value: 'medium', label: '📦 Mediano', desc: 'Caja estándar' },
+                    { value: 'large', label: '📦 Grande', desc: 'Bulto o caja grande' },
+                  ].map((size) => (
+                    <Label
+                      key={size.value}
+                      htmlFor={`admin-size-${size.value}`}
+                      className={`flex flex-col items-center gap-1 p-3 rounded-lg border-2 cursor-pointer transition-all text-center ${
+                        field.value === size.value
+                          ? 'border-primary bg-primary/5'
+                          : 'border-muted hover:border-primary/40'
+                      }`}
+                    >
+                      <RadioGroupItem value={size.value} id={`admin-size-${size.value}`} className="sr-only" />
+                      <span className="text-sm font-medium">{size.label}</span>
+                      <span className="text-[10px] text-muted-foreground leading-tight">{size.desc}</span>
+                    </Label>
+                  ))}
+                </RadioGroup>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
 
           {routeDistance !== null && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 text-sm">
