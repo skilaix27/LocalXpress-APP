@@ -54,7 +54,7 @@ export function PrivacyConsentDialog({ open, profileId, onAccepted }: PrivacyCon
             <section>
               <h3 className="font-semibold text-foreground mb-1">1. Responsable del tratamiento</h3>
               <p>
-                El responsable del tratamiento de los datos personales es LocalXpress. Los datos de contacto del responsable están disponibles a través de la dirección de correo electrónico del administrador de la plataforma.
+                El responsable del tratamiento de los datos personales es LocalXpress. Para cualquier consulta relacionada con la protección de datos, puede contactar a través del correo electrónico <a href="mailto:info@localxpress.es" className="text-primary hover:underline">info@localxpress.es</a>.
               </p>
             </section>
 
@@ -122,7 +122,7 @@ export function PrivacyConsentDialog({ open, profileId, onAccepted }: PrivacyCon
                 <li><strong>Oposición:</strong> oponerse al tratamiento de sus datos en determinadas circunstancias.</li>
               </ul>
               <p className="mt-2">
-                Para ejercer estos derechos, el usuario podrá contactar con el administrador de la plataforma. Asimismo, tiene derecho a presentar una reclamación ante la Agencia Española de Protección de Datos (AEPD) en <a href="https://www.aepd.es" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">www.aepd.es</a>.
+                Para ejercer estos derechos, el usuario podrá contactar con LocalXpress a través de <a href="mailto:info@localxpress.es" className="text-primary hover:underline">info@localxpress.es</a>. Asimismo, tiene derecho a presentar una reclamación ante la Agencia Española de Protección de Datos (AEPD) en <a href="https://www.aepd.es" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">www.aepd.es</a>.
               </p>
             </section>
 
