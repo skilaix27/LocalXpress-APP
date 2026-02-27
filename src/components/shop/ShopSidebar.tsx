@@ -19,14 +19,14 @@ export function ShopSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
 
   return (
     <>
-      <aside className="w-64 bg-sidebar text-sidebar-foreground flex flex-col h-screen">
+      <aside className="w-64 bg-sidebar text-sidebar-foreground flex flex-col h-full min-h-0">
         <div className="p-6 border-b border-sidebar-border">
           <div className="flex items-center gap-3">
             <img src={logoLocalxpress} alt="LocalXpress" className="h-9" />
           </div>
         </div>
 
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => (
             <NavLink
               key={item.to}
@@ -48,7 +48,7 @@ export function ShopSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
           ))}
         </nav>
 
-        <div className="p-4 border-t border-sidebar-border">
+        <div className="p-4 border-t border-sidebar-border shrink-0">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-full bg-sidebar-accent flex items-center justify-center">
               <span className="text-sm font-semibold">
