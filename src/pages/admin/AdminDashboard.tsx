@@ -16,7 +16,7 @@ export default function AdminDashboard() {
   const {
     stops, drivers, driverLocations, loading, fetchData,
     getDriverById, getShopById, getDriverLocation, getDriverStopsCount,
-    pendingStops, assignedStops, pickedStops, deliveredStops, activeDrivers,
+    pendingStops, assignedStops, pickedStops, deliveredStops, activeDrivers, allUsers,
   } = useAdminData();
 
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
@@ -175,7 +175,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <CreateStopDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} drivers={drivers} onSuccess={fetchData} />
+      <CreateStopDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} drivers={drivers} shops={allUsers.filter(u => u.role === 'shop')} onSuccess={fetchData} />
       <StopDetailDialog stop={selectedStop} open={detailDialogOpen} onOpenChange={setDetailDialogOpen} drivers={drivers} onUpdate={fetchData} shopName={selectedStop?.shop_name} />
     </div>
   );

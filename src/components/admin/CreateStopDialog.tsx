@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -13,15 +13,20 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from '@/components/ui/command';
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import type { Profile } from '@/lib/supabase-types';
-import { MapPin, User, Phone, FileText, Loader2, CalendarIcon, Clock, Package, Store } from 'lucide-react';
+import type { Profile, ProfileWithRole } from '@/lib/supabase-types';
+import { MapPin, User, Phone, FileText, Loader2, CalendarIcon, Clock, Package, Store, Check, ChevronsUpDown } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
@@ -54,12 +59,15 @@ interface CreateStopDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   drivers: Profile[];
+  shops: ProfileWithRole[];
   onSuccess?: () => void;
 }
 
-export function CreateStopDialog({ open, onOpenChange, drivers, onSuccess }: CreateStopDialogProps) {
+export function CreateStopDialog({ open, onOpenChange, drivers, shops, onSuccess }: CreateStopDialogProps) {
   const [loading, setLoading] = useState(false);
   const [pickupResolved, setPickupResolved] = useState(false);
+  const [shopPopoverOpen, setShopPopoverOpen] = useState(false);
+  const [selectedShopId, setSelectedShopId] = useState<string | null>(null);
   const [deliveryResolved, setDeliveryResolved] = useState(false);
   const [routeDistance, setRouteDistance] = useState<number | null>(null);
   const { calculateDistance, loading: calculatingRoute } = useRouteDistance();
@@ -141,6 +149,7 @@ export function CreateStopDialog({ open, onOpenChange, drivers, onSuccess }: Cre
         order_code: orderCode,
         package_size: data.package_size || null,
         shop_name: data.shop_name,
+        shop_id: selectedShopId || null,
       } as any);
 
       if (error) throw error;
@@ -150,6 +159,7 @@ export function CreateStopDialog({ open, onOpenChange, drivers, onSuccess }: Cre
       setPickupResolved(false);
       setDeliveryResolved(false);
       setRouteDistance(null);
+      setSelectedShopId(null);
       onOpenChange(false);
       onSuccess?.();
     } catch (error: any) {
@@ -234,9 +244,70 @@ export function CreateStopDialog({ open, onOpenChange, drivers, onSuccess }: Cre
           )} />
 
           <FormField control={form.control} name="shop_name" render={({ field }) => (
-            <FormItem>
-              <FormLabel className="flex items-center gap-2"><Store className="w-4 h-4" /> Nombre de la tienda</FormLabel>
-              <FormControl><Input placeholder="Ej: Floristería Rosa" {...field} /></FormControl>
+            <FormItem className="flex flex-col">
+              <FormLabel className="flex items-center gap-2"><Store className="w-4 h-4" /> Tienda</FormLabel>
+              <Popover open={shopPopoverOpen} onOpenChange={setShopPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <FormControl>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className={cn("w-full justify-between font-normal", !field.value && "text-muted-foreground")}
+                    >
+                      {field.value || "Seleccionar o escribir tienda"}
+                      <ChevronsUpDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </FormControl>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput
+                      placeholder="Buscar o escribir tienda..."
+                      onValueChange={(val) => {
+                        field.onChange(val);
+                        setSelectedShopId(null);
+                      }}
+                    />
+                    <CommandList>
+                      <CommandEmpty>
+                        {field.value ? (
+                          <button
+                            type="button"
+                            className="w-full px-3 py-2 text-sm text-left hover:bg-accent rounded cursor-pointer"
+                            onClick={() => {
+                              setSelectedShopId(null);
+                              setShopPopoverOpen(false);
+                            }}
+                          >
+                            Usar "<span className="font-semibold">{field.value}</span>" como nombre
+                          </button>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">Escribe el nombre de la tienda</span>
+                        )}
+                      </CommandEmpty>
+                      <CommandGroup heading="Tiendas registradas">
+                        {shops.map((shop) => (
+                          <CommandItem
+                            key={shop.id}
+                            value={shop.shop_name || shop.full_name}
+                            onSelect={() => {
+                              field.onChange(shop.shop_name || shop.full_name);
+                              setSelectedShopId(shop.id);
+                              setShopPopoverOpen(false);
+                            }}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4", selectedShopId === shop.id ? "opacity-100" : "opacity-0")} />
+                            <div className="flex flex-col">
+                              <span className="font-medium">{shop.shop_name || shop.full_name}</span>
+                              {shop.shop_name && <span className="text-xs text-muted-foreground">{shop.full_name}</span>}
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               <FormMessage />
             </FormItem>
           )} />

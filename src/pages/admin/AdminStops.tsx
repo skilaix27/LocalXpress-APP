@@ -20,7 +20,7 @@ import { getPackageSizeLabel } from '@/lib/package-size';
 type SortOption = 'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'distance_asc' | 'distance_desc';
 
 export default function AdminStops() {
-  const { stops, drivers, loading, fetchData, getDriverById, getShopById } = useAdminData();
+  const { stops, drivers, allUsers, loading, fetchData, getDriverById, getShopById } = useAdminData();
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
@@ -370,7 +370,7 @@ export default function AdminStops() {
         </div>
       )}
 
-      <CreateStopDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} drivers={drivers} onSuccess={fetchData} />
+      <CreateStopDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} drivers={drivers} shops={allUsers.filter(u => u.role === 'shop')} onSuccess={fetchData} />
       <StopDetailDialog stop={selectedStop} open={detailDialogOpen} onOpenChange={setDetailDialogOpen} drivers={drivers} onUpdate={fetchData} shopName={selectedStop?.shop_name} />
     </div>
   );
