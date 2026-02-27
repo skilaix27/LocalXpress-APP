@@ -287,9 +287,9 @@ export function CreateStopDialog({ open, onOpenChange, drivers, onSuccess }: Cre
               <FormControl>
                 <RadioGroup onValueChange={field.onChange} value={field.value} className="grid grid-cols-3 gap-2">
                   {[
-                    { value: 'small', label: '📦 Pequeño', desc: 'Sobre o caja pequeña' },
-                    { value: 'medium', label: '📦 Mediano', desc: 'Caja estándar' },
-                    { value: 'large', label: '📦 Grande', desc: 'Bulto o caja grande' },
+                    { value: 'small', label: '🎒 Pequeño', desc: 'Mochila o baúl de transporte' },
+                    { value: 'medium', label: '🏍️ Mediano', desc: 'Baúl grande de moto' },
+                    { value: 'large', label: '🚗 Grande', desc: 'Coche o furgoneta requerido' },
                   ].map((size) => (
                     <Label
                       key={size.value}
