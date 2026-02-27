@@ -91,8 +91,13 @@ export default function DriverApp() {
     }
   }, [profile, selectedStop]);
 
+  // Throttle location updates to max once every 10 seconds
+  const lastLocationUpdateRef = useRef<number>(0);
   const updateLocation = useCallback(async (lat: number, lng: number) => {
     if (!profile) return;
+    const now = Date.now();
+    if (now - lastLocationUpdateRef.current < 10000) return; // Skip if < 10s since last update
+    lastLocationUpdateRef.current = now;
     try {
       await supabase.from('driver_locations').upsert(
         { driver_id: profile.id, lat, lng, updated_at: new Date().toISOString() },
@@ -117,7 +122,6 @@ export default function DriverApp() {
       (position) => {
         const loc = { lat: position.coords.latitude, lng: position.coords.longitude };
         setCurrentLocation(loc);
-        // Only center map on first GPS fix
         setMapCenter(prev => prev === null ? loc : prev);
         setGpsStatus('active');
         updateLocation(loc.lat, loc.lng);
@@ -133,12 +137,11 @@ export default function DriverApp() {
         } else if (error.code === 2) {
           setGpsStatus('unavailable');
         }
-        // Fallback to Barcelona center
         setCurrentLocation({ lat: 41.3851, lng: 2.1734 });
       },
       {
         enableHighAccuracy: true,
-        maximumAge: 5000,
+        maximumAge: 10000,   // Accept cached position up to 10s old
         timeout: 15000,
       }
     );
