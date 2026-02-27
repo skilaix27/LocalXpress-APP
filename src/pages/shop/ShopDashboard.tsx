@@ -1,15 +1,20 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useShopData } from '@/hooks/useShopData';
 import { ShopStopCard } from '@/components/shop/ShopStopCard';
 import { ShopStopDetailDialog } from '@/components/shop/ShopStopDetailDialog';
 import { CreateShopStopDialog } from '@/components/shop/CreateShopStopDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { Stop } from '@/lib/supabase-types';
-import { Plus, Package, Truck, CheckCircle, TrendingUp, UserCheck } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import type { Stop, StopStatus } from '@/lib/supabase-types';
+import { Plus, Package, Truck, CheckCircle, UserCheck, Search, ArrowUpDown, ListFilter, SlidersHorizontal, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+
+type SortOption = 'newest' | 'oldest' | 'name_asc' | 'name_desc';
 
 export default function ShopDashboard() {
   const { profile } = useAuth();
@@ -22,6 +27,54 @@ export default function ShopDashboard() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const navigate = useNavigate();
+
+  // Filters
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | StopStatus>('all');
+  const [selectedPackageSize, setSelectedPackageSize] = useState('all');
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const [showFilters, setShowFilters] = useState(false);
+
+  const filteredActive = useMemo(() => {
+    let result = [...activeStops];
+
+    if (statusFilter !== 'all') {
+      result = result.filter(s => s.status === statusFilter);
+    }
+    if (selectedPackageSize !== 'all') {
+      result = result.filter(s => s.package_size === selectedPackageSize);
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(s =>
+        s.client_name.toLowerCase().includes(q) ||
+        s.delivery_address.toLowerCase().includes(q) ||
+        s.pickup_address.toLowerCase().includes(q) ||
+        (s.order_code && s.order_code.toLowerCase().includes(q)) ||
+        (s.client_phone && s.client_phone.includes(q))
+      );
+    }
+
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case 'oldest': return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case 'name_asc': return a.client_name.localeCompare(b.client_name);
+        case 'name_desc': return b.client_name.localeCompare(a.client_name);
+        default: return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+    });
+
+    return result;
+  }, [activeStops, statusFilter, selectedPackageSize, search, sortBy]);
+
+  const hasActiveFilters = search || statusFilter !== 'all' || selectedPackageSize !== 'all' || sortBy !== 'newest';
+
+  const clearFilters = () => {
+    setSearch('');
+    setStatusFilter('all');
+    setSelectedPackageSize('all');
+    setSortBy('newest');
+  };
 
   const stats = [
     { label: 'Pendientes', value: pendingCount, icon: Package, color: 'text-muted-foreground', bg: 'bg-muted' },
@@ -79,22 +132,95 @@ export default function ShopDashboard() {
         ))}
       </div>
 
-      {/* Active stops */}
+      {/* Active stops with filters */}
       <Card>
         <CardHeader className="pb-2 px-3 pt-4 sm:px-6">
-          <CardTitle className="text-base sm:text-lg">Pedidos activos</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base sm:text-lg">
+              Pedidos activos ({filteredActive.length}{hasActiveFilters ? ` de ${activeStops.length}` : ''})
+            </CardTitle>
+            <Button
+              variant={showFilters ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              <SlidersHorizontal className="w-4 h-4 sm:mr-1" />
+              <span className="hidden sm:inline text-xs">Filtros</span>
+            </Button>
+          </div>
         </CardHeader>
-        <CardContent className="p-3 space-y-2">
-          {activeStops.map((stop) => (
+        <CardContent className="p-3 space-y-3">
+          {showFilters && (
+            <div className="space-y-2 p-3 rounded-lg bg-muted/50">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por cliente, dirección, referencia..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+
+              <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+                <TabsList className="w-full">
+                  <TabsTrigger value="all" className="text-xs flex-1">Todos</TabsTrigger>
+                  <TabsTrigger value="pending" className="text-xs flex-1">Pendiente</TabsTrigger>
+                  <TabsTrigger value="assigned" className="text-xs flex-1">Asignado</TabsTrigger>
+                  <TabsTrigger value="picked" className="text-xs flex-1">Recogido</TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              <div className="grid grid-cols-2 gap-2">
+                <Select value={selectedPackageSize} onValueChange={setSelectedPackageSize}>
+                  <SelectTrigger className="text-xs">
+                    <Package className="w-3.5 h-3.5 mr-1 text-muted-foreground" />
+                    <SelectValue placeholder="Tamaño" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los tamaños</SelectItem>
+                    <SelectItem value="small">📦 Pequeño</SelectItem>
+                    <SelectItem value="medium">📦 Mediano</SelectItem>
+                    <SelectItem value="large">📦 Grande</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+                  <SelectTrigger className="text-xs">
+                    <ArrowUpDown className="w-3.5 h-3.5 mr-1 text-muted-foreground" />
+                    <SelectValue placeholder="Ordenar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Más recientes</SelectItem>
+                    <SelectItem value="oldest">Más antiguos</SelectItem>
+                    <SelectItem value="name_asc">Cliente A-Z</SelectItem>
+                    <SelectItem value="name_desc">Cliente Z-A</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="w-full text-xs">
+                  <X className="w-3.5 h-3.5 mr-1" /> Limpiar filtros
+                </Button>
+              )}
+            </div>
+          )}
+
+          {filteredActive.map((stop) => (
             <ShopStopCard key={stop.id} stop={stop} onClick={() => handleClick(stop)} />
           ))}
-          {activeStops.length === 0 && (
+          {filteredActive.length === 0 && (
             <div className="text-center py-12">
               <Package className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
-              <p className="text-muted-foreground">No tienes pedidos activos</p>
-              <Button variant="outline" className="mt-4" onClick={() => setCreateOpen(true)}>
-                <Plus className="w-4 h-4 mr-2" /> Crear pedido
-              </Button>
+              <p className="text-muted-foreground">
+                {hasActiveFilters ? 'No se encontraron pedidos con estos filtros' : 'No tienes pedidos activos'}
+              </p>
+              {!hasActiveFilters && (
+                <Button variant="outline" className="mt-4" onClick={() => setCreateOpen(true)}>
+                  <Plus className="w-4 h-4 mr-2" /> Crear pedido
+                </Button>
+              )}
             </div>
           )}
         </CardContent>
