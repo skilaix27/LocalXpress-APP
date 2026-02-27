@@ -76,10 +76,16 @@ export function useShopData() {
     return d;
   }, []);
 
-  const isExpiredOrDone = useCallback((s: Stop) =>
-    s.status === 'delivered' ||
-    (s.scheduled_pickup_at && new Date(s.scheduled_pickup_at) < todayStart && s.status !== 'picked'),
-  [todayStart]);
+  const isExpiredOrDone = useCallback((s: Stop) => {
+    if (s.status === 'delivered') return true;
+    // Only move to history if the scheduled day has fully passed and it wasn't picked
+    if (s.scheduled_pickup_at && s.status !== 'picked') {
+      const scheduledDate = new Date(s.scheduled_pickup_at);
+      scheduledDate.setHours(23, 59, 59, 999);
+      return scheduledDate < todayStart;
+    }
+    return false;
+  }, [todayStart]);
 
   const activeStops = useMemo(() => stops.filter((s) => !isExpiredOrDone(s)), [stops, isExpiredOrDone]);
   const deliveredStops = useMemo(() => stops.filter((s) => isExpiredOrDone(s)), [stops, isExpiredOrDone]);
