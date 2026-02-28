@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS stops_order_code_unique ON public.stops (order_code) WHERE order_code IS NOT NULL;
