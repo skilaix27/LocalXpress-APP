@@ -15,6 +15,7 @@ export interface Profile {
   default_pickup_address: string | null;
   default_pickup_lat: number | null;
   default_pickup_lng: number | null;
+  privacy_accepted_at: string | null;
 }
 
 export interface UserRole {

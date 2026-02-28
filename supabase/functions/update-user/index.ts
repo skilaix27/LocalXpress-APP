@@ -111,8 +111,8 @@ Deno.serve(async (req) => {
 
     // Update password if provided
     if (password && password.length > 0) {
-      if (password.length < 6) {
-        return new Response(JSON.stringify({ error: "La contraseña debe tener al menos 6 caracteres" }), {
+      if (password.length < 8) {
+        return new Response(JSON.stringify({ error: "La contraseña debe tener al menos 8 caracteres" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
