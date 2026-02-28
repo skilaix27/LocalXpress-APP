@@ -5,7 +5,7 @@ interface ProofImageProps {
   className?: string;
 }
 
-export function ProofImage({ proofPhotoUrl, className = "w-full rounded-lg border max-h-64 object-cover" }: ProofImageProps) {
+export function ProofImage({ proofPhotoUrl, className = "w-full rounded-lg border max-h-[50vh] object-contain bg-muted/30" }: ProofImageProps) {
   const signedUrl = useSignedUrl('delivery-proofs', proofPhotoUrl);
 
   if (!signedUrl) return null;

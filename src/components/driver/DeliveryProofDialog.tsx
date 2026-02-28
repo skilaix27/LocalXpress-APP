@@ -135,7 +135,7 @@ export const DeliveryProofDialog = forwardRef<HTMLDivElement, DeliveryProofDialo
       <div className="space-y-4">
         {preview ? (
           <div className="relative">
-            <img src={preview} alt="Preview" className="w-full rounded-lg border max-h-64 object-cover" />
+            <img src={preview} alt="Preview" className="w-full rounded-lg border max-h-[50vh] object-contain bg-muted/30" />
             <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-8 w-8" onClick={clearPhoto}>
               <X className="w-4 h-4" />
             </Button>

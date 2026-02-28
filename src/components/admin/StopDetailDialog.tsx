@@ -118,6 +118,11 @@ export function StopDetailDialog({ stop, open, onOpenChange, drivers, onUpdate, 
   const deleteStop = async () => {
     setDeleting(true);
     try {
+      // Delete proof photo from storage if exists
+      if (stop.proof_photo_url) {
+        await supabase.storage.from('delivery-proofs').remove([stop.proof_photo_url]);
+      }
+
       const { error } = await supabase.from('stops').delete().eq('id', stop.id);
       if (error) throw error;
       toast.success('Parada eliminada');
