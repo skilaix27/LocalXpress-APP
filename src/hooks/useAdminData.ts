@@ -102,6 +102,7 @@ export function useAdminData() {
   // Separate debounced fetchers for different event types
   const debouncedStopsRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const debouncedLocationsRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedUsersRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const debouncedFetchStops = useCallback(() => {
     if (debouncedStopsRef.current) clearTimeout(debouncedStopsRef.current);
@@ -110,13 +111,17 @@ export function useAdminData() {
 
   const debouncedFetchLocations = useCallback(() => {
     if (debouncedLocationsRef.current) clearTimeout(debouncedLocationsRef.current);
-    debouncedLocationsRef.current = setTimeout(() => fetchLocations(), 2000); // Locations update less frequently
+    debouncedLocationsRef.current = setTimeout(() => fetchLocations(), 2000);
   }, [fetchLocations]);
+
+  const debouncedFetchUsers = useCallback(() => {
+    if (debouncedUsersRef.current) clearTimeout(debouncedUsersRef.current);
+    debouncedUsersRef.current = setTimeout(() => fetchUsers(), 500);
+  }, [fetchUsers]);
 
   useEffect(() => {
     fetchData();
 
-    // Separate channels for stops and locations with different debounce
     const stopsChannel = supabase
       .channel('stops-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stops' }, () => debouncedFetchStops())
@@ -127,13 +132,26 @@ export function useAdminData() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'driver_locations' }, () => debouncedFetchLocations())
       .subscribe();
 
+    const profilesChannel = supabase
+      .channel('profiles-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => debouncedFetchUsers())
+      .subscribe();
+
+    const rolesChannel = supabase
+      .channel('roles-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_roles' }, () => debouncedFetchUsers())
+      .subscribe();
+
     return () => {
       if (debouncedStopsRef.current) clearTimeout(debouncedStopsRef.current);
       if (debouncedLocationsRef.current) clearTimeout(debouncedLocationsRef.current);
+      if (debouncedUsersRef.current) clearTimeout(debouncedUsersRef.current);
       supabase.removeChannel(stopsChannel);
       supabase.removeChannel(locationsChannel);
+      supabase.removeChannel(profilesChannel);
+      supabase.removeChannel(rolesChannel);
     };
-  }, [fetchData, debouncedFetchStops, debouncedFetchLocations]);
+  }, [fetchData, debouncedFetchStops, debouncedFetchLocations, debouncedFetchUsers]);
 
   const getDriverById = useCallback(
     (driverId: string | null) => {
