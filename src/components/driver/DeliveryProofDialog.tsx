@@ -1,4 +1,4 @@
-import { useState, useRef, forwardRef } from 'react';
+import { useState, useRef, useCallback, forwardRef } from 'react';
 import {
   ResponsiveDialog, ResponsiveDialogHeader, ResponsiveDialogTitle, ResponsiveDialogDescription,
 } from '@/components/ui/responsive-dialog';
@@ -15,25 +15,71 @@ interface DeliveryProofDialogProps {
   onSuccess: () => void;
 }
 
+const MAX_DIMENSION = 1200; // px — enough for proof, saves ~80% space
+const JPEG_QUALITY = 0.6;  // 60% quality — good balance size/clarity
+
+function compressImage(file: File): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+
+      // Scale down if larger than MAX_DIMENSION
+      if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+        const ratio = Math.min(MAX_DIMENSION / width, MAX_DIMENSION / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('Canvas not supported')); return; }
+
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error('Compression failed'));
+        },
+        'image/jpeg',
+        JPEG_QUALITY
+      );
+    };
+    img.onerror = () => reject(new Error('Failed to load image'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 export const DeliveryProofDialog = forwardRef<HTMLDivElement, DeliveryProofDialogProps>(function DeliveryProofDialog({ stop, open, onOpenChange, onSuccess }, _ref) {
-  const [photo, setPhoto] = useState<File | null>(null);
+  const [photo, setPhoto] = useState<Blob | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [compressing, setCompressing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) { toast.error('Solo se permiten imágenes'); return; }
     if (file.size > 10 * 1024 * 1024) { toast.error('La imagen no puede superar 10MB'); return; }
-    setPhoto(file);
-    const reader = new FileReader();
-    reader.onloadend = () => setPreview(reader.result as string);
-    reader.readAsDataURL(file);
-  };
+
+    setCompressing(true);
+    try {
+      const compressed = await compressImage(file);
+      setPhoto(compressed);
+      setPreview(URL.createObjectURL(compressed));
+    } catch {
+      toast.error('Error al procesar la imagen');
+    } finally {
+      setCompressing(false);
+    }
+  }, []);
 
   const clearPhoto = () => {
+    if (preview) URL.revokeObjectURL(preview);
     setPhoto(null);
     setPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -44,13 +90,12 @@ export const DeliveryProofDialog = forwardRef<HTMLDivElement, DeliveryProofDialo
     if (!photo) { toast.error('Debes adjuntar una foto de la entrega'); return; }
     setUploading(true);
     try {
-      const fileExt = photo.name.split('.').pop();
-      const fileName = `${stop.id}-${Date.now()}.${fileExt}`;
+      const fileName = `${stop.id}-${Date.now()}.jpg`;
       const filePath = `${stop.driver_id}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('delivery-proofs')
-        .upload(filePath, photo, { contentType: photo.type });
+        .upload(filePath, photo, { contentType: 'image/jpeg' });
       if (uploadError) throw uploadError;
 
       const { error: updateError } = await supabase
@@ -94,6 +139,11 @@ export const DeliveryProofDialog = forwardRef<HTMLDivElement, DeliveryProofDialo
             <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-8 w-8" onClick={clearPhoto}>
               <X className="w-4 h-4" />
             </Button>
+          </div>
+        ) : compressing ? (
+          <div className="flex flex-col items-center justify-center py-10 gap-2">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <span className="text-sm text-muted-foreground">Optimizando imagen…</span>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
