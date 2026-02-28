@@ -1,4 +1,4 @@
-import { useState, useEffect, forwardRef, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { DeliveryMap } from '@/components/map/DeliveryMap';
@@ -214,28 +214,43 @@ export default function DriverApp() {
     }
   };
 
-  const NavTriggerButton = forwardRef<HTMLButtonElement, { className?: string; children?: React.ReactNode } & React.ButtonHTMLAttributes<HTMLButtonElement>>(
-    (props, ref) => <button ref={ref} {...props} />
-  );
-
   const NavigateButton = ({ lat, lng, color }: { lat: number; lng: number; color: string }) => {
     const urls = getNavUrls(lat, lng);
     return (
-      <DropdownMenu>
+      <DropdownMenu modal={true}>
         <DropdownMenuTrigger asChild>
-          <NavTriggerButton className={`p-3 rounded-full ${color} shrink-0 active:scale-95 transition-transform`}>
+          <button
+            className={`p-3 rounded-full ${color} shrink-0 active:scale-95 transition-transform`}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
             <Navigation className="w-5 h-5" />
-          </NavTriggerButton>
+          </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-[180px]">
-          <DropdownMenuItem onClick={() => openNavLink(urls.google)} className="flex items-center py-3 cursor-pointer">
-            <Map className="w-5 h-5 mr-3" /> Google Maps
+        <DropdownMenuContent
+          align="end"
+          className="min-w-[200px] z-[100]"
+          onPointerDownOutside={(e) => e.stopPropagation()}
+          onInteractOutside={(e) => e.stopPropagation()}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
+          <DropdownMenuItem
+            onSelect={(e) => { e.preventDefault(); openNavLink(urls.google); }}
+            className="flex items-center py-3.5 px-3 cursor-pointer text-base gap-3"
+          >
+            <Map className="w-5 h-5 shrink-0" /> Google Maps
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => openNavLink(urls.waze)} className="flex items-center py-3 cursor-pointer">
-            <Navigation className="w-5 h-5 mr-3" /> Waze
+          <DropdownMenuItem
+            onSelect={(e) => { e.preventDefault(); openNavLink(urls.waze); }}
+            className="flex items-center py-3.5 px-3 cursor-pointer text-base gap-3"
+          >
+            <Navigation className="w-5 h-5 shrink-0" /> Waze
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => openNavLink(urls.apple)} className="flex items-center py-3 cursor-pointer">
-            <MapPin className="w-5 h-5 mr-3" /> Apple Maps
+          <DropdownMenuItem
+            onSelect={(e) => { e.preventDefault(); openNavLink(urls.apple); }}
+            className="flex items-center py-3.5 px-3 cursor-pointer text-base gap-3"
+          >
+            <MapPin className="w-5 h-5 shrink-0" /> Apple Maps
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
