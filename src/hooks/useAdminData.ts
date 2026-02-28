@@ -122,6 +122,7 @@ export function useAdminData() {
   useEffect(() => {
     fetchData();
 
+    // Realtime subscriptions
     const stopsChannel = supabase
       .channel('stops-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stops' }, () => debouncedFetchStops())
@@ -142,7 +143,15 @@ export function useAdminData() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_roles' }, () => debouncedFetchUsers())
       .subscribe();
 
+    // Polling fallback every 10s to ensure freshness even if Realtime RLS
+    // doesn't evaluate has_role() correctly for admin users
+    const pollingInterval = setInterval(() => {
+      fetchStops();
+      fetchLocations();
+    }, 10000);
+
     return () => {
+      clearInterval(pollingInterval);
       if (debouncedStopsRef.current) clearTimeout(debouncedStopsRef.current);
       if (debouncedLocationsRef.current) clearTimeout(debouncedLocationsRef.current);
       if (debouncedUsersRef.current) clearTimeout(debouncedUsersRef.current);
@@ -151,7 +160,7 @@ export function useAdminData() {
       supabase.removeChannel(profilesChannel);
       supabase.removeChannel(rolesChannel);
     };
-  }, [fetchData, debouncedFetchStops, debouncedFetchLocations, debouncedFetchUsers]);
+  }, [fetchData, fetchStops, fetchLocations, debouncedFetchStops, debouncedFetchLocations, debouncedFetchUsers]);
 
   const getDriverById = useCallback(
     (driverId: string | null) => {
