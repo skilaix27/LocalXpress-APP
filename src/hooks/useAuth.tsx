@@ -117,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAdmin: role === 'admin',
     isDriver: role === 'driver',
     isShop: role === 'shop',
-    privacyAccepted: !!(profile as any)?.privacy_accepted_at,
+    privacyAccepted: !!profile?.privacy_accepted_at,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

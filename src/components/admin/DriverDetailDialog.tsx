@@ -46,7 +46,7 @@ export function DriverDetailDialog({ driver, stops, open, onOpenChange, onUpdate
   const handleSave = async () => {
     if (!driver) return;
     if (!form.full_name.trim()) { toast.error('El nombre es obligatorio'); return; }
-    if (form.password && form.password.length < 6) { toast.error('La contraseña debe tener al menos 6 caracteres'); return; }
+    if (form.password && form.password.length < 8) { toast.error('La contraseña debe tener al menos 8 caracteres'); return; }
 
     setLoading(true);
     try {
