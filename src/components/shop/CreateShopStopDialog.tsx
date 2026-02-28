@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 import {
   ResponsiveDialog, ResponsiveDialogHeader, ResponsiveDialogTitle, ResponsiveDialogDescription,
 } from '@/components/ui/responsive-dialog';
@@ -14,11 +17,13 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { MapPin, User, Phone, FileText, Loader2, Store, Clock, Navigation, Package } from 'lucide-react';
+import { MapPin, User, Phone, FileText, Loader2, Store, Clock, Navigation, Package, CalendarIcon } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useRouteDistance } from '@/hooks/useRouteDistance';
 import { AddressInput } from '@/components/admin/AddressInput';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { PlaceDetails } from '@/hooks/useGooglePlaces';
 import { getDeliveryZone, adjustDistance } from '@/lib/delivery-zones';
 import { generateOrderCode } from '@/lib/order-code';
@@ -34,6 +39,7 @@ const stopSchema = z.object({
   client_phone: z.string().optional(),
   client_notes: z.string().optional(),
   scheduled_pickup_time: z.string().min(1, 'Hora de recogida requerida'),
+  scheduled_pickup_date: z.date({ required_error: 'Fecha de recogida requerida' }),
   package_size: z.enum(['small', 'medium', 'large'], { required_error: 'Selecciona un tamaño' }),
 });
 
@@ -63,6 +69,7 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
       delivery_address: '', delivery_lat: 41.3920, delivery_lng: 2.1650,
       client_name: '', client_phone: '', client_notes: '',
       scheduled_pickup_time: '',
+      scheduled_pickup_date: new Date(),
       package_size: undefined as any,
     },
   });
@@ -124,14 +131,10 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
     try {
       const orderCode = await generateOrderCode();
 
-      // Build scheduled_pickup_at from time input
-      const today = new Date();
+      // Build scheduled_pickup_at from date + time inputs
+      const pickupDate = data.scheduled_pickup_date;
       const [hours, minutes] = data.scheduled_pickup_time.split(':').map(Number);
-      const scheduledDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hours, minutes);
-      // If time is in the past, assume tomorrow
-      if (scheduledDate < new Date()) {
-        scheduledDate.setDate(scheduledDate.getDate() + 1);
-      }
+      const scheduledDate = new Date(pickupDate.getFullYear(), pickupDate.getMonth(), pickupDate.getDate(), hours, minutes);
 
       const { error } = await supabase.from('stops').insert({
         pickup_address: data.pickup_address,
@@ -280,18 +283,59 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
             </FormItem>
           )} />
 
-          {/* Scheduled pickup time */}
-          <FormField control={form.control} name="scheduled_pickup_time" render={({ field }) => (
-            <FormItem>
-              <FormLabel className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-primary" /> Hora de recogida
-              </FormLabel>
-              <FormControl>
-                <Input type="time" {...field} className="w-full" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )} />
+          {/* Scheduled pickup date + time */}
+          <div className="grid grid-cols-2 gap-3">
+            <FormField control={form.control} name="scheduled_pickup_date" render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel className="flex items-center gap-2">
+                  <CalendarIcon className="w-4 h-4 text-primary" /> Fecha
+                </FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full pl-3 text-left font-normal",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        {field.value ? format(field.value, "d MMM yyyy", { locale: es }) : <span>Seleccionar</span>}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      disabled={(date) => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        return date < today;
+                      }}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            <FormField control={form.control} name="scheduled_pickup_time" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-primary" /> Hora
+                </FormLabel>
+                <FormControl>
+                  <Input type="time" {...field} className="w-full" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+          </div>
 
           <FormField control={form.control} name="client_name" render={({ field }) => (
             <FormItem>
