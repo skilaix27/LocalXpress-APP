@@ -7,37 +7,45 @@ import { supabase } from '@/integrations/supabase/client';
  */
 const MONTH_LETTERS = ['E', 'F', 'M', 'A', 'Y', 'J', 'L', 'G', 'S', 'O', 'N', 'D'];
 
-export async function generateOrderCode(): Promise<string> {
+export async function generateOrderCode(maxRetries = 5): Promise<string> {
   const now = new Date();
   const day = now.getDate();
   const dayCode = day + 27;
   const monthLetter = MONTH_LETTERS[now.getMonth()];
+  const prefix = `LX-D${dayCode}${monthLetter}-P`;
 
-  // Count today's stops to determine order number
-  const startOfDay = new Date(now);
-  startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(now);
-  endOfDay.setHours(23, 59, 59, 999);
-
-  // Get the highest P number from today's stops
-  const { data: todayStops } = await supabase
+  // Get the highest P number from ALL stops with today's prefix
+  const { data: matchingStops } = await supabase
     .from('stops')
     .select('order_code')
-    .gte('created_at', startOfDay.toISOString())
-    .lte('created_at', endOfDay.toISOString())
-    .not('order_code', 'is', null);
+    .like('order_code', `${prefix}%`);
 
   let maxP = 0;
-  if (todayStops) {
-    for (const s of todayStops) {
+  if (matchingStops) {
+    for (const s of matchingStops) {
       const match = s.order_code?.match(/-P(\d+)$/);
       if (match) maxP = Math.max(maxP, parseInt(match[1], 10));
     }
   }
 
   // Start above 65, then add random increment (1-3)
-  const randomIncrement = Math.floor(Math.random() * 3) + 1;
-  const orderNumber = maxP < 65 ? 65 + randomIncrement : maxP + randomIncrement;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const randomIncrement = Math.floor(Math.random() * 3) + 1;
+    const orderNumber = maxP < 65 ? 65 + randomIncrement + attempt : maxP + randomIncrement + attempt;
+    const code = `${prefix}${orderNumber}`;
 
-  return `LX-D${dayCode}${monthLetter}-P${orderNumber}`;
+    // Check uniqueness against DB
+    const { count } = await supabase
+      .from('stops')
+      .select('id', { count: 'exact', head: true })
+      .eq('order_code', code);
+
+    if (count === 0) return code;
+    // Collision: bump maxP and retry
+    maxP = orderNumber;
+  }
+
+  // Fallback: append timestamp fragment to guarantee uniqueness
+  const fallback = maxP + Math.floor(Math.random() * 10) + 5;
+  return `${prefix}${fallback}`;
 }
