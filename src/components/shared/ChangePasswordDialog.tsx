@@ -5,12 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
+  ResponsiveDialog, ResponsiveDialogHeader, ResponsiveDialogTitle, ResponsiveDialogDescription,
+} from '@/components/ui/responsive-dialog';
 import { Lock, Eye, EyeOff } from 'lucide-react';
 
 interface ChangePasswordDialogProps {
@@ -52,56 +48,54 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[400px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Lock className="w-5 h-5" />
-            Cambiar contraseña
-          </DialogTitle>
-          <DialogDescription>
-            Introduce tu nueva contraseña
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="new-password">Nueva contraseña</Label>
-            <div className="relative">
-              <Input
-                id="new-password"
-                type={showPassword ? 'text' : 'password'}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Mínimo 6 caracteres"
-                required
-                minLength={6}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="confirm-password">Confirmar contraseña</Label>
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogHeader>
+        <ResponsiveDialogTitle className="flex items-center gap-2">
+          <Lock className="w-5 h-5" />
+          Cambiar contraseña
+        </ResponsiveDialogTitle>
+        <ResponsiveDialogDescription>
+          Introduce tu nueva contraseña
+        </ResponsiveDialogDescription>
+      </ResponsiveDialogHeader>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="new-password">Nueva contraseña</Label>
+          <div className="relative">
             <Input
-              id="confirm-password"
+              id="new-password"
               type={showPassword ? 'text' : 'password'}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Repite la contraseña"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Mínimo 6 caracteres"
               required
               minLength={6}
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Guardando...' : 'Cambiar contraseña'}
-          </Button>
-        </form>
-      </DialogContent>
-    </Dialog>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="confirm-password">Confirmar contraseña</Label>
+          <Input
+            id="confirm-password"
+            type={showPassword ? 'text' : 'password'}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Repite la contraseña"
+            required
+            minLength={6}
+          />
+        </div>
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading ? 'Guardando...' : 'Cambiar contraseña'}
+        </Button>
+      </form>
+    </ResponsiveDialog>
   );
 }
