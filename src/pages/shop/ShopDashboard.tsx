@@ -9,10 +9,11 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Stop, StopStatus } from '@/lib/supabase-types';
-import { Plus, Package, Truck, CheckCircle, UserCheck, Search, ArrowUpDown, ListFilter, SlidersHorizontal, X } from 'lucide-react';
+import { Plus, Package, Truck, CheckCircle, UserCheck, Search, ArrowUpDown, ListFilter, SlidersHorizontal, X, CalendarClock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { isStopForToday } from '@/lib/stop-schedule';
 
 type SortOption = 'newest' | 'oldest' | 'name_asc' | 'name_desc';
 
@@ -66,6 +67,9 @@ export default function ShopDashboard() {
 
     return result;
   }, [activeStops, statusFilter, selectedPackageSize, search, sortBy]);
+
+  const todayActive = useMemo(() => filteredActive.filter(s => isStopForToday(s)), [filteredActive]);
+  const scheduledActive = useMemo(() => filteredActive.filter(s => !isStopForToday(s)), [filteredActive]);
 
   const hasActiveFilters = search || statusFilter !== 'all' || selectedPackageSize !== 'all' || sortBy !== 'newest';
 
@@ -207,9 +211,36 @@ export default function ShopDashboard() {
             </div>
           )}
 
-          {filteredActive.map((stop) => (
-            <ShopStopCard key={stop.id} stop={stop} onClick={() => handleClick(stop)} />
-          ))}
+          {/* Today's active stops */}
+          {todayActive.length > 0 && (
+            <div className="space-y-3">
+              {scheduledActive.length > 0 && (
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                  <Package className="w-3.5 h-3.5" />
+                  Hoy ({todayActive.length})
+                </h3>
+              )}
+              {todayActive.map((stop) => (
+                <ShopStopCard key={stop.id} stop={stop} onClick={() => handleClick(stop)} />
+              ))}
+            </div>
+          )}
+
+          {/* Scheduled for other days */}
+          {scheduledActive.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-xs font-semibold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                <CalendarClock className="w-3.5 h-3.5" />
+                Programadas ({scheduledActive.length})
+              </h3>
+              <div className="space-y-3 p-3 rounded-xl border-2 border-dashed border-primary/20 bg-primary/5">
+                {scheduledActive.map((stop) => (
+                  <ShopStopCard key={stop.id} stop={stop} onClick={() => handleClick(stop)} />
+                ))}
+              </div>
+            </div>
+          )}
+
           {filteredActive.length === 0 && (
             <div className="text-center py-12">
               <Package className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
