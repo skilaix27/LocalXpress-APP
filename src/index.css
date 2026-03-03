@@ -21,7 +21,7 @@
     --popover-foreground: 222 47% 11%;
 
     /* Primary - Vibrant Orange (Glovo-inspired) */
-    --primary: 24 95% 53%;
+    --primary: 24 95% 41%;
     --primary-foreground: 0 0% 100%;
 
     /* Secondary - Cool Slate */
@@ -91,7 +91,7 @@
     --popover: 222 47% 11%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 24 95% 53%;
+    --primary: 24 95% 41%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 215 25% 27%;
