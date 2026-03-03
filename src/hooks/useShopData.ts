@@ -76,33 +76,19 @@ export function useShopData() {
     return d;
   }, []);
 
-  // Auto-delete expired undelivered scheduled stops
-  useEffect(() => {
-    const expiredStops = stops.filter((s) => {
-      if (s.status === 'delivered') return false;
-      if (s.scheduled_pickup_at) {
-        const scheduledDate = new Date(s.scheduled_pickup_at);
-        scheduledDate.setHours(23, 59, 59, 999);
-        return scheduledDate < todayStart;
-      }
-      return false;
-    });
-
-    if (expiredStops.length > 0) {
-      const deleteExpired = async () => {
-        for (const stop of expiredStops) {
-          await supabase.from('stops').delete().eq('id', stop.id);
-        }
-        fetchData();
-      };
-      deleteExpired();
+  const isExpiredOrDone = useCallback((s: Stop) => {
+    if (s.status === 'delivered') return true;
+    // Only move to history if the scheduled day has fully passed and it wasn't picked
+    if (s.scheduled_pickup_at && s.status !== 'picked') {
+      const scheduledDate = new Date(s.scheduled_pickup_at);
+      scheduledDate.setHours(23, 59, 59, 999);
+      return scheduledDate < todayStart;
     }
-  }, [stops, todayStart, fetchData]);
+    return false;
+  }, [todayStart]);
 
-  const isDelivered = useCallback((s: Stop) => s.status === 'delivered', []);
-
-  const activeStops = useMemo(() => stops.filter((s) => !isDelivered(s)), [stops, isDelivered]);
-  const deliveredStops = useMemo(() => stops.filter((s) => isDelivered(s)), [stops, isDelivered]);
+  const activeStops = useMemo(() => stops.filter((s) => !isExpiredOrDone(s)), [stops, isExpiredOrDone]);
+  const deliveredStops = useMemo(() => stops.filter((s) => isExpiredOrDone(s)), [stops, isExpiredOrDone]);
 
   const pendingCount = useMemo(() => activeStops.filter((s) => s.status === 'pending').length, [activeStops]);
   const assignedCount = useMemo(() => activeStops.filter((s) => s.status === 'assigned').length, [activeStops]);

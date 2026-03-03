@@ -134,7 +134,7 @@ export default function Auth() {
         </div>
 
         {/* Legal notice */}
-        <p className="text-center text-muted-foreground text-xs mt-6 max-w-sm mx-auto leading-relaxed">
+        <p className="text-center text-muted-foreground/70 text-xs mt-6 max-w-sm mx-auto leading-relaxed">
           Los datos personales recogidos se utilizarán exclusivamente con fines profesionales de gestión de repartos, conforme al RGPD. No se cederán a terceros.
         </p>
       </motion.div>
