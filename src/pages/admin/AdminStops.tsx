@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import type { Stop, StopStatus } from '@/lib/supabase-types';
-import { Plus, Search, Package, Truck, CheckCircle, ListFilter, UserCheck, User, Store, CalendarIcon, X, ArrowUpDown, SlidersHorizontal } from 'lucide-react';
+import { Plus, Search, Package, Truck, CheckCircle, ListFilter, UserCheck, User, Store, CalendarIcon, X, ArrowUpDown, SlidersHorizontal, CalendarClock } from 'lucide-react';
+import { isStopForToday } from '@/lib/stop-schedule';
 import { format, isSameDay, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -97,8 +98,11 @@ export default function AdminStops() {
     return result;
   }, [stops, statusFilter, search, selectedDriverId, selectedShopName, selectedPackageSize, dateFrom, dateTo, sortBy]);
 
-  const unassignedStops = filteredStops.filter((s) => s.status === 'pending');
-  const assignedStops = filteredStops.filter((s) => s.status !== 'pending');
+  const todayFiltered = useMemo(() => filteredStops.filter(s => isStopForToday(s)), [filteredStops]);
+  const scheduledFiltered = useMemo(() => filteredStops.filter(s => !isStopForToday(s)), [filteredStops]);
+
+  const unassignedStops = todayFiltered.filter((s) => s.status === 'pending');
+  const assignedStops = todayFiltered.filter((s) => s.status !== 'pending');
 
   const handleStopClick = (stop: Stop) => {
     setSelectedStop(stop);
@@ -313,6 +317,7 @@ export default function AdminStops() {
       {/* Show sections only when "all" filter is active */}
       {statusFilter === 'all' ? (
         <div className="space-y-6">
+          {/* Today's stops */}
           {unassignedStops.length > 0 && (
             <div className="space-y-3">
               <h2 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
@@ -341,6 +346,21 @@ export default function AdminStops() {
             </div>
           )}
 
+          {/* Scheduled for other days */}
+          {scheduledFiltered.length > 0 && (
+            <div className="space-y-3">
+              <h2 className="text-sm font-semibold text-primary flex items-center gap-2">
+                <CalendarClock className="w-4 h-4" />
+                Programadas para otros días ({scheduledFiltered.length})
+              </h2>
+              <div className="space-y-3 p-4 rounded-xl border-2 border-dashed border-primary/20 bg-primary/5">
+                {scheduledFiltered.map((stop) => (
+                  <StopCard key={stop.id} stop={stop} driver={getDriverById(stop.driver_id)} shopName={stop.shop_name} onClick={() => handleStopClick(stop)} />
+                ))}
+              </div>
+            </div>
+          )}
+
           {filteredStops.length === 0 && (
             <Card>
               <CardContent className="py-12 text-center">
@@ -353,10 +373,37 @@ export default function AdminStops() {
           )}
         </div>
       ) : (
-        <div className="space-y-3">
-          {filteredStops.map((stop) => (
-            <StopCard key={stop.id} stop={stop} driver={getDriverById(stop.driver_id)} shopName={getShopById(stop.shop_id)?.shop_name} onClick={() => handleStopClick(stop)} />
-          ))}
+        <div className="space-y-6">
+          {/* Today stops for this status */}
+          {todayFiltered.length > 0 && (
+            <div className="space-y-3">
+              {scheduledFiltered.length > 0 && (
+                <h2 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                  <Package className="w-4 h-4" />
+                  Hoy ({todayFiltered.length})
+                </h2>
+              )}
+              {todayFiltered.map((stop) => (
+                <StopCard key={stop.id} stop={stop} driver={getDriverById(stop.driver_id)} shopName={getShopById(stop.shop_id)?.shop_name} onClick={() => handleStopClick(stop)} />
+              ))}
+            </div>
+          )}
+
+          {/* Scheduled for other days */}
+          {scheduledFiltered.length > 0 && (
+            <div className="space-y-3">
+              <h2 className="text-sm font-semibold text-primary flex items-center gap-2">
+                <CalendarClock className="w-4 h-4" />
+                Programadas ({scheduledFiltered.length})
+              </h2>
+              <div className="space-y-3 p-4 rounded-xl border-2 border-dashed border-primary/20 bg-primary/5">
+                {scheduledFiltered.map((stop) => (
+                  <StopCard key={stop.id} stop={stop} driver={getDriverById(stop.driver_id)} shopName={getShopById(stop.shop_id)?.shop_name} onClick={() => handleStopClick(stop)} />
+                ))}
+              </div>
+            </div>
+          )}
+
           {filteredStops.length === 0 && (
             <Card>
               <CardContent className="py-12 text-center">
