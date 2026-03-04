@@ -23,8 +23,8 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (newPassword.length < 8) {
-      toast.error('La contraseña debe tener al menos 8 caracteres');
+    if (newPassword.length < 6) {
+      toast.error('La contraseña debe tener al menos 6 caracteres');
       return;
     }
     if (newPassword !== confirmPassword) {
