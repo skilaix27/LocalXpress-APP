@@ -43,7 +43,7 @@ export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDi
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.full_name.trim() || !form.email.trim() || !form.password.trim()) { toast.error('Completa los campos obligatorios'); return; }
-    if (form.password.length < 8) { toast.error('La contraseña debe tener al menos 8 caracteres'); return; }
+    if (form.password.length < 6) { toast.error('La contraseña debe tener al menos 6 caracteres'); return; }
     if (form.role === 'shop' && !form.shop_name.trim()) { toast.error('El nombre de la tienda es obligatorio'); return; }
 
     setLoading(true);
@@ -126,7 +126,7 @@ export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDi
 
         <div className="space-y-2">
           <Label htmlFor="password" className="flex items-center gap-1.5"><Lock className="w-3.5 h-3.5" /> Contraseña *</Label>
-          <Input id="password" type="password" placeholder="Mínimo 8 caracteres" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={8} />
+          <Input id="password" type="password" placeholder="Mínimo 6 caracteres" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={6} />
         </div>
 
         <div className="space-y-2">
