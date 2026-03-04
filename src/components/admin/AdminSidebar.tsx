@@ -44,8 +44,8 @@ export function AdminSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
               cn(
                 'flex items-center gap-3 px-4 py-3 rounded-lg transition-colors',
                 isActive
-                  ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                  : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                  ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-card'
+                  : 'text-sidebar-foreground/95 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
               )
             }
           >
