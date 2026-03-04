@@ -64,7 +64,12 @@ export function useShopData() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stops' }, () => debouncedFetch())
       .subscribe();
 
+    // Polling fallback every 8s — Realtime RLS with security-definer functions
+    // can silently fail, so polling ensures the shop always sees updates
+    const pollingInterval = setInterval(() => fetchData(), 8000);
+
     return () => {
+      clearInterval(pollingInterval);
       if (debouncedFetchRef.current) clearTimeout(debouncedFetchRef.current);
       supabase.removeChannel(channel);
     };
