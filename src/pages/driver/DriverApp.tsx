@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { DeliveryMap } from '@/components/map/DeliveryMap';
+import { DriverStopDetailDialog } from '@/components/driver/DriverStopDetailDialog';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { DeliveryProofDialog } from '@/components/driver/DeliveryProofDialog';
 import { ChangePasswordDialog } from '@/components/shared/ChangePasswordDialog';
@@ -34,6 +35,7 @@ import {
   Store,
   Lock,
   MoreVertical,
+  Info,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -56,6 +58,7 @@ export default function DriverApp() {
   const [gpsStatus, setGpsStatus] = useState<'loading' | 'active' | 'denied' | 'unavailable'>('loading');
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
+  const [stopDetailDialogOpen, setStopDetailDialogOpen] = useState(false);
 
   const fetchStops = useCallback(async () => {
     if (!profile) return;
@@ -458,13 +461,22 @@ export default function DriverApp() {
                     </a>
                   )}
                 </div>
-                <motion.button
-                  animate={{ rotate: detailsExpanded ? 180 : 0 }}
-                  onClick={() => setDetailsExpanded(!detailsExpanded)}
-                  className="p-2 -mr-2"
-                >
-                  <ChevronUp className="w-5 h-5 text-muted-foreground" />
-                </motion.button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setStopDetailDialogOpen(true)}
+                    className="p-2 rounded-xl bg-primary/10 text-primary active:scale-95 transition-transform"
+                    title="Ver detalles completos"
+                  >
+                    <Info className="w-5 h-5" />
+                  </button>
+                  <motion.button
+                    animate={{ rotate: detailsExpanded ? 180 : 0 }}
+                    onClick={() => setDetailsExpanded(!detailsExpanded)}
+                    className="p-2 -mr-2"
+                  >
+                    <ChevronUp className="w-5 h-5 text-muted-foreground" />
+                  </motion.button>
+                </div>
               </div>
 
               <AnimatePresence>
@@ -612,6 +624,14 @@ export default function DriverApp() {
       )}
 
       <ChangePasswordDialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen} />
+
+      {selectedStop && (
+        <DriverStopDetailDialog
+          stop={selectedStop}
+          open={stopDetailDialogOpen}
+          onOpenChange={setStopDetailDialogOpen}
+        />
+      )}
     </div>
   );
 }
