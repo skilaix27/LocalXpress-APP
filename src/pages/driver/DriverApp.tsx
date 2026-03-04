@@ -161,7 +161,13 @@ export default function DriverApp() {
       .channel('driver-stops')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stops' }, () => debouncedFetchStops())
       .subscribe();
+
+    // Polling fallback every 8s — Realtime RLS with security-definer functions
+    // can silently fail, so polling ensures the driver always sees updates
+    const pollingInterval = setInterval(() => fetchStops(), 8000);
+
     return () => {
+      clearInterval(pollingInterval);
       if (debouncedFetchStopsRef.current) clearTimeout(debouncedFetchStopsRef.current);
       supabase.removeChannel(channel);
     };
