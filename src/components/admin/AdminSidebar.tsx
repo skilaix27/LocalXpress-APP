@@ -8,6 +8,8 @@ import {
   Package,
   History,
   LogOut,
+  Store,
+  Settings,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import logoLocalxpress from '@/assets/logo-localxpress.png';
@@ -15,9 +17,11 @@ import logoLocalxpress from '@/assets/logo-localxpress.png';
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
   { to: '/admin/stops', icon: Package, label: 'Paradas' },
+  { to: '/admin/clients', icon: Store, label: 'Clientes' },
   { to: '/admin/users', icon: Users, label: 'Usuarios' },
   { to: '/admin/map', icon: MapPin, label: 'Mapa' },
   { to: '/admin/history', icon: History, label: 'Historial' },
+  { to: '/admin/settings', icon: Settings, label: 'Configuración' },
 ];
 
 export function AdminSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {

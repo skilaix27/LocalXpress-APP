@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ProofImage } from '@/components/ui/ProofImage';
 import { getDeliveryZone, adjustDistance } from '@/lib/delivery-zones';
+import { formatPrice } from '@/lib/pricing';
 import {
   ResponsiveDialog, ResponsiveDialogHeader, ResponsiveDialogTitle, ResponsiveDialogDescription,
 } from '@/components/ui/responsive-dialog';
@@ -19,7 +20,7 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Stop, Profile, StopStatus } from '@/lib/supabase-types';
-import { MapPin, User, Phone, FileText, Trash2, Truck, Clock, Camera, Receipt, Route, Store, CalendarClock, Pencil, Save, X, Package } from 'lucide-react';
+import { MapPin, User, Phone, FileText, Trash2, Truck, Clock, Camera, Receipt, Route, Store, CalendarClock, Pencil, Save, X, Package, Euro } from 'lucide-react';
 import { getPackageSizeLabel } from '@/lib/package-size';
 import { formatDistanceToNow, format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -231,6 +232,28 @@ export function StopDetailDialog({ stop, open, onOpenChange, drivers, onUpdate, 
               <Route className="w-4 h-4 text-primary" />
               <span className="text-sm text-primary font-bold">{adjustDistance(stop.distance_km)} km</span>
               <span className="text-sm font-medium">· {getDeliveryZone(stop.distance_km)}</span>
+            </div>
+          )}
+
+          {stop.price != null && (
+            <div className="p-3 rounded-lg bg-muted/50 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Euro className="w-4 h-4 text-primary" /> Tarificación
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="p-2 rounded bg-background">
+                  <p className="font-bold text-base">{formatPrice(Number(stop.price))}</p>
+                  <p className="text-muted-foreground">Total</p>
+                </div>
+                <div className="p-2 rounded bg-background">
+                  <p className="font-bold text-base text-primary">{formatPrice(Number(stop.price_driver))}</p>
+                  <p className="text-muted-foreground">Repartidor 70%</p>
+                </div>
+                <div className="p-2 rounded bg-background">
+                  <p className="font-bold text-base">{formatPrice(Number(stop.price_company))}</p>
+                  <p className="text-muted-foreground">Empresa 30%</p>
+                </div>
+              </div>
             </div>
           )}
 

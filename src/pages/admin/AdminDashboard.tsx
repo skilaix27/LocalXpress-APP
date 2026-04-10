@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { DeliveryMap } from '@/components/map/DeliveryMap';
 import { StopCard } from '@/components/admin/StopCard';
 import { DriverCard } from '@/components/admin/DriverCard';
@@ -7,14 +7,15 @@ import { StopDetailDialog } from '@/components/admin/StopDetailDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Stop } from '@/lib/supabase-types';
-import { Plus, Package, Users, Truck, CheckCircle, TrendingUp, UserCheck } from 'lucide-react';
+import { Plus, Package, Users, Truck, CheckCircle, TrendingUp, UserCheck, Euro, Hash } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAdminData } from '@/hooks/useAdminData';
 import { useNavigate } from 'react-router-dom';
+import { formatPrice } from '@/lib/pricing';
 
 export default function AdminDashboard() {
   const {
-    stops, drivers, driverLocations, loading, fetchData,
+    stops, allStops, drivers, driverLocations, loading, fetchData,
     getDriverById, getShopById, getDriverLocation, getDriverStopsCount,
     pendingStops, assignedStops, pickedStops, deliveredStops, activeDrivers, allUsers,
   } = useAdminData();
@@ -23,6 +24,17 @@ export default function AdminDashboard() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const navigate = useNavigate();
+
+  const totalToday = useMemo(() => stops.filter(
+    (s) => new Date(s.created_at).toDateString() === new Date().toDateString()
+  ).length, [stops]);
+
+  const financials = useMemo(() => {
+    const total = allStops.reduce((s, st) => s + (Number(st.price) || 0), 0);
+    const driverTotal = allStops.reduce((s, st) => s + (Number(st.price_driver) || 0), 0);
+    const companyTotal = allStops.reduce((s, st) => s + (Number(st.price_company) || 0), 0);
+    return { total, driverTotal, companyTotal };
+  }, [allStops]);
 
   const stats = [
     { label: 'Sin asignar', value: pendingStops, icon: Package, color: 'text-muted-foreground', bg: 'bg-muted' },
@@ -45,9 +57,6 @@ export default function AdminDashboard() {
     );
   }
 
-  const totalToday = stops.filter(
-    (s) => new Date(s.created_at).toDateString() === new Date().toDateString()
-  ).length;
 
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
@@ -86,15 +95,29 @@ export default function AdminDashboard() {
 
       {/* Summary banner */}
       <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
-        <CardContent className="p-3 sm:p-4 flex items-center gap-3 sm:gap-4">
+        <CardContent className="p-3 sm:p-4 flex items-center gap-3 sm:gap-4 flex-wrap">
           <div className="p-2 rounded-lg bg-primary/10 shrink-0">
             <TrendingUp className="w-5 h-5 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium">Resumen del día</p>
             <p className="text-xs text-muted-foreground">
-              {totalToday} paradas hoy · {stops.length} total · {drivers.length} repartidores
+              {totalToday} paradas hoy · {allStops.length} total · {drivers.length} repartidores
             </p>
+          </div>
+          <div className="flex items-center gap-4 text-xs sm:text-sm shrink-0">
+            <div className="text-center">
+              <p className="font-bold text-primary">{formatPrice(financials.total)}</p>
+              <p className="text-[10px] text-muted-foreground">Total</p>
+            </div>
+            <div className="text-center">
+              <p className="font-bold">{formatPrice(financials.driverTotal)}</p>
+              <p className="text-[10px] text-muted-foreground">Repart. 70%</p>
+            </div>
+            <div className="text-center">
+              <p className="font-bold">{formatPrice(financials.companyTotal)}</p>
+              <p className="text-[10px] text-muted-foreground">Empresa 30%</p>
+            </div>
           </div>
         </CardContent>
       </Card>
