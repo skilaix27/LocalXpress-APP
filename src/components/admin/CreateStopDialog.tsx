@@ -35,6 +35,7 @@ import { AddressInput } from '@/components/admin/AddressInput';
 import type { PlaceDetails } from '@/hooks/useGooglePlaces';
 import { getDeliveryZone, adjustDistance } from '@/lib/delivery-zones';
 import { generateOrderCode } from '@/lib/order-code';
+import { calculatePrice } from '@/lib/pricing';
 
 const stopSchema = z.object({
   pickup_address: z.string().min(1, 'Dirección de recogida requerida'),
@@ -132,6 +133,13 @@ export function CreateStopDialog({ open, onOpenChange, drivers, shops, onSuccess
       const orderCode = await generateOrderCode();
       const hasDriver = !!data.driver_id;
 
+      // Calculate pricing
+      let priceData: { price?: number; price_driver?: number; price_company?: number } = {};
+      if (routeDistance != null) {
+        const pricing = await calculatePrice(routeDistance);
+        priceData = { price: pricing.price, price_driver: pricing.priceDriver, price_company: pricing.priceCompany };
+      }
+
       const { error } = await supabase.from('stops').insert({
         pickup_address: data.pickup_address,
         pickup_lat: data.pickup_lat,
@@ -150,6 +158,7 @@ export function CreateStopDialog({ open, onOpenChange, drivers, shops, onSuccess
         package_size: data.package_size || null,
         shop_name: data.shop_name,
         shop_id: selectedShopId || null,
+        ...priceData,
       } as any);
 
       if (error) throw error;
