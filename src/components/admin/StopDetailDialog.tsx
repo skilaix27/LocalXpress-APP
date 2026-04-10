@@ -235,6 +235,28 @@ export function StopDetailDialog({ stop, open, onOpenChange, drivers, onUpdate, 
             </div>
           )}
 
+          {stop.price != null && (
+            <div className="p-3 rounded-lg bg-muted/50 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Euro className="w-4 h-4 text-primary" /> Tarificación
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                <div className="p-2 rounded bg-background">
+                  <p className="font-bold text-base">{formatPrice(Number(stop.price))}</p>
+                  <p className="text-muted-foreground">Total</p>
+                </div>
+                <div className="p-2 rounded bg-background">
+                  <p className="font-bold text-base text-primary">{formatPrice(Number(stop.price_driver))}</p>
+                  <p className="text-muted-foreground">Repartidor 70%</p>
+                </div>
+                <div className="p-2 rounded bg-background">
+                  <p className="font-bold text-base">{formatPrice(Number(stop.price_company))}</p>
+                  <p className="text-muted-foreground">Empresa 30%</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {stop.client_phone && (
             <div className="flex items-center gap-2 text-sm">
               <Phone className="w-4 h-4 text-muted-foreground" />
