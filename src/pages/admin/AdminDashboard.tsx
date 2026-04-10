@@ -57,16 +57,6 @@ export default function AdminDashboard() {
     );
   }
 
-  const totalToday = stops.filter(
-    (s) => new Date(s.created_at).toDateString() === new Date().toDateString()
-  ).length;
-
-  const financials = useMemo(() => {
-    const total = allStops.reduce((s, st) => s + (Number(st.price) || 0), 0);
-    const driverTotal = allStops.reduce((s, st) => s + (Number(st.price_driver) || 0), 0);
-    const companyTotal = allStops.reduce((s, st) => s + (Number(st.price_company) || 0), 0);
-    return { total, driverTotal, companyTotal };
-  }, [allStops]);
 
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
