@@ -95,15 +95,29 @@ export default function AdminDashboard() {
 
       {/* Summary banner */}
       <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
-        <CardContent className="p-3 sm:p-4 flex items-center gap-3 sm:gap-4">
+        <CardContent className="p-3 sm:p-4 flex items-center gap-3 sm:gap-4 flex-wrap">
           <div className="p-2 rounded-lg bg-primary/10 shrink-0">
             <TrendingUp className="w-5 h-5 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium">Resumen del día</p>
             <p className="text-xs text-muted-foreground">
-              {totalToday} paradas hoy · {stops.length} total · {drivers.length} repartidores
+              {totalToday} paradas hoy · {allStops.length} total · {drivers.length} repartidores
             </p>
+          </div>
+          <div className="flex items-center gap-4 text-xs sm:text-sm shrink-0">
+            <div className="text-center">
+              <p className="font-bold text-primary">{formatPrice(financials.total)}</p>
+              <p className="text-[10px] text-muted-foreground">Total</p>
+            </div>
+            <div className="text-center">
+              <p className="font-bold">{formatPrice(financials.driverTotal)}</p>
+              <p className="text-[10px] text-muted-foreground">Repart. 70%</p>
+            </div>
+            <div className="text-center">
+              <p className="font-bold">{formatPrice(financials.companyTotal)}</p>
+              <p className="text-[10px] text-muted-foreground">Empresa 30%</p>
+            </div>
           </div>
         </CardContent>
       </Card>
