@@ -15,7 +15,7 @@ import { formatPrice } from '@/lib/pricing';
 
 export default function AdminDashboard() {
   const {
-    stops, drivers, driverLocations, loading, fetchData,
+    stops, allStops, drivers, driverLocations, loading, fetchData,
     getDriverById, getShopById, getDriverLocation, getDriverStopsCount,
     pendingStops, assignedStops, pickedStops, deliveredStops, activeDrivers, allUsers,
   } = useAdminData();
@@ -24,6 +24,17 @@ export default function AdminDashboard() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const navigate = useNavigate();
+
+  const totalToday = useMemo(() => stops.filter(
+    (s) => new Date(s.created_at).toDateString() === new Date().toDateString()
+  ).length, [stops]);
+
+  const financials = useMemo(() => {
+    const total = allStops.reduce((s, st) => s + (Number(st.price) || 0), 0);
+    const driverTotal = allStops.reduce((s, st) => s + (Number(st.price_driver) || 0), 0);
+    const companyTotal = allStops.reduce((s, st) => s + (Number(st.price_company) || 0), 0);
+    return { total, driverTotal, companyTotal };
+  }, [allStops]);
 
   const stats = [
     { label: 'Sin asignar', value: pendingStops, icon: Package, color: 'text-muted-foreground', bg: 'bg-muted' },
