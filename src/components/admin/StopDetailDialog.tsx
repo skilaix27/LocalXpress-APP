@@ -258,7 +258,48 @@ export function StopDetailDialog({ stop, open, onOpenChange, drivers, onUpdate, 
             </div>
           )}
 
-          {stop.client_phone && (
+          {/* Payment status */}
+          {stop.status === 'delivered' && (
+            <div className="p-3 rounded-lg bg-muted/50 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <DollarSign className="w-4 h-4 text-primary" /> Estado de pagos
+              </div>
+              <div className="space-y-2">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <Checkbox
+                    checked={stop.paid_by_client}
+                    onCheckedChange={async (v) => {
+                      const { error } = await supabase.from('stops').update({
+                        paid_by_client: !!v,
+                        paid_by_client_at: v ? new Date().toISOString() : null,
+                      } as any).eq('id', stop.id);
+                      if (!error) { toast.success(v ? 'Marcado como pagado por cliente' : 'Desmarcado'); onUpdate(); }
+                    }}
+                  />
+                  <div>
+                    <p className="text-sm font-medium">Cliente ha pagado</p>
+                    {stop.paid_by_client_at && <p className="text-[10px] text-muted-foreground">{format(new Date(stop.paid_by_client_at), 'dd/MM/yyyy HH:mm', { locale: es })}</p>}
+                  </div>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <Checkbox
+                    checked={stop.paid_to_driver}
+                    onCheckedChange={async (v) => {
+                      const { error } = await supabase.from('stops').update({
+                        paid_to_driver: !!v,
+                        paid_to_driver_at: v ? new Date().toISOString() : null,
+                      } as any).eq('id', stop.id);
+                      if (!error) { toast.success(v ? 'Marcado como pagado al repartidor' : 'Desmarcado'); onUpdate(); }
+                    }}
+                  />
+                  <div>
+                    <p className="text-sm font-medium">Repartidor pagado</p>
+                    {stop.paid_to_driver_at && <p className="text-[10px] text-muted-foreground">{format(new Date(stop.paid_to_driver_at), 'dd/MM/yyyy HH:mm', { locale: es })}</p>}
+                  </div>
+                </label>
+              </div>
+            </div>
+          )
             <div className="flex items-center gap-2 text-sm">
               <Phone className="w-4 h-4 text-muted-foreground" />
               <a href={`tel:${stop.client_phone}`} className="text-primary hover:underline">{stop.client_phone}</a>
