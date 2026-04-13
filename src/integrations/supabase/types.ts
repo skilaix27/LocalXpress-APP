@@ -164,6 +164,10 @@ export type Database = {
           id: string
           order_code: string | null
           package_size: Database["public"]["Enums"]["package_size"] | null
+          paid_by_client: boolean
+          paid_by_client_at: string | null
+          paid_to_driver: boolean
+          paid_to_driver_at: string | null
           picked_at: string | null
           pickup_address: string
           pickup_lat: number
@@ -193,6 +197,10 @@ export type Database = {
           id?: string
           order_code?: string | null
           package_size?: Database["public"]["Enums"]["package_size"] | null
+          paid_by_client?: boolean
+          paid_by_client_at?: string | null
+          paid_to_driver?: boolean
+          paid_to_driver_at?: string | null
           picked_at?: string | null
           pickup_address: string
           pickup_lat: number
@@ -222,6 +230,10 @@ export type Database = {
           id?: string
           order_code?: string | null
           package_size?: Database["public"]["Enums"]["package_size"] | null
+          paid_by_client?: boolean
+          paid_by_client_at?: string | null
+          paid_to_driver?: boolean
+          paid_to_driver_at?: string | null
           picked_at?: string | null
           pickup_address?: string
           pickup_lat?: number

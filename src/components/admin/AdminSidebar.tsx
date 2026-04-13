@@ -16,7 +16,7 @@ import logoLocalxpress from '@/assets/logo-localxpress.png';
 
 const navItems = [
   { to: '/admin', icon: LayoutDashboard, label: 'Dashboard', end: true },
-  { to: '/admin/stops', icon: Package, label: 'Paradas' },
+  { to: '/admin/stops', icon: Package, label: 'Pedidos' },
   { to: '/admin/clients', icon: Store, label: 'Clientes' },
   { to: '/admin/users', icon: Users, label: 'Usuarios' },
   { to: '/admin/map', icon: MapPin, label: 'Mapa' },

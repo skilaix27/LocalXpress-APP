@@ -57,6 +57,10 @@ export interface Stop {
   price: number | null;
   price_driver: number | null;
   price_company: number | null;
+  paid_by_client: boolean;
+  paid_by_client_at: string | null;
+  paid_to_driver: boolean;
+  paid_to_driver_at: string | null;
 }
 
 export interface DriverLocation {
