@@ -302,6 +302,7 @@ export function StopDetailDialog({ stop, open, onOpenChange, drivers, onUpdate, 
           )}
 
           {stop.client_phone && (
+            <div className="flex items-center gap-2 text-sm">
               <Phone className="w-4 h-4 text-muted-foreground" />
               <a href={`tel:${stop.client_phone}`} className="text-primary hover:underline">{stop.client_phone}</a>
             </div>
