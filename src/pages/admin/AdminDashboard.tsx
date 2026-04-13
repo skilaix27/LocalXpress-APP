@@ -5,6 +5,7 @@ import { StopDetailDialog } from '@/components/admin/StopDetailDialog';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import type { Stop } from '@/lib/supabase-types';
 import { Plus, Package, Users, Truck, CheckCircle, TrendingUp, UserCheck, Euro, Hash, DollarSign, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
