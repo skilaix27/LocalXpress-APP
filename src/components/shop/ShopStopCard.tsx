@@ -6,7 +6,7 @@ import { getPackageSizeLabel } from '@/lib/package-size';
 import { formatDistanceToNow, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import { adjustDistance, getDeliveryZone } from '@/lib/delivery-zones';
+import { adjustDistance, getDeliveryZone, getDeliveryPrice } from '@/lib/delivery-zones';
 
 interface ShopStopCardProps {
   stop: Stop;
@@ -70,12 +70,16 @@ export function ShopStopCard({ stop, onClick, className }: ShopStopCardProps) {
                   {format(new Date(stop.scheduled_pickup_at), "d MMM · HH:mm", { locale: es })}
                 </span>
               )}
-              {stop.distance_km != null && (
-                <span className="flex items-center gap-1 text-primary font-semibold">
-                  <Route className="w-3 h-3" />
-                  {adjustDistance(stop.distance_km)} km · {getDeliveryZone(stop.distance_km)}
-                </span>
-              )}
+              {stop.distance_km != null && (() => {
+                const price = getDeliveryPrice(stop.distance_km);
+                return (
+                  <span className="flex items-center gap-1 text-primary font-semibold">
+                    <Route className="w-3 h-3" />
+                    {adjustDistance(stop.distance_km)} km · {getDeliveryZone(stop.distance_km)}
+                    {price != null && <span className="ml-1">· {price} €</span>}
+                  </span>
+                );
+              })()}
               {stop.package_size && (
                 <span className="flex items-center gap-1 font-medium">
                   <Package className="w-3 h-3" />

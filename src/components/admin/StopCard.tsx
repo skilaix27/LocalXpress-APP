@@ -2,7 +2,7 @@ import { forwardRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/ui/status-badge';
 import type { Stop, Profile } from '@/lib/supabase-types';
-import { getDeliveryZone, adjustDistance } from '@/lib/delivery-zones';
+import { getDeliveryZone, adjustDistance, getDeliveryPrice } from '@/lib/delivery-zones';
 import { MapPin, User, Phone, Clock, ChevronRight, Route, Store, CalendarClock, Package } from 'lucide-react';
 import { getPackageSizeLabel } from '@/lib/package-size';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -73,12 +73,16 @@ export const StopCard = forwardRef<HTMLDivElement, StopCardProps>(
                     {shopName}
                   </span>
                 )}
-                {stop.distance_km != null && (
-                  <span className="flex items-center gap-1 text-primary font-semibold">
-                    <Route className="w-3 h-3" />
-                    {adjustDistance(stop.distance_km)} km · {getDeliveryZone(stop.distance_km)}
-                  </span>
-                )}
+                {stop.distance_km != null && (() => {
+                  const price = stop.price ?? getDeliveryPrice(stop.distance_km);
+                  return (
+                    <span className="flex items-center gap-1 text-primary font-semibold">
+                      <Route className="w-3 h-3" />
+                      {adjustDistance(stop.distance_km)} km · {getDeliveryZone(stop.distance_km)}
+                      {price != null && <span className="ml-1">· {price} €</span>}
+                    </span>
+                  );
+                })()}
                 {stop.package_size && (
                   <span className="flex items-center gap-1 font-medium">
                     <Package className="w-3 h-3" />
