@@ -25,7 +25,7 @@ import { AddressInput } from '@/components/admin/AddressInput';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { PlaceDetails } from '@/hooks/useGooglePlaces';
-import { getDeliveryZone, adjustDistance } from '@/lib/delivery-zones';
+import { getDeliveryZone, adjustDistance, getDeliveryPrice } from '@/lib/delivery-zones';
 import { generateOrderCode } from '@/lib/order-code';
 
 const stopSchema = z.object({
@@ -396,13 +396,17 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
             </FormItem>
           )} />
 
-          {routeDistance !== null && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 text-sm">
-              <MapPin className="w-4 h-4 text-primary" />
-              <span className="text-primary font-bold">{adjustDistance(routeDistance)} km</span>
-              <span className="font-medium">· {getDeliveryZone(routeDistance)}</span>
-            </div>
-          )}
+          {routeDistance !== null && (() => {
+            const price = getDeliveryPrice(routeDistance);
+            return (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+                <MapPin className="w-4 h-4 text-primary" />
+                <span className="text-primary font-bold">{adjustDistance(routeDistance)} km</span>
+                <span className="font-medium">· {getDeliveryZone(routeDistance)}</span>
+                {price != null && <span className="font-bold text-primary">· {price} €</span>}
+              </div>
+            );
+          })()}
           {calculatingRoute && routeDistance === null && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 text-sm">
               <Loader2 className="w-4 h-4 animate-spin text-primary" />
