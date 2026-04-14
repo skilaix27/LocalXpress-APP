@@ -33,7 +33,7 @@ import { cn } from '@/lib/utils';
 import { useRouteDistance } from '@/hooks/useRouteDistance';
 import { AddressInput } from '@/components/admin/AddressInput';
 import type { PlaceDetails } from '@/hooks/useGooglePlaces';
-import { getDeliveryZone, adjustDistance } from '@/lib/delivery-zones';
+import { getDeliveryZone, adjustDistance, getDeliveryPrice } from '@/lib/delivery-zones';
 import { generateOrderCode } from '@/lib/order-code';
 
 const stopSchema = z.object({
@@ -382,14 +382,18 @@ export function CreateStopDialog({ open, onOpenChange, drivers, shops, onSuccess
             </FormItem>
           )} />
 
-          {routeDistance !== null && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 text-sm">
-              <MapPin className="w-4 h-4 text-primary" />
-              <span className="text-primary font-bold">{adjustDistance(routeDistance)} km</span>
-              <span className="font-medium">· {getDeliveryZone(routeDistance)}</span>
-              {calculatingRoute && <Loader2 className="w-4 h-4 animate-spin" />}
-            </div>
-          )}
+          {routeDistance !== null && (() => {
+            const price = getDeliveryPrice(routeDistance);
+            return (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+                <MapPin className="w-4 h-4 text-primary" />
+                <span className="text-primary font-bold">{adjustDistance(routeDistance)} km</span>
+                <span className="font-medium">· {getDeliveryZone(routeDistance)}</span>
+                {price != null && <span className="font-bold text-primary">· {price} €</span>}
+                {calculatingRoute && <Loader2 className="w-4 h-4 animate-spin" />}
+              </div>
+            );
+          })()}
           {calculatingRoute && routeDistance === null && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 text-sm">
               <Loader2 className="w-4 h-4 animate-spin text-primary" />
