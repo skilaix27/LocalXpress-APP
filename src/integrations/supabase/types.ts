@@ -52,56 +52,16 @@ export type Database = {
           },
         ]
       }
-      pricing_zones: {
-        Row: {
-          created_at: string
-          fixed_price: number | null
-          id: string
-          max_km: number | null
-          min_km: number
-          name: string
-          per_km_price: number | null
-          sort_order: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          fixed_price?: number | null
-          id?: string
-          max_km?: number | null
-          min_km?: number
-          name: string
-          per_km_price?: number | null
-          sort_order?: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          fixed_price?: number | null
-          id?: string
-          max_km?: number | null
-          min_km?: number
-          name?: string
-          per_km_price?: number | null
-          sort_order?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
       profiles: {
         Row: {
-          admin_notes: string | null
           avatar_url: string | null
           created_at: string
           default_pickup_address: string | null
           default_pickup_lat: number | null
           default_pickup_lng: number | null
-          fiscal_address: string | null
           full_name: string
-          iban: string | null
           id: string
           is_active: boolean | null
-          nif: string | null
           phone: string | null
           privacy_accepted_at: string | null
           shop_name: string | null
@@ -109,18 +69,14 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          admin_notes?: string | null
           avatar_url?: string | null
           created_at?: string
           default_pickup_address?: string | null
           default_pickup_lat?: number | null
           default_pickup_lng?: number | null
-          fiscal_address?: string | null
           full_name: string
-          iban?: string | null
           id?: string
           is_active?: boolean | null
-          nif?: string | null
           phone?: string | null
           privacy_accepted_at?: string | null
           shop_name?: string | null
@@ -128,18 +84,14 @@ export type Database = {
           user_id: string
         }
         Update: {
-          admin_notes?: string | null
           avatar_url?: string | null
           created_at?: string
           default_pickup_address?: string | null
           default_pickup_lat?: number | null
           default_pickup_lng?: number | null
-          fiscal_address?: string | null
           full_name?: string
-          iban?: string | null
           id?: string
           is_active?: boolean | null
-          nif?: string | null
           phone?: string | null
           privacy_accepted_at?: string | null
           shop_name?: string | null
@@ -164,17 +116,10 @@ export type Database = {
           id: string
           order_code: string | null
           package_size: Database["public"]["Enums"]["package_size"] | null
-          paid_by_client: boolean
-          paid_by_client_at: string | null
-          paid_to_driver: boolean
-          paid_to_driver_at: string | null
           picked_at: string | null
           pickup_address: string
           pickup_lat: number
           pickup_lng: number
-          price: number | null
-          price_company: number | null
-          price_driver: number | null
           proof_photo_url: string | null
           scheduled_pickup_at: string | null
           shop_id: string | null
@@ -197,17 +142,10 @@ export type Database = {
           id?: string
           order_code?: string | null
           package_size?: Database["public"]["Enums"]["package_size"] | null
-          paid_by_client?: boolean
-          paid_by_client_at?: string | null
-          paid_to_driver?: boolean
-          paid_to_driver_at?: string | null
           picked_at?: string | null
           pickup_address: string
           pickup_lat: number
           pickup_lng: number
-          price?: number | null
-          price_company?: number | null
-          price_driver?: number | null
           proof_photo_url?: string | null
           scheduled_pickup_at?: string | null
           shop_id?: string | null
@@ -230,17 +168,10 @@ export type Database = {
           id?: string
           order_code?: string | null
           package_size?: Database["public"]["Enums"]["package_size"] | null
-          paid_by_client?: boolean
-          paid_by_client_at?: string | null
-          paid_to_driver?: boolean
-          paid_to_driver_at?: string | null
           picked_at?: string | null
           pickup_address?: string
           pickup_lat?: number
           pickup_lng?: number
-          price?: number | null
-          price_company?: number | null
-          price_driver?: number | null
           proof_photo_url?: string | null
           scheduled_pickup_at?: string | null
           shop_id?: string | null

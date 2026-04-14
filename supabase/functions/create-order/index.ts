@@ -114,41 +114,6 @@ Deno.serve(async (req) => {
     const orderCode = await generateOrderCode(supabase);
     const data = parsed.data;
 
-    // Calculate pricing from zones
-    let price: number | null = null;
-    let priceDriver: number | null = null;
-    let priceCompany: number | null = null;
-
-    // Fetch pricing zones
-    const { data: zones } = await supabase
-      .from("pricing_zones")
-      .select("*")
-      .order("sort_order", { ascending: true });
-
-    if (zones && zones.length > 0) {
-      // Simple haversine for distance estimate (edge function doesn't have Google Routes)
-      const R = 6371;
-      const toRad = (d: number) => (d * Math.PI) / 180;
-      const dLat = toRad(data.delivery_lat - data.pickup_lat);
-      const dLon = toRad(data.delivery_lng - data.pickup_lng);
-      const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(data.pickup_lat)) * Math.cos(toRad(data.delivery_lat)) * Math.sin(dLon / 2) ** 2;
-      const distKm = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) + 0.15;
-
-      for (const zone of zones) {
-        const maxKm = zone.max_km ?? Infinity;
-        if (distKm >= zone.min_km && (distKm < maxKm || zone.max_km === null)) {
-          price = zone.fixed_price ? Number(zone.fixed_price) : 0;
-          if (zone.per_km_price && zone.max_km === null) {
-            price += Math.max(0, distKm - zone.min_km) * Number(zone.per_km_price);
-          }
-          price = Math.round(price * 100) / 100;
-          priceDriver = Math.round(price * 0.7 * 100) / 100;
-          priceCompany = Math.round(price * 0.3 * 100) / 100;
-          break;
-        }
-      }
-    }
-
     const { data: stop, error } = await supabase
       .from("stops")
       .insert({
@@ -168,11 +133,8 @@ Deno.serve(async (req) => {
         package_size: data.package_size || null,
         scheduled_pickup_at: data.scheduled_pickup_at || null,
         status: "pending",
-        price,
-        price_driver: priceDriver,
-        price_company: priceCompany,
       })
-      .select("id, order_code, status, created_at, price, price_driver, price_company")
+      .select("id, order_code, status, created_at")
       .single();
 
     if (error) {

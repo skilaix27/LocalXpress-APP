@@ -3,8 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/ui/status-badge';
 import type { Stop, Profile } from '@/lib/supabase-types';
 import { getDeliveryZone, adjustDistance } from '@/lib/delivery-zones';
-import { formatPrice } from '@/lib/pricing';
-import { MapPin, User, Phone, Clock, ChevronRight, Route, Store, CalendarClock, Package, Euro } from 'lucide-react';
+import { MapPin, User, Phone, Clock, ChevronRight, Route, Store, CalendarClock, Package } from 'lucide-react';
 import { getPackageSizeLabel } from '@/lib/package-size';
 import { formatDistanceToNow, format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -105,12 +104,6 @@ export const StopCard = forwardRef<HTMLDivElement, StopCardProps>(
                     locale: es 
                   })}
                 </span>
-                {stop.price != null && (
-                  <span className="flex items-center gap-1 text-primary font-bold">
-                    <Euro className="w-3 h-3" />
-                    {formatPrice(Number(stop.price))}
-                  </span>
-                )}
               </div>
             </div>
 

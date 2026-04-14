@@ -16,10 +16,6 @@ export interface Profile {
   default_pickup_lat: number | null;
   default_pickup_lng: number | null;
   privacy_accepted_at: string | null;
-  nif: string | null;
-  fiscal_address: string | null;
-  iban: string | null;
-  admin_notes: string | null;
 }
 
 export interface UserRole {
@@ -54,13 +50,6 @@ export interface Stop {
   shop_name: string | null;
   scheduled_pickup_at: string | null;
   package_size: PackageSize | null;
-  price: number | null;
-  price_driver: number | null;
-  price_company: number | null;
-  paid_by_client: boolean;
-  paid_by_client_at: string | null;
-  paid_to_driver: boolean;
-  paid_to_driver_at: string | null;
 }
 
 export interface DriverLocation {

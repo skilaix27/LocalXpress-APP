@@ -27,7 +27,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import type { PlaceDetails } from '@/hooks/useGooglePlaces';
 import { getDeliveryZone, adjustDistance } from '@/lib/delivery-zones';
 import { generateOrderCode } from '@/lib/order-code';
-import { calculatePrice } from '@/lib/pricing';
 
 const stopSchema = z.object({
   pickup_address: z.string().min(1, 'Dirección de recogida requerida'),
@@ -137,13 +136,6 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
       const [hours, minutes] = data.scheduled_pickup_time.split(':').map(Number);
       const scheduledDate = new Date(pickupDate.getFullYear(), pickupDate.getMonth(), pickupDate.getDate(), hours, minutes);
 
-      // Calculate pricing
-      let priceData: { price?: number; price_driver?: number; price_company?: number } = {};
-      if (routeDistance != null) {
-        const pricing = await calculatePrice(routeDistance);
-        priceData = { price: pricing.price, price_driver: pricing.priceDriver, price_company: pricing.priceCompany };
-      }
-
       const { error } = await supabase.from('stops').insert({
         pickup_address: data.pickup_address,
         pickup_lat: data.pickup_lat,
@@ -160,7 +152,6 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
         shop_name: profile.shop_name || profile.full_name,
         scheduled_pickup_at: scheduledDate.toISOString(),
         package_size: data.package_size,
-        ...priceData,
       } as any);
 
       if (error) throw error;
