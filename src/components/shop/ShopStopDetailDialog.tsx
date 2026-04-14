@@ -11,7 +11,7 @@ import { MapPin, User, Phone, FileText, Clock, Route, Image, Receipt, Store, Cal
 import { getPackageSizeLabel } from '@/lib/package-size';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { adjustDistance, getDeliveryZone } from '@/lib/delivery-zones';
+import { adjustDistance, getDeliveryZone, getDeliveryPrice } from '@/lib/delivery-zones';
 
 interface ShopStopDetailDialogProps {
   stop: Stop | null;
@@ -97,13 +97,17 @@ export function ShopStopDetailDialog({ stop, open, onOpenChange }: ShopStopDetai
             </div>
           </div>
 
-          {stop.distance_km != null && (
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-muted">
-              <Route className="w-4 h-4 text-primary" />
-              <span className="text-primary font-bold text-sm">{adjustDistance(stop.distance_km)} km</span>
-              <span className="font-medium text-muted-foreground text-sm">· {getDeliveryZone(stop.distance_km)}</span>
-            </div>
-          )}
+          {stop.distance_km != null && (() => {
+            const price = getDeliveryPrice(stop.distance_km);
+            return (
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted">
+                <Route className="w-4 h-4 text-primary" />
+                <span className="text-primary font-bold text-sm">{adjustDistance(stop.distance_km)} km</span>
+                <span className="font-medium text-muted-foreground text-sm">· {getDeliveryZone(stop.distance_km)}</span>
+                {price != null && <span className="font-bold text-primary text-sm">· {price} €</span>}
+              </div>
+            );
+          })()}
 
           {stop.client_notes && (
             <div className="space-y-1.5">

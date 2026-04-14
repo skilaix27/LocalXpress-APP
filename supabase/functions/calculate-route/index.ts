@@ -18,7 +18,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Verify authenticated user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "No autorizado" }), {
@@ -75,6 +74,9 @@ Deno.serve(async (req) => {
           location: { latLng: { latitude: destLat, longitude: destLng } },
         },
         travelMode: 'DRIVE',
+        routeModifiers: {
+          avoidTolls: true,
+        },
       }),
     });
 

@@ -9,7 +9,7 @@ import { ChangePasswordDialog } from '@/components/shared/ChangePasswordDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { Stop } from '@/lib/supabase-types';
-import { getDeliveryZone, adjustDistance } from '@/lib/delivery-zones';
+import { getDeliveryZone, adjustDistance, getDeliveryPrice } from '@/lib/delivery-zones';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -512,13 +512,17 @@ export default function DriverApp() {
                     </Card>
 
                     {/* Distance */}
-                    {selectedStop.distance_km != null && (
-                      <div className="flex items-center justify-center gap-2 py-1.5 px-3 bg-primary/10 rounded-lg text-sm">
-                        <span className="text-primary font-bold">{adjustDistance(selectedStop.distance_km)} km</span>
-                        <span className="text-muted-foreground">·</span>
-                        <span className="font-semibold">{getDeliveryZone(selectedStop.distance_km)}</span>
-                      </div>
-                    )}
+                    {selectedStop.distance_km != null && (() => {
+                      const price = getDeliveryPrice(selectedStop.distance_km);
+                      return (
+                        <div className="flex items-center justify-center gap-2 py-1.5 px-3 bg-primary/10 rounded-lg text-sm">
+                          <span className="text-primary font-bold">{adjustDistance(selectedStop.distance_km)} km</span>
+                          <span className="text-muted-foreground">·</span>
+                          <span className="font-semibold">{getDeliveryZone(selectedStop.distance_km)}</span>
+                          {price != null && <span className="text-primary font-bold">· {price} €</span>}
+                        </div>
+                      );
+                    })()}
 
                     {selectedStop.client_notes && (
                       <div className="flex items-start gap-2 p-3 bg-muted rounded-lg">

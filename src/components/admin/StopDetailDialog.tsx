@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ProofImage } from '@/components/ui/ProofImage';
-import { getDeliveryZone, adjustDistance } from '@/lib/delivery-zones';
+import { getDeliveryZone, adjustDistance, getDeliveryPrice } from '@/lib/delivery-zones';
 import {
   ResponsiveDialog, ResponsiveDialogHeader, ResponsiveDialogTitle, ResponsiveDialogDescription,
 } from '@/components/ui/responsive-dialog';
@@ -226,13 +226,17 @@ export function StopDetailDialog({ stop, open, onOpenChange, drivers, onUpdate, 
             <p className="text-sm text-muted-foreground pl-4">{stop.delivery_address}</p>
           </div>
 
-          {stop.distance_km != null && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10">
-              <Route className="w-4 h-4 text-primary" />
-              <span className="text-sm text-primary font-bold">{adjustDistance(stop.distance_km)} km</span>
-              <span className="text-sm font-medium">· {getDeliveryZone(stop.distance_km)}</span>
-            </div>
-          )}
+          {stop.distance_km != null && (() => {
+            const price = stop.price ?? getDeliveryPrice(stop.distance_km);
+            return (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10">
+                <Route className="w-4 h-4 text-primary" />
+                <span className="text-sm text-primary font-bold">{adjustDistance(stop.distance_km)} km</span>
+                <span className="text-sm font-medium">· {getDeliveryZone(stop.distance_km)}</span>
+                {price != null && <span className="text-sm font-bold text-primary">· {price} €</span>}
+              </div>
+            );
+          })()}
 
           {stop.client_phone && (
             <div className="flex items-center gap-2 text-sm">
