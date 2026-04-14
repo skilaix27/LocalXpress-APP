@@ -17,6 +17,7 @@ const AdminStops = lazy(() => import("./pages/admin/AdminStops"));
 const AdminDrivers = lazy(() => import("./pages/admin/AdminDrivers"));
 const AdminMap = lazy(() => import("./pages/admin/AdminMap"));
 const AdminHistory = lazy(() => import("./pages/admin/AdminHistory"));
+const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
 const ShopLayout = lazy(() => import("./pages/shop/ShopLayout"));
 const ShopDashboard = lazy(() => import("./pages/shop/ShopDashboard"));
 const ShopNewStop = lazy(() => import("./pages/shop/ShopNewStop"));
@@ -69,6 +70,7 @@ const App = () => (
               <Route path="users" element={<AdminDrivers />} />
               <Route path="map" element={<AdminMap />} />
               <Route path="history" element={<AdminHistory />} />
+              <Route path="settings" element={<AdminSettings />} />
             </Route>
             
             {/* Shop routes */}
