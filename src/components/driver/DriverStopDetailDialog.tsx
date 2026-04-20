@@ -4,11 +4,12 @@ import {
   ResponsiveDialogTitle,
   ResponsiveDialogDescription,
 } from '@/components/ui/responsive-dialog';
-import { MapPin, Phone, FileText, Package, Store, Clock, Copy, Check } from 'lucide-react';
+import { MapPin, Phone, FileText, Package, Store, Clock, Copy, Check, Route } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { Stop } from '@/lib/supabase-types';
 import { getPackageSizeLabel } from '@/lib/package-size';
+import { adjustDistance, getDeliveryZone, getDeliveryPrice } from '@/lib/delivery-zones';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useState } from 'react';
@@ -112,6 +113,32 @@ export function DriverStopDetailDialog({ stop, open, onOpenChange }: DriverStopD
             <span className="text-sm font-semibold text-primary">{stop.client_phone}</span>
           </a>
         )}
+
+        {/* Distance + zone + price */}
+        {stop.distance_km != null && (() => {
+          const adj = adjustDistance(stop.distance_km);
+          const zone = getDeliveryZone(stop.distance_km);
+          const price = getDeliveryPrice(stop.distance_km);
+          return (
+            <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-lg border border-primary/20">
+              <Route className="w-5 h-5 text-primary" />
+              <div className="flex-1">
+                <p className="text-[10px] font-bold text-muted-foreground tracking-wider">DISTANCIA Y ZONA</p>
+                <p className="text-sm font-semibold">
+                  <span className="text-primary">{adj} km</span>
+                  <span className="text-muted-foreground"> · </span>
+                  <span>{zone}</span>
+                  {price != null && (
+                    <>
+                      <span className="text-muted-foreground"> · </span>
+                      <span className="text-primary">{price} €</span>
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Schedule */}
         {stop.scheduled_pickup_at && (

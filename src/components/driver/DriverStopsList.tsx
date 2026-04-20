@@ -1,8 +1,9 @@
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { motion } from 'framer-motion';
-import { MapPin, Clock, Package, ChevronRight, Store, CalendarClock } from 'lucide-react';
+import { MapPin, Clock, Package, ChevronRight, Store, CalendarClock, Route } from 'lucide-react';
 import { getPackageSizeLabel } from '@/lib/package-size';
+import { adjustDistance, getDeliveryZone, getDeliveryPrice } from '@/lib/delivery-zones';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Card, CardContent } from '@/components/ui/card';
 import type { Stop } from '@/lib/supabase-types';
@@ -63,6 +64,25 @@ function StopItem({ stop, index, onSelectStop }: { stop: Stop; index: number; on
                   <MapPin className="w-3 h-3 shrink-0" />
                   <span className="truncate">{stop.pickup_address}</span>
                 </div>
+                {stop.distance_km != null && (() => {
+                  const adj = adjustDistance(stop.distance_km);
+                  const zone = getDeliveryZone(stop.distance_km);
+                  const price = getDeliveryPrice(stop.distance_km);
+                  return (
+                    <div className="flex items-center gap-1 mt-0.5 text-xs">
+                      <Route className="w-3 h-3 shrink-0 text-primary" />
+                      <span className="font-semibold text-primary">{adj} km</span>
+                      <span className="text-muted-foreground">·</span>
+                      <span className="text-muted-foreground">{zone}</span>
+                      {price != null && (
+                        <>
+                          <span className="text-muted-foreground">·</span>
+                          <span className="font-semibold text-primary">{price} €</span>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
                 {stop.package_size && (
                   <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground font-medium">
                     <Package className="w-3 h-3" />
