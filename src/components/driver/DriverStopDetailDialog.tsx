@@ -114,6 +114,32 @@ export function DriverStopDetailDialog({ stop, open, onOpenChange }: DriverStopD
           </a>
         )}
 
+        {/* Distance + zone + price */}
+        {stop.distance_km != null && (() => {
+          const adj = adjustDistance(stop.distance_km);
+          const zone = getDeliveryZone(stop.distance_km);
+          const price = getDeliveryPrice(stop.distance_km);
+          return (
+            <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-lg border border-primary/20">
+              <Route className="w-5 h-5 text-primary" />
+              <div className="flex-1">
+                <p className="text-[10px] font-bold text-muted-foreground tracking-wider">DISTANCIA Y ZONA</p>
+                <p className="text-sm font-semibold">
+                  <span className="text-primary">{adj} km</span>
+                  <span className="text-muted-foreground"> · </span>
+                  <span>{zone}</span>
+                  {price != null && (
+                    <>
+                      <span className="text-muted-foreground"> · </span>
+                      <span className="text-primary">{price} €</span>
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Schedule */}
         {stop.scheduled_pickup_at && (
           <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
