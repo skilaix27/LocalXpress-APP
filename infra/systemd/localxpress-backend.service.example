@@ -1,0 +1,41 @@
+# ─── LocalXpress Backend — systemd service ───────────────────────────────────
+# Copy to /etc/systemd/system/localxpress-backend.service
+#
+# systemctl daemon-reload
+# systemctl enable localxpress-backend
+# systemctl start localxpress-backend
+# journalctl -u localxpress-backend -f
+
+[Unit]
+Description=LocalXpress Backend API
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/localxpress/backend
+
+# Point at the compiled JS entry point
+ExecStart=/usr/bin/node dist/index.js
+
+# Load env from file
+EnvironmentFile=/var/www/localxpress/backend/.env
+
+Restart=on-failure
+RestartSec=5s
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=localxpress-backend
+
+[Install]
+WantedBy=multi-user.target
