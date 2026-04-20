@@ -64,6 +64,25 @@ function StopItem({ stop, index, onSelectStop }: { stop: Stop; index: number; on
                   <MapPin className="w-3 h-3 shrink-0" />
                   <span className="truncate">{stop.pickup_address}</span>
                 </div>
+                {stop.distance_km != null && (() => {
+                  const adj = adjustDistance(stop.distance_km);
+                  const zone = getDeliveryZone(stop.distance_km);
+                  const price = getDeliveryPrice(stop.distance_km);
+                  return (
+                    <div className="flex items-center gap-1 mt-0.5 text-xs">
+                      <Route className="w-3 h-3 shrink-0 text-primary" />
+                      <span className="font-semibold text-primary">{adj} km</span>
+                      <span className="text-muted-foreground">·</span>
+                      <span className="text-muted-foreground">{zone}</span>
+                      {price != null && (
+                        <>
+                          <span className="text-muted-foreground">·</span>
+                          <span className="font-semibold text-primary">{price} €</span>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
                 {stop.package_size && (
                   <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground font-medium">
                     <Package className="w-3 h-3" />
