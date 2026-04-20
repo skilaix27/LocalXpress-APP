@@ -1,8 +1,9 @@
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { motion } from 'framer-motion';
-import { MapPin, Clock, Package, ChevronRight, Store, CalendarClock } from 'lucide-react';
+import { MapPin, Clock, Package, ChevronRight, Store, CalendarClock, Route } from 'lucide-react';
 import { getPackageSizeLabel } from '@/lib/package-size';
+import { adjustDistance, getDeliveryZone, getDeliveryPrice } from '@/lib/delivery-zones';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Card, CardContent } from '@/components/ui/card';
 import type { Stop } from '@/lib/supabase-types';
