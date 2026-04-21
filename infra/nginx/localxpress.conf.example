@@ -1,46 +1,41 @@
-# ─── LocalXpress Nginx config ────────────────────────────────────────────────
-# Copy to /etc/nginx/sites-available/localxpress
-# Symlink: ln -s /etc/nginx/sites-available/localxpress /etc/nginx/sites-enabled/
-# Certbot: certbot --nginx -d yourdomain.com
+# ══════════════════════════════════════════════════════════════════════════════
+# LocalXpress — Nginx configuration
+# VPS: 109.176.197.56
+#
+# Copiar a: /etc/nginx/sites-available/localxpress
+# Activar:  ln -s /etc/nginx/sites-available/localxpress /etc/nginx/sites-enabled/
+# Test:     nginx -t
+# Reload:   systemctl reload nginx
+#
+# Para SSL con Let's Encrypt (cuando tengas dominio):
+#   certbot --nginx -d tudominio.com
+# ══════════════════════════════════════════════════════════════════════════════
 
+# ─── Sin dominio: acceso por IP directa ──────────────────────────────────────
 server {
     listen 80;
-    server_name yourdomain.com www.yourdomain.com;
-    return 301 https://$host$request_uri;
-}
+    server_name 109.176.197.56;
 
-server {
-    listen 443 ssl http2;
-    server_name yourdomain.com www.yourdomain.com;
+    # ─── Seguridad básica ────────────────────────────────────────────────────
+    add_header X-Frame-Options        "SAMEORIGIN"    always;
+    add_header X-Content-Type-Options "nosniff"       always;
+    add_header Referrer-Policy        "strict-origin" always;
 
-    # Certbot will fill these in:
-    # ssl_certificate     /etc/letsencrypt/live/yourdomain.com/fullchain.pem;
-    # ssl_certificate_key /etc/letsencrypt/live/yourdomain.com/privkey.pem;
-    # include /etc/letsencrypt/options-ssl-nginx.conf;
-
-    # ─── Security headers ────────────────────────────────────────────────────
-    add_header X-Frame-Options           "SAMEORIGIN"   always;
-    add_header X-Content-Type-Options    "nosniff"      always;
-    add_header Referrer-Policy           "strict-origin" always;
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-
-    # ─── Frontend (static build) ─────────────────────────────────────────────
+    # ─── Frontend (build estático de React/Vite) ─────────────────────────────
     root /var/www/localxpress/dist;
     index index.html;
 
     location / {
         try_files $uri $uri/ /index.html;
-        expires 1h;
-        add_header Cache-Control "public, max-age=3600";
     }
 
-    # Cache hashed assets forever
-    location ~* \.(js|css|woff2|png|jpg|svg|ico)$ {
+    # Cache para assets con hash en el nombre
+    location ~* \.(js|css|woff2|png|jpg|svg|ico|webp)$ {
         expires 1y;
         add_header Cache-Control "public, immutable";
     }
 
-    # ─── Backend API ─────────────────────────────────────────────────────────
+    # ─── Backend API (proxy inverso al contenedor Docker) ────────────────────
     location /api/ {
         proxy_pass         http://127.0.0.1:3001;
         proxy_http_version 1.1;
@@ -51,18 +46,71 @@ server {
         proxy_read_timeout 60s;
         proxy_send_timeout 60s;
 
-        # Upload size limit (match MAX_FILE_SIZE_MB in .env)
+        # Límite de tamaño para subida de fotos (debe ser >= MAX_FILE_SIZE_MB + margen)
         client_max_body_size 12m;
     }
 
-    # ─── Uploaded files ──────────────────────────────────────────────────────
+    # ─── Archivos subidos (fotos de entrega) ─────────────────────────────────
     location /uploads/ {
-        proxy_pass       http://127.0.0.1:3001/uploads/;
+        proxy_pass http://127.0.0.1:3001/uploads/;
         proxy_set_header Host $host;
-        expires          1h;
+        expires 1h;
+        add_header Cache-Control "public, max-age=3600";
     }
 
-    # ─── Logging ─────────────────────────────────────────────────────────────
+    # ─── Logs ────────────────────────────────────────────────────────────────
     access_log /var/log/nginx/localxpress.access.log;
     error_log  /var/log/nginx/localxpress.error.log;
 }
+
+# ─── Con dominio + SSL (descomentar cuando tengas dominio) ────────────────────
+# server {
+#     listen 80;
+#     server_name tudominio.com www.tudominio.com;
+#     return 301 https://$host$request_uri;
+# }
+#
+# server {
+#     listen 443 ssl http2;
+#     server_name tudominio.com www.tudominio.com;
+#
+#     ssl_certificate     /etc/letsencrypt/live/tudominio.com/fullchain.pem;
+#     ssl_certificate_key /etc/letsencrypt/live/tudominio.com/privkey.pem;
+#     include /etc/letsencrypt/options-ssl-nginx.conf;
+#
+#     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+#     add_header X-Frame-Options        "SAMEORIGIN"    always;
+#     add_header X-Content-Type-Options "nosniff"       always;
+#
+#     root /var/www/localxpress/dist;
+#     index index.html;
+#
+#     location / {
+#         try_files $uri $uri/ /index.html;
+#     }
+#
+#     location ~* \.(js|css|woff2|png|jpg|svg|ico|webp)$ {
+#         expires 1y;
+#         add_header Cache-Control "public, immutable";
+#     }
+#
+#     location /api/ {
+#         proxy_pass         http://127.0.0.1:3001;
+#         proxy_http_version 1.1;
+#         proxy_set_header   Host              $host;
+#         proxy_set_header   X-Real-IP         $remote_addr;
+#         proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+#         proxy_set_header   X-Forwarded-Proto $scheme;
+#         proxy_read_timeout 60s;
+#         client_max_body_size 12m;
+#     }
+#
+#     location /uploads/ {
+#         proxy_pass http://127.0.0.1:3001/uploads/;
+#         proxy_set_header Host $host;
+#         expires 1h;
+#     }
+#
+#     access_log /var/log/nginx/localxpress.access.log;
+#     error_log  /var/log/nginx/localxpress.error.log;
+# }

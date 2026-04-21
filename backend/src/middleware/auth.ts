@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../utils/jwt';
+import { config } from '../config';
 import { AuthenticatedRequest, AuthPayload } from '../types';
 
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
@@ -35,7 +36,6 @@ export function optionalAuth(req: Request, _res: Response, next: NextFunction): 
 
 export function requireApiKey(req: Request, res: Response, next: NextFunction): void {
   const key = req.headers['x-api-key'];
-  const { config } = require('../config');
 
   if (!config.API_KEY_CREATE_ORDER) {
     res.status(503).json({ error: 'API key authentication not configured' });

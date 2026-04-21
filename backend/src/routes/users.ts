@@ -115,11 +115,11 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
         throw new AppError(409, 'Email already registered');
       }
 
-      const [userRow] = await client.query(
+      const insertResult = await client.query<User>(
         'INSERT INTO users (email, password_hash, is_active) VALUES ($1, $2, $3) RETURNING id, email, is_active, created_at',
         [data.email.toLowerCase(), passwordHash, data.is_active]
       );
-      const newUser = userRow.rows[0] as User;
+      const newUser = insertResult.rows[0];
 
       await client.query(
         `UPDATE profiles SET full_name = $1, phone = $2, is_active = $3,

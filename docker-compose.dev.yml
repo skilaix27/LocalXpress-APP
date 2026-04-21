@@ -1,0 +1,30 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# LocalXpress — Docker Compose (Desarrollo local)
+# Uso: docker compose -f docker-compose.dev.yml up -d
+# Solo levanta la base de datos; el backend corre con npm run dev
+# ══════════════════════════════════════════════════════════════════════════════
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: localxpress-db-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: localxpress
+      POSTGRES_USER: localxpress
+      POSTGRES_PASSWORD: LxPostgr3s@2024Secure!
+    ports:
+      - '5432:5432'   # Expuesto para conectar con clientes locales (DBeaver, etc.)
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./database/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U localxpress -d localxpress']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_dev_data:
+    driver: local

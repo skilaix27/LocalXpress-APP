@@ -1,9 +1,9 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { AppRole, AuthenticatedRequest } from '../types';
 
 export function requireRole(...roles: AppRole[]) {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
-    const user = req.user;
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const user = (req as AuthenticatedRequest).user;
     if (!user) {
       res.status(401).json({ error: 'Unauthenticated' });
       return;
@@ -20,10 +20,10 @@ export function requireRole(...roles: AppRole[]) {
   };
 }
 
-export function requireAdmin(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
+export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
   requireRole('admin')(req, res, next);
 }
 
-export function requireAdminOrShop(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
+export function requireAdminOrShop(req: Request, res: Response, next: NextFunction): void {
   requireRole('admin', 'shop')(req, res, next);
 }

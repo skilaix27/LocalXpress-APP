@@ -1,6 +1,11 @@
-version: '3.9'
+# ══════════════════════════════════════════════════════════════════════════════
+# LocalXpress — Docker Compose (Producción)
+# Uso: docker compose up -d --build
+# ══════════════════════════════════════════════════════════════════════════════
 
 services:
+
+  # ─── PostgreSQL 16 ──────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
     container_name: localxpress-db
@@ -8,18 +13,23 @@ services:
     environment:
       POSTGRES_DB: localxpress
       POSTGRES_USER: localxpress
-      POSTGRES_PASSWORD: password
-    ports:
-      - '5432:5432'
+      POSTGRES_PASSWORD: LxPostgr3s@2024Secure!
+    # No se expone el puerto al exterior — solo red interna Docker
+    expose:
+      - '5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U localxpress -d localxpress']
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
+    networks:
+      - localxpress_net
 
+  # ─── Backend API ─────────────────────────────────────────────────────────────
   backend:
     build:
       context: ./backend
@@ -32,12 +42,29 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      DATABASE_URL: postgresql://localxpress:password@postgres:5432/localxpress
+      # Sobreescribe DATABASE_URL del .env para usar el host interno de Docker
+      DATABASE_URL: postgresql://localxpress:LxPostgr3s@2024Secure!@postgres:5432/localxpress
+      NODE_ENV: production
+    # Expuesto solo en loopback — Nginx en el host actúa como proxy inverso
     ports:
-      - '3001:3001'
+      - '127.0.0.1:3001:3001'
     volumes:
       - uploads_data:/app/uploads
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3001/api/health || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - localxpress_net
 
 volumes:
   postgres_data:
+    driver: local
   uploads_data:
+    driver: local
+
+networks:
+  localxpress_net:
+    driver: bridge
