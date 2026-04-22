@@ -8,13 +8,11 @@ services:
   # ─── PostgreSQL 16 ──────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
-    container_name: localxpress-db
     restart: unless-stopped
     environment:
       POSTGRES_DB: localxpress
       POSTGRES_USER: localxpress
       POSTGRES_PASSWORD: LxPostgr3s@2024Secure!
-    # No se expone el puerto al exterior — solo red interna Docker
     expose:
       - '5432'
     volumes:
@@ -34,13 +32,11 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: localxpress-backend
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      # Sobreescribe DATABASE_URL para usar el host interno de Docker
       DATABASE_URL: postgresql://localxpress:LxPostgr3s@2024Secure!@postgres:5432/localxpress
       NODE_ENV: production
       PORT: 3001
@@ -54,9 +50,8 @@ services:
       RESEND_API_KEY: ""
       RESEND_FROM: noreply@localxpress.com
       NOTIFICATION_EMAIL: admin@localxpress.com
-    # Expuesto solo en loopback — EasyPanel / proxy publica el dominio
-    ports:
-      - '127.0.0.1:3001:3001'
+    expose:
+      - '3001'
     volumes:
       - uploads_data:/app/uploads
     healthcheck:
