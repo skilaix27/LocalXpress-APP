@@ -17,7 +17,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
+import { stopsApi } from '@/lib/api';
 import { toast } from 'sonner';
 
 type SortOption = 'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'distance_asc' | 'distance_desc';
@@ -144,28 +144,11 @@ export default function AdminHistory() {
     if (historyStops.length === 0) return;
     setDeleting(true);
     try {
-      const stopIds = historyStops.map(s => s.id);
-      const proofUrls = historyStops
-        .filter(s => s.proof_photo_url)
-        .map(s => s.proof_photo_url!);
-
-      // Delete proof photos from storage in batches
-      if (proofUrls.length > 0) {
-        const batchSize = 50;
-        for (let i = 0; i < proofUrls.length; i += batchSize) {
-          const batch = proofUrls.slice(i, i + batchSize);
-          await supabase.storage.from('delivery-proofs').remove(batch);
-        }
+      const stopIds = historyStops.map((s) => s.id);
+      // Backend DELETE /api/stops/:id also removes associated photos
+      for (const id of stopIds) {
+        await stopsApi.delete(id);
       }
-
-      // Delete stops in batches (Supabase has limits)
-      const batchSize = 100;
-      for (let i = 0; i < stopIds.length; i += batchSize) {
-        const batch = stopIds.slice(i, i + batchSize);
-        const { error } = await supabase.from('stops').delete().in('id', batch);
-        if (error) throw error;
-      }
-
       toast.success(`${stopIds.length} registros eliminados del historial`);
       fetchData();
     } catch (error: any) {

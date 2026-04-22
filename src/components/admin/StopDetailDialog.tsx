@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { supabase } from '@/integrations/supabase/client';
+import { stopsApi } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Stop, Profile, StopStatus } from '@/lib/supabase-types';
 import { MapPin, User, Phone, FileText, Trash2, Truck, Clock, Camera, Receipt, Route, Store, CalendarClock, Pencil, Save, X, Package } from 'lucide-react';
@@ -84,8 +84,7 @@ export function StopDetailDialog({ stop, open, onOpenChange, drivers, onUpdate, 
         updateData.driver_id = null;
       }
 
-      const { error } = await supabase.from('stops').update(updateData).eq('id', stop.id);
-      if (error) throw error;
+      await stopsApi.update(stop.id, updateData);
       toast.success('Parada actualizada');
       setEditing(false);
       onUpdate();
@@ -100,12 +99,11 @@ export function StopDetailDialog({ stop, open, onOpenChange, drivers, onUpdate, 
     setAssigning(true);
     try {
       const isUnassign = driverId === 'unassign';
-      const updateData: any = { driver_id: isUnassign ? null : driverId };
+      const updateData: Record<string, unknown> = { driver_id: isUnassign ? null : driverId };
       if (!isUnassign && stop.status === 'pending') updateData.status = 'assigned';
       if (isUnassign && stop.status === 'assigned') updateData.status = 'pending';
 
-      const { error } = await supabase.from('stops').update(updateData).eq('id', stop.id);
-      if (error) throw error;
+      await stopsApi.update(stop.id, updateData);
       toast.success(isUnassign ? 'Repartidor desasignado' : 'Repartidor asignado');
       onUpdate();
     } catch (error: any) {
@@ -118,13 +116,7 @@ export function StopDetailDialog({ stop, open, onOpenChange, drivers, onUpdate, 
   const deleteStop = async () => {
     setDeleting(true);
     try {
-      // Delete proof photo from storage if exists
-      if (stop.proof_photo_url) {
-        await supabase.storage.from('delivery-proofs').remove([stop.proof_photo_url]);
-      }
-
-      const { error } = await supabase.from('stops').delete().eq('id', stop.id);
-      if (error) throw error;
+      await stopsApi.delete(stop.id);
       toast.success('Parada eliminada');
       onOpenChange(false);
       onUpdate();

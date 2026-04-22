@@ -14,7 +14,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
+import { stopsApi } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { MapPin, User, Phone, FileText, Loader2, Store, Clock, Navigation, Package, CalendarIcon } from 'lucide-react';
@@ -136,7 +136,7 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
       const [hours, minutes] = data.scheduled_pickup_time.split(':').map(Number);
       const scheduledDate = new Date(pickupDate.getFullYear(), pickupDate.getMonth(), pickupDate.getDate(), hours, minutes);
 
-      const { error } = await supabase.from('stops').insert({
+      await stopsApi.create({
         pickup_address: data.pickup_address,
         pickup_lat: data.pickup_lat,
         pickup_lng: data.pickup_lng,
@@ -152,23 +152,7 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
         shop_name: profile.shop_name || profile.full_name,
         scheduled_pickup_at: scheduledDate.toISOString(),
         package_size: data.package_size,
-      } as any);
-
-      if (error) throw error;
-
-      // Notify admin via email (fire-and-forget, don't block UI)
-      supabase.functions.invoke('notify-new-stop', {
-        body: {
-          order_code: orderCode,
-          shop_name: profile.shop_name || profile.full_name,
-          client_name: data.client_name,
-          pickup_address: data.pickup_address,
-          delivery_address: data.delivery_address,
-          scheduled_pickup_at: scheduledDate.toISOString(),
-          distance_km: routeDistance,
-          package_size: data.package_size,
-        },
-      }).catch(console.error);
+      });
 
       toast.success('Pedido creado correctamente');
       form.reset();

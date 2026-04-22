@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { haversineKm } from '@/lib/api';
 
 interface RouteResult {
   distanceKm: number;
@@ -18,26 +18,11 @@ export function useRouteDistance() {
     ): Promise<RouteResult | null> => {
       setLoading(true);
       try {
-        const { data, error } = await supabase.functions.invoke('calculate-route', {
-          body: { originLat, originLng, destLat, destLng },
-        });
-
-        if (error) {
-          console.error('Route calculation error:', error);
-          return null;
-        }
-
-        if (data?.error) {
-          console.error('Google Maps API error:', data.error, data.message);
-          return null;
-        }
-
-        return {
-          distanceKm: data.distanceKm,
-          durationMin: data.durationMin,
-        };
-      } catch (err) {
-        console.error('Route calculation error:', err);
+        const distanceKm = haversineKm(originLat, originLng, destLat, destLng);
+        // Estimate duration: avg 20 km/h in urban traffic
+        const durationMin = Math.round((distanceKm / 20) * 60);
+        return { distanceKm: Math.round(distanceKm * 100) / 100, durationMin };
+      } catch {
         return null;
       } finally {
         setLoading(false);

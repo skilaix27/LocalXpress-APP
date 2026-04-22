@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { usersApi } from '@/lib/api';
 import {
   ResponsiveDialog, ResponsiveDialogHeader, ResponsiveDialogTitle, ResponsiveDialogDescription,
 } from '@/components/ui/responsive-dialog';
@@ -50,11 +50,13 @@ export function DriverDetailDialog({ driver, stops, open, onOpenChange, onUpdate
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('update-user', {
-        body: { profile_id: driver.id, full_name: form.full_name.trim(), phone: form.phone.trim() || null, password: form.password || undefined, is_active: form.is_active },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      const body: Record<string, unknown> = {
+        full_name: form.full_name.trim(),
+        phone: form.phone.trim() || null,
+        is_active: form.is_active,
+      };
+      if (form.password) body.password = form.password;
+      await usersApi.update(driver.user_id, body);
       toast.success('Repartidor actualizado');
       onUpdate();
       onOpenChange(false);

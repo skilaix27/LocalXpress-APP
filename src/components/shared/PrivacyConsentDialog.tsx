@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { supabase } from '@/integrations/supabase/client';
+import { profilesApi } from '@/lib/api';
 import { toast } from 'sonner';
 import { Shield } from 'lucide-react';
 
@@ -20,12 +20,7 @@ export function PrivacyConsentDialog({ open, profileId, onAccepted }: PrivacyCon
     if (!accepted) return;
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ privacy_accepted_at: new Date().toISOString() } as any)
-        .eq('id', profileId);
-
-      if (error) throw error;
+      await profilesApi.updateById(profileId, { privacy_accepted_at: new Date().toISOString() });
       toast.success('Política de privacidad aceptada');
       onAccepted();
     } catch {

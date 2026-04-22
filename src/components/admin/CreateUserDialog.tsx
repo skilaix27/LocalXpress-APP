@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { usersApi } from '@/lib/api';
 import {
   ResponsiveDialog, ResponsiveDialogHeader, ResponsiveDialogTitle, ResponsiveDialogDescription,
 } from '@/components/ui/responsive-dialog';
@@ -61,27 +61,18 @@ export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDi
         }
       }
 
-      const { data, error } = await supabase.functions.invoke('create-user', { body });
-      if (error) {
-        const msg = typeof error === 'object' && 'message' in error ? error.message : String(error);
-        if (msg.includes('ya está registrado') || msg.includes('already been registered')) {
-          toast.error('Este email ya está registrado', { description: 'Usa otro email o edita el usuario existente.' });
-        } else { toast.error('Error al crear usuario', { description: msg }); }
-        setLoading(false); return;
-      }
-      if (data?.error) {
-        if (data.error.includes('ya está registrado') || data.error.includes('already been registered')) {
-          toast.error('Este email ya está registrado', { description: 'Usa otro email o edita el usuario existente.' });
-        } else { toast.error('Error al crear usuario', { description: data.error }); }
-        setLoading(false); return;
-      }
-
+      await usersApi.create(body);
       toast.success('Usuario creado correctamente', { description: `${form.full_name} (${roleLabels[form.role]})` });
       resetForm();
       onOpenChange(false);
       onSuccess();
     } catch (err: any) {
-      toast.error('Error al crear usuario', { description: err.message });
+      const msg: string = err?.message || '';
+      if (msg.includes('Email already registered') || msg.includes('ya está registrado')) {
+        toast.error('Este email ya está registrado', { description: 'Usa otro email o edita el usuario existente.' });
+      } else {
+        toast.error('Error al crear usuario', { description: msg });
+      }
     } finally { setLoading(false); }
   };
 

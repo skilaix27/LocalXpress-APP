@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { stopsApi, locationsApi, fetchAllPages } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import { DeliveryMap } from '@/components/map/DeliveryMap';
 import { DriverStopDetailDialog } from '@/components/driver/DriverStopDetailDialog';
@@ -63,11 +63,12 @@ export default function DriverApp() {
   const fetchStops = useCallback(async () => {
     if (!profile) return;
     try {
-      const { data } = await supabase
-        .from('stops')
-        .select('*')
-        .eq('driver_id', profile.id)
-        .neq('status', 'delivered');
+      // Backend filters stops for driver role automatically (driver_id = profileId)
+      // We filter out delivered here to match original behaviour
+      const allData = await fetchAllPages<Stop>((page) =>
+        stopsApi.list({ page, limit: 100 }) as Promise<{ data: Stop[]; total: number; totalPages: number }>
+      );
+      const data = allData.filter((s) => s.status !== 'delivered');
 
       if (data) {
         // Sort: stops with scheduled time first (closest deadline first), then unscheduled by created_at
@@ -102,10 +103,7 @@ export default function DriverApp() {
     if (now - lastLocationUpdateRef.current < 10000) return; // Skip if < 10s since last update
     lastLocationUpdateRef.current = now;
     try {
-      await supabase.from('driver_locations').upsert(
-        { driver_id: profile.id, lat, lng, updated_at: new Date().toISOString() },
-        { onConflict: 'driver_id' }
-      );
+      await locationsApi.upsert({ lat, lng });
     } catch (error) {
       console.error('Error updating location:', error);
     }
@@ -151,40 +149,20 @@ export default function DriverApp() {
     return () => navigator.geolocation.clearWatch(watchId);
   }, [profile, updateLocation]);
 
-  // Debounce realtime events
-  const debouncedFetchStopsRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const debouncedFetchStops = useCallback(() => {
-    if (debouncedFetchStopsRef.current) clearTimeout(debouncedFetchStopsRef.current);
-    debouncedFetchStopsRef.current = setTimeout(() => fetchStops(), 500);
-  }, [fetchStops]);
-
   useEffect(() => {
     fetchStops();
-    const channel = supabase
-      .channel('driver-stops')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'stops' }, () => debouncedFetchStops())
-      .subscribe();
-
-    // Polling fallback every 8s — Realtime RLS with security-definer functions
-    // can silently fail, so polling ensures the driver always sees updates
     const pollingInterval = setInterval(() => fetchStops(), 8000);
-
-    return () => {
-      clearInterval(pollingInterval);
-      if (debouncedFetchStopsRef.current) clearTimeout(debouncedFetchStopsRef.current);
-      supabase.removeChannel(channel);
-    };
-  }, [profile, fetchStops, debouncedFetchStops]);
+    return () => clearInterval(pollingInterval);
+  }, [profile, fetchStops]);
 
   const markAsPicked = async () => {
     if (!selectedStop) return;
     setUpdating(true);
     try {
-      const { error } = await supabase
-        .from('stops')
-        .update({ status: 'picked', picked_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-        .eq('id', selectedStop.id);
-      if (error) throw error;
+      await stopsApi.update(selectedStop.id, {
+        status: 'picked',
+        picked_at: new Date().toISOString(),
+      });
       toast.success('¡Paquete recogido!', { description: selectedStop.client_name });
       setSelectedStop({ ...selectedStop, status: 'picked' });
       fetchStops();

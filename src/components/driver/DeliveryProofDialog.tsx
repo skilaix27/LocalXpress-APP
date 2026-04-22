@@ -3,7 +3,7 @@ import {
   ResponsiveDialog, ResponsiveDialogHeader, ResponsiveDialogTitle, ResponsiveDialogDescription,
 } from '@/components/ui/responsive-dialog';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
+import { uploadsApi, stopsApi } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Stop } from '@/lib/supabase-types';
 import { Camera, Upload, X, CheckCircle, Loader2 } from 'lucide-react';
@@ -90,24 +90,12 @@ export const DeliveryProofDialog = forwardRef<HTMLDivElement, DeliveryProofDialo
     if (!photo) { toast.error('Debes adjuntar una foto de la entrega'); return; }
     setUploading(true);
     try {
-      const fileName = `${stop.id}-${Date.now()}.jpg`;
-      const filePath = `${stop.driver_id}/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('delivery-proofs')
-        .upload(filePath, photo, { contentType: 'image/jpeg' });
-      if (uploadError) throw uploadError;
-
-      const { error: updateError } = await supabase
-        .from('stops')
-        .update({
-          status: 'delivered',
-          delivered_at: new Date().toISOString(),
-          proof_photo_url: filePath,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', stop.id);
-      if (updateError) throw updateError;
+      // Upload proof photo, then mark stop as delivered
+      await uploadsApi.uploadProof(stop.id, photo);
+      await stopsApi.update(stop.id, {
+        status: 'delivered',
+        delivered_at: new Date().toISOString(),
+      });
 
       toast.success('¡Entrega completada!', { description: `Paquete entregado a ${stop.client_name}` });
       clearPhoto();

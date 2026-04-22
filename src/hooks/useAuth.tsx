@@ -1,11 +1,14 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { User, Session } from '@supabase/supabase-js';
+import { authApi, getToken, setToken, clearToken } from '@/lib/api';
 import type { AppRole, Profile } from '@/lib/supabase-types';
 
+interface AuthUser {
+  id: string;
+  email: string;
+}
+
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: AuthUser | null;
   profile: Profile | null;
   role: AppRole | null;
   loading: boolean;
@@ -21,93 +24,85 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserData = useCallback(async (userId: string) => {
+  const loadFromToken = useCallback(async () => {
+    const token = getToken();
+    if (!token) {
+      setLoading(false);
+      return;
+    }
     try {
-      // Fetch profile and role in parallel
-      const [profileRes, roleRes] = await Promise.all([
-        supabase.from('profiles').select('*').eq('user_id', userId).single(),
-        supabase.from('user_roles').select('role').eq('user_id', userId).single(),
-      ]);
-
-      if (profileRes.data) {
-        setProfile(profileRes.data as Profile);
+      const me = await authApi.me();
+      if (!me || !me.is_active) {
+        clearToken();
+        setLoading(false);
+        return;
       }
-      if (roleRes.data) {
-        setRole(roleRes.data.role as AppRole);
+      setUser({ id: me.id, email: me.email });
+      setRole((me.role as AppRole) ?? null);
+      if (me.profile) {
+        setProfile(me.profile as Profile);
       }
-    } catch (error) {
-      console.error('Error fetching user data:', error);
+    } catch {
+      clearToken();
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    let mounted = true;
-
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted) return;
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          // Use setTimeout to prevent potential deadlocks
-          setTimeout(() => {
-            if (mounted) fetchUserData(session.user.id);
-          }, 0);
-        } else {
-          setProfile(null);
-          setRole(null);
-        }
-        setLoading(false);
-      }
-    );
-
-    // Then check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!mounted) return;
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserData(session.user.id);
-      }
-      setLoading(false);
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, [fetchUserData]);
+    loadFromToken();
+  }, [loadFromToken]);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error };
+    try {
+      const res = await authApi.login(email, password);
+      setToken(res.token);
+      setUser({ id: res.user.id, email: res.user.email });
+      setRole(res.user.role as AppRole);
+      setProfile({
+        id: res.user.profile.id,
+        user_id: res.user.id,
+        full_name: res.user.profile.full_name,
+        phone: res.user.profile.phone,
+        avatar_url: res.user.profile.avatar_url,
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        shop_name: res.user.profile.shop_name,
+        default_pickup_address: res.user.profile.default_pickup_address,
+        default_pickup_lat: res.user.profile.default_pickup_lat,
+        default_pickup_lng: res.user.profile.default_pickup_lng,
+        privacy_accepted_at: res.user.profile.privacy_accepted_at,
+      });
+      return { error: null };
+    } catch (err) {
+      return { error: err instanceof Error ? err : new Error(String(err)) };
+    }
   }, []);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    clearToken();
     setUser(null);
-    setSession(null);
     setProfile(null);
     setRole(null);
   }, []);
 
   const refreshProfile = useCallback(async () => {
-    if (user) {
-      await fetchUserData(user.id);
-    }
-  }, [user, fetchUserData]);
+    if (!getToken()) return;
+    try {
+      const me = await authApi.me();
+      if (me.profile) setProfile(me.profile as Profile);
+      if (me.role) setRole(me.role as AppRole);
+    } catch {}
+  }, []);
 
-  const value = {
+  const value: AuthContextType = {
     user,
-    session,
     profile,
     role,
     loading,

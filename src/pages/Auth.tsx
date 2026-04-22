@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { usersApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -31,19 +31,12 @@ export default function Auth() {
     // If no "@", look up email by name
     if (!email.includes('@')) {
       try {
-        const { data, error } = await supabase.functions.invoke('lookup-email', {
-          body: { username: email },
-        });
-        if (error || data?.error) {
-          toast.error('Usuario no encontrado', {
-            description: 'Verifica tu nombre de usuario o usa tu email.',
-          });
-          setLoading(false);
-          return;
-        }
+        const data = await usersApi.lookupEmail(email);
         email = data.email;
       } catch {
-        toast.error('Error al buscar usuario');
+        toast.error('Usuario no encontrado', {
+          description: 'Verifica tu nombre de usuario o usa tu email.',
+        });
         setLoading(false);
         return;
       }

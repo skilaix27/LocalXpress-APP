@@ -23,7 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { supabase } from '@/integrations/supabase/client';
+import { stopsApi } from '@/lib/api';
 import { toast } from 'sonner';
 import type { Profile, ProfileWithRole } from '@/lib/supabase-types';
 import { MapPin, User, Phone, FileText, Loader2, CalendarIcon, Clock, Package, Store, Check, ChevronsUpDown } from 'lucide-react';
@@ -132,7 +132,7 @@ export function CreateStopDialog({ open, onOpenChange, drivers, shops, onSuccess
       const orderCode = await generateOrderCode();
       const hasDriver = !!data.driver_id;
 
-      const { error } = await supabase.from('stops').insert({
+      await stopsApi.create({
         pickup_address: data.pickup_address,
         pickup_lat: data.pickup_lat,
         pickup_lng: data.pickup_lng,
@@ -150,9 +150,7 @@ export function CreateStopDialog({ open, onOpenChange, drivers, shops, onSuccess
         package_size: data.package_size || null,
         shop_name: data.shop_name,
         shop_id: selectedShopId || null,
-      } as any);
-
-      if (error) throw error;
+      });
 
       toast.success('Parada creada correctamente');
       form.reset();

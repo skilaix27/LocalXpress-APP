@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { zonesApi } from '@/lib/api';
 
 export interface PricingZone {
   id: string;
@@ -16,10 +16,7 @@ const CACHE_TTL = 60_000; // 1 min
 
 export async function fetchPricingZones(): Promise<PricingZone[]> {
   if (cachedZones && Date.now() - cacheTime < CACHE_TTL) return cachedZones;
-  const { data } = await supabase
-    .from('pricing_zones')
-    .select('*')
-    .order('sort_order', { ascending: true });
+  const data = await zonesApi.list();
   if (data) {
     cachedZones = data as PricingZone[];
     cacheTime = Date.now();

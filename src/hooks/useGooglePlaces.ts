@@ -1,5 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useState, useCallback } from 'react';
 
 export interface PlacePrediction {
   placeId: string;
@@ -15,75 +14,22 @@ export interface PlaceDetails {
   lng: number;
 }
 
+// Address autocomplete is not available in the custom backend.
+// The AddressInput component falls back to manual text entry.
 export function useGooglePlaces() {
-  const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [detailsLoading, setDetailsLoading] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [predictions] = useState<PlacePrediction[]>([]);
+  const [loading] = useState(false);
+  const [detailsLoading] = useState(false);
 
-  const search = useCallback((input: string) => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-
-    if (!input || input.trim().length < 2) {
-      setPredictions([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke('places-autocomplete', {
-          body: { input, action: 'autocomplete' },
-        });
-
-        if (error) {
-          console.error('Places autocomplete error:', error);
-          setPredictions([]);
-          return;
-        }
-
-        setPredictions(data?.predictions || []);
-      } catch (err) {
-        console.error('Places autocomplete error:', err);
-        setPredictions([]);
-      } finally {
-        setLoading(false);
-      }
-    }, 300);
+  const search = useCallback((_input: string) => {
+    // No-op: autocomplete not available
   }, []);
 
-  const getDetails = useCallback(async (placeId: string): Promise<PlaceDetails | null> => {
-    setDetailsLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('places-autocomplete', {
-        body: { action: 'details', placeId },
-      });
-
-      if (error || !data?.lat) {
-        console.error('Place details error:', error || data);
-        return null;
-      }
-
-      return {
-        formattedAddress: data.formattedAddress,
-        displayName: data.displayName,
-        lat: data.lat,
-        lng: data.lng,
-      };
-    } catch (err) {
-      console.error('Place details error:', err);
-      return null;
-    } finally {
-      setDetailsLoading(false);
-    }
+  const getDetails = useCallback(async (_placeId: string): Promise<PlaceDetails | null> => {
+    return null;
   }, []);
 
-  const clear = useCallback(() => {
-    setPredictions([]);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-  }, []);
+  const clear = useCallback(() => {}, []);
 
   return { predictions, loading, detailsLoading, search, getDetails, clear };
 }
