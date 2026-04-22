@@ -39,13 +39,22 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    env_file:
-      - ./backend/.env
     environment:
-      # Sobreescribe DATABASE_URL del .env para usar el host interno de Docker
+      # Sobreescribe DATABASE_URL para usar el host interno de Docker
       DATABASE_URL: postgresql://localxpress:LxPostgr3s@2024Secure!@postgres:5432/localxpress
       NODE_ENV: production
-    # Expuesto solo en loopback — Nginx en el host actúa como proxy inverso
+      PORT: 3001
+      JWT_SECRET: lxJwtS3cr3t_7mK9pNqR4wXvB2cJ6hY3sZ8dF5tG0uA1eI_xProd2024
+      JWT_EXPIRES_IN: 7d
+      CORS_ORIGIN: https://khaki-rail-609444.hostingersite.com
+      STORAGE_DIR: ./uploads
+      MAX_FILE_SIZE_MB: 10
+      API_KEY_CREATE_ORDER: lx-b2b-3f8a2d1e9c4b6f7d-K2pM5qR8vXnZ_prod2024
+      GOOGLE_MAPS_API_KEY: ""
+      RESEND_API_KEY: ""
+      RESEND_FROM: noreply@localxpress.com
+      NOTIFICATION_EMAIL: admin@localxpress.com
+    # Expuesto solo en loopback — EasyPanel / proxy publica el dominio
     ports:
       - '127.0.0.1:3001:3001'
     volumes:
