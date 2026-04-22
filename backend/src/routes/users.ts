@@ -8,9 +8,6 @@ import { AuthenticatedRequest, User, Profile } from '../types';
 import { ok, created, noContent, parsePagination } from '../utils/response';
 import { AppError } from '../middleware/errorHandler';
 
-const router = Router();
-router.use(requireAuth);
-router.use(requireAdmin);
 
 // GET /api/users — list all users with profiles and roles
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
@@ -54,6 +51,9 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
+
+const router = Router();
+
 // GET /api/users/lookup-email — find user by full_name (admin only — protected unlike original)
 router.get('/lookup-email', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -78,6 +78,9 @@ router.get('/lookup-email', async (req: Request, res: Response, next: NextFuncti
     next(err);
   }
 });
+
+router.use(requireAuth);
+router.use(requireAdmin);
 
 // GET /api/users/:id
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
