@@ -14,6 +14,8 @@ export interface PlaceDetails {
   lng: number;
 }
 
+// ─── Script loader ────────────────────────────────────────────────────────────
+
 const SCRIPT_ID = 'google-maps-js';
 let scriptPromise: Promise<void> | null = null;
 
@@ -24,100 +26,121 @@ function loadScript(apiKey: string): Promise<void> {
     return scriptPromise;
   }
   scriptPromise = new Promise((resolve, reject) => {
+    if (document.getElementById(SCRIPT_ID)) {
+      // Script tag exists but hasn't fired onload yet — wait for it
+      const interval = setInterval(() => {
+        if (window.google?.maps?.places) { clearInterval(interval); resolve(); }
+      }, 100);
+      return;
+    }
     const script = document.createElement('script');
     script.id = SCRIPT_ID;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&language=es&region=ES&loading=async`;
+    // v=weekly exposes AutocompleteSuggestion on google.maps.places without importLibrary
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=weekly&language=es&region=ES`;
     script.async = true;
     script.defer = true;
     script.onload = () => resolve();
-    script.onerror = () => {
-      scriptPromise = null;
-      reject(new Error('Google Maps script failed to load'));
-    };
+    script.onerror = () => { scriptPromise = null; reject(new Error('Google Maps script failed to load')); };
     document.head.appendChild(script);
   });
   return scriptPromise;
 }
 
+// ─── Hook ─────────────────────────────────────────────────────────────────────
+
 export function useGooglePlaces() {
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const [loading, setLoading] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
-  const svcRef = useRef<google.maps.places.AutocompleteService | null>(null);
+
+  const readyRef = useRef(false);
   const tokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
-  const mapElRef = useRef<HTMLDivElement | null>(null);
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
 
   useEffect(() => {
     if (!apiKey) return;
     loadScript(apiKey)
       .then(() => {
-        svcRef.current = new google.maps.places.AutocompleteService();
+        const places = window.google?.maps?.places as Record<string, unknown> | undefined;
+        if (!places?.AutocompleteSuggestion) {
+          console.warn('google.maps.places.AutocompleteSuggestion not available');
+          return;
+        }
+        readyRef.current = true;
         tokenRef.current = new google.maps.places.AutocompleteSessionToken();
       })
       .catch(console.error);
   }, [apiKey]);
 
-  const search = useCallback((input: string) => {
-    if (!input || input.length < 3 || !svcRef.current) {
+  const search = useCallback(async (input: string) => {
+    if (!input || input.length < 3 || !readyRef.current) {
       setPredictions([]);
       return;
     }
+
+    const AutocompleteSuggestion = (window.google?.maps?.places as Record<string, unknown>)
+      ?.AutocompleteSuggestion as typeof google.maps.places.AutocompleteSuggestion | undefined;
+
+    if (!AutocompleteSuggestion) {
+      setPredictions([]);
+      return;
+    }
+
     setLoading(true);
-    svcRef.current.getPlacePredictions(
-      {
+    try {
+      const { suggestions } = await AutocompleteSuggestion.fetchAutocompleteSuggestions({
         input,
         sessionToken: tokenRef.current ?? undefined,
-        componentRestrictions: { country: 'es' },
-      },
-      (results, status) => {
-        setLoading(false);
-        if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-          setPredictions(
-            results.map((r) => ({
-              placeId: r.place_id,
-              mainText: r.structured_formatting.main_text,
-              secondaryText: r.structured_formatting.secondary_text ?? '',
-              fullText: r.description,
-            }))
-          );
-        } else {
-          setPredictions([]);
-        }
-      }
-    );
+        includedRegionCodes: ['es'],
+        language: 'es',
+      } as google.maps.places.AutocompleteRequest);
+
+      setPredictions(
+        suggestions
+          .map((s) => s.placePrediction)
+          .filter((pp): pp is google.maps.places.PlacePrediction => pp !== null)
+          .map((pp) => ({
+            placeId: pp.placeId,
+            mainText: pp.mainText?.text ?? pp.text.text,
+            secondaryText: pp.secondaryText?.text ?? '',
+            fullText: pp.text.text,
+          }))
+      );
+    } catch (err) {
+      console.error('AutocompleteSuggestion error:', err);
+      setPredictions([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   const getDetails = useCallback(async (placeId: string): Promise<PlaceDetails | null> => {
-    if (!window.google?.maps?.places) return null;
+    if (!readyRef.current) return null;
+
+    const Place = (window.google?.maps?.places as Record<string, unknown>)
+      ?.Place as typeof google.maps.places.Place | undefined;
+
+    if (!Place) return null;
+
     setDetailsLoading(true);
-    if (!mapElRef.current) {
-      mapElRef.current = document.createElement('div');
+    try {
+      const place = new Place({ id: placeId });
+      await place.fetchFields({ fields: ['displayName', 'formattedAddress', 'location'] });
+
+      tokenRef.current = new google.maps.places.AutocompleteSessionToken();
+
+      return {
+        formattedAddress: place.formattedAddress ?? '',
+        displayName: place.displayName ?? '',
+        lat: place.location?.lat() ?? 0,
+        lng: place.location?.lng() ?? 0,
+      };
+    } catch (err) {
+      console.error('Place details error:', err);
+      return null;
+    } finally {
+      setDetailsLoading(false);
     }
-    return new Promise((resolve) => {
-      const svc = new google.maps.places.PlacesService(mapElRef.current!);
-      svc.getDetails(
-        {
-          placeId,
-          fields: ['formatted_address', 'geometry', 'name'],
-          sessionToken: tokenRef.current ?? undefined,
-        },
-        (place, status) => {
-          setDetailsLoading(false);
-          tokenRef.current = new google.maps.places.AutocompleteSessionToken();
-          if (status === google.maps.places.PlacesServiceStatus.OK && place) {
-            resolve({
-              formattedAddress: place.formatted_address ?? '',
-              displayName: place.name ?? '',
-              lat: place.geometry?.location?.lat() ?? 0,
-              lng: place.geometry?.location?.lng() ?? 0,
-            });
-          } else {
-            resolve(null);
-          }
-        }
-      );
-    });
   }, []);
 
   const clear = useCallback(() => {
