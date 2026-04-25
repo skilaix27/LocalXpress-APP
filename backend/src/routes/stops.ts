@@ -205,9 +205,10 @@ router.patch('/:id', async (req: Request, res: Response, next: NextFunction) => 
       const allowed = updateStopStatusSchema.parse(req.body);
       const updated = await queryOne<Stop>(
         `UPDATE stops
-         SET status = $1, proof_photo_url = COALESCE($2, proof_photo_url),
-             picked_at = CASE WHEN $1 = 'picked' THEN NOW() ELSE picked_at END,
-             delivered_at = CASE WHEN $1 = 'delivered' THEN NOW() ELSE delivered_at END,
+         SET status = $1::stop_status,
+             proof_photo_url = COALESCE($2, proof_photo_url),
+             picked_at = CASE WHEN $1::stop_status = 'picked' THEN NOW() ELSE picked_at END,
+             delivered_at = CASE WHEN $1::stop_status = 'delivered' THEN NOW() ELSE delivered_at END,
              updated_at = NOW()
          WHERE id = $3
          RETURNING *`,
@@ -229,7 +230,8 @@ router.patch('/:id', async (req: Request, res: Response, next: NextFunction) => 
 
     for (const [key, val] of Object.entries(data)) {
       if (val !== undefined) {
-        fields.push(`${key} = $${idx++}`);
+        const placeholder = key === 'status' ? `$${idx++}::stop_status` : `$${idx++}`;
+        fields.push(`${key} = ${placeholder}`);
         values.push(val);
       }
     }
