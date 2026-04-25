@@ -8,6 +8,35 @@ import { AuthenticatedRequest, User, Profile } from '../types';
 import { ok, created, noContent, parsePagination } from '../utils/response';
 import { AppError } from '../middleware/errorHandler';
 
+const router = Router();
+
+// GET /api/users/lookup-email — public, used pre-login to resolve name→email
+router.get('/lookup-email', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const name = req.query.name as string;
+    if (!name?.trim()) {
+      res.status(400).json({ error: 'Query param "name" is required' });
+      return;
+    }
+    const result = await queryOne<{ email: string }>(
+      `SELECT u.email FROM users u
+       JOIN profiles p ON p.user_id = u.id
+       WHERE p.full_name ILIKE $1
+       LIMIT 1`,
+      [name.trim()]
+    );
+    if (!result) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    ok(res, { email: result.email });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.use(requireAuth);
+router.use(requireAdmin);
 
 // GET /api/users — list all users with profiles and roles
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
@@ -50,37 +79,6 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     next(err);
   }
 });
-
-
-const router = Router();
-
-// GET /api/users/lookup-email — find user by full_name (admin only — protected unlike original)
-router.get('/lookup-email', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const name = req.query.name as string;
-    if (!name?.trim()) {
-      res.status(400).json({ error: 'Query param "name" is required' });
-      return;
-    }
-    const result = await queryOne<{ email: string }>(
-      `SELECT u.email FROM users u
-       JOIN profiles p ON p.user_id = u.id
-       WHERE p.full_name ILIKE $1
-       LIMIT 1`,
-      [name.trim()]
-    );
-    if (!result) {
-      res.status(404).json({ error: 'User not found' });
-      return;
-    }
-    ok(res, { email: result.email });
-  } catch (err) {
-    next(err);
-  }
-});
-
-router.use(requireAuth);
-router.use(requireAdmin);
 
 // GET /api/users/:id
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
