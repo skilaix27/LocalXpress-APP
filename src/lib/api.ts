@@ -176,6 +176,9 @@ export const profilesApi = {
     }>>(`/api/profiles${q.toString() ? '?' + q : ''}`);
   },
 
+  updateMe: (body: Record<string, unknown>) =>
+    apiFetch<unknown>('/api/profiles/me', { method: 'PATCH', body: JSON.stringify(body) }),
+
   updateById: (id: string, body: Record<string, unknown>) =>
     apiFetch<unknown>(`/api/profiles/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
 };

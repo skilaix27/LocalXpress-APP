@@ -30,7 +30,6 @@ export default function Index() {
       <div className="h-screen flex items-center justify-center bg-background">
         <PrivacyConsentDialog
           open={true}
-          profileId={profile.id}
           onAccepted={() => {
             setJustAccepted(true);
             refreshProfile();

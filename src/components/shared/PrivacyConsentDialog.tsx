@@ -8,11 +8,10 @@ import { Shield } from 'lucide-react';
 
 interface PrivacyConsentDialogProps {
   open: boolean;
-  profileId: string;
   onAccepted: () => void;
 }
 
-export function PrivacyConsentDialog({ open, profileId, onAccepted }: PrivacyConsentDialogProps) {
+export function PrivacyConsentDialog({ open, onAccepted }: PrivacyConsentDialogProps) {
   const [accepted, setAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -20,7 +19,7 @@ export function PrivacyConsentDialog({ open, profileId, onAccepted }: PrivacyCon
     if (!accepted) return;
     setLoading(true);
     try {
-      await profilesApi.updateById(profileId, { privacy_accepted_at: new Date().toISOString() });
+      await profilesApi.updateMe({ privacy_accepted_at: new Date().toISOString() });
       toast.success('Política de privacidad aceptada');
       onAccepted();
     } catch {
