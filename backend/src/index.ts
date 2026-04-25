@@ -20,6 +20,9 @@ import uploadsRouter from './routes/uploads';
 
 const app = express();
 
+app.set('trust proxy', 1);
+
+
 // ─── Storage directory ────────────────────────────────────────────────────────
 const uploadDir = path.resolve(config.STORAGE_DIR);
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });

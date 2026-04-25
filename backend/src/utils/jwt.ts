@@ -5,7 +5,6 @@ import { AuthPayload } from '../types';
 export function signToken(payload: AuthPayload): string {
   return jwt.sign(payload, config.JWT_SECRET, {
     expiresIn: config.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'],
-    subject: payload.sub,
   });
 }
 
