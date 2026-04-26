@@ -26,7 +26,6 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { PlaceDetails } from '@/hooks/useGooglePlaces';
 import { getDeliveryZone, adjustDistance, getDeliveryPrice } from '@/lib/delivery-zones';
-import { generateOrderCode } from '@/lib/order-code';
 
 const stopSchema = z.object({
   pickup_address: z.string().min(1, 'Dirección de recogida requerida'),
@@ -129,8 +128,6 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
 
     setLoading(true);
     try {
-      const orderCode = await generateOrderCode();
-
       // Build scheduled_pickup_at from date + time inputs
       const pickupDate = data.scheduled_pickup_date;
       const [hours, minutes] = data.scheduled_pickup_time.split(':').map(Number);
@@ -147,7 +144,6 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
         client_phone: data.client_phone || null,
         client_notes: data.client_notes || null,
         distance_km: routeDistance,
-        order_code: orderCode,
         shop_id: profile.id,
         shop_name: profile.shop_name || profile.full_name,
         scheduled_pickup_at: scheduledDate.toISOString(),

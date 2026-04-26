@@ -34,7 +34,6 @@ import { useRouteDistance } from '@/hooks/useRouteDistance';
 import { AddressInput } from '@/components/admin/AddressInput';
 import type { PlaceDetails } from '@/hooks/useGooglePlaces';
 import { getDeliveryZone, adjustDistance, getDeliveryPrice } from '@/lib/delivery-zones';
-import { generateOrderCode } from '@/lib/order-code';
 
 const stopSchema = z.object({
   pickup_address: z.string().min(1, 'Dirección de recogida requerida'),
@@ -129,7 +128,6 @@ export function CreateStopDialog({ open, onOpenChange, drivers, shops, onSuccess
         scheduledPickupAt = date.toISOString();
       }
 
-      const orderCode = await generateOrderCode();
       const hasDriver = !!data.driver_id;
 
       await stopsApi.create({
@@ -146,7 +144,6 @@ export function CreateStopDialog({ open, onOpenChange, drivers, shops, onSuccess
         status: hasDriver ? 'assigned' : 'pending',
         distance_km: routeDistance,
         scheduled_pickup_at: scheduledPickupAt,
-        order_code: orderCode,
         package_size: data.package_size || null,
         shop_name: data.shop_name,
         shop_id: selectedShopId || null,

@@ -5,7 +5,6 @@ import { createStopSchema, updateStopSchema, updateStopStatusSchema, createOrder
 import { AuthenticatedRequest, Stop } from '../types';
 import { ok, created, noContent, parsePagination } from '../utils/response';
 import { AppError } from '../middleware/errorHandler';
-import { v4 as uuidv4 } from 'uuid';
 
 const router = Router();
 
@@ -13,7 +12,7 @@ const router = Router();
 router.post('/order', requireApiKey, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const data = createOrderApiSchema.parse(req.body);
-    const orderCode = await generateOrderCode();
+    const orderCode = await generateOrderCode(data.scheduled_pickup_at ?? null);
 
     const stop = await queryOne<Stop>(
       `INSERT INTO stops
@@ -148,7 +147,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
 
     // shops can only create for themselves
     const shopId = role === 'shop' ? profileId : (data.shop_id ?? null);
-    const orderCode = await generateOrderCode();
+    const orderCode = await generateOrderCode(data.scheduled_pickup_at ?? null);
 
     const stop = await queryOne<Stop>(
       `INSERT INTO stops
@@ -283,10 +282,40 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction) =>
   }
 });
 
-async function generateOrderCode(): Promise<string> {
-  const ts = Date.now().toString(36).toUpperCase();
-  const rand = uuidv4().split('-')[0].toUpperCase();
-  return `LX-${ts}-${rand}`;
+const MONTH_LETTERS: Record<number, string> = {
+  1: 'E', 2: 'F', 3: 'M', 4: 'A', 5: 'MY',
+  6: 'JN', 7: 'JL', 8: 'AG', 9: 'S', 10: 'O',
+  11: 'N', 12: 'D',
+};
+
+async function generateOrderCode(referenceDate?: string | null): Promise<string> {
+  const date = referenceDate ? new Date(referenceDate) : new Date();
+  const dayCode = date.getDate() + 27;
+  const monthLetter = MONTH_LETTERS[date.getMonth() + 1];
+
+  // Get the global maximum P number across all existing order codes
+  const row = await queryOne<{ max_p: number }>(
+    `SELECT COALESCE(
+       MAX(CAST(SUBSTRING(order_code, '-P([0-9]+)$') AS INTEGER)),
+       79
+     ) AS max_p
+     FROM stops
+     WHERE order_code LIKE 'LX-D%-P%'`,
+    []
+  );
+
+  let currentMax = row?.max_p ?? 79;
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const increment = Math.floor(Math.random() * 5) + 1; // +1 to +5
+    currentMax += increment;
+    const code = `LX-D${dayCode}${monthLetter}-P${currentMax}`;
+    const exists = await queryOne('SELECT 1 AS one FROM stops WHERE order_code = $1', [code]);
+    if (!exists) return code;
+  }
+
+  // Rare fallback: bump well above current max to ensure uniqueness
+  return `LX-D${dayCode}${monthLetter}-P${currentMax + Math.floor(Math.random() * 20) + 10}`;
 }
 
 export default router;
