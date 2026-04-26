@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import rateLimit from 'express-rate-limit';
 import { query, queryOne } from '../db';
 import { comparePassword } from '../utils/hash';
 import { signToken } from '../utils/jwt';
@@ -9,8 +10,23 @@ import { ok } from '../utils/response';
 
 const router = Router();
 
+// 10 failed attempts per 15 min per IP+email combination
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => {
+    const email = (req.body?.email as string | undefined)?.toLowerCase() ?? '';
+    const ip = req.ip ?? req.socket?.remoteAddress ?? 'unknown';
+    return `${ip}:${email}`;
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos de inicio de sesión. Espera unos minutos y vuelve a intentarlo.' },
+});
+
 // POST /api/auth/login
-router.post('/login', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/login', loginLimiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, password } = loginSchema.parse(req.body);
 

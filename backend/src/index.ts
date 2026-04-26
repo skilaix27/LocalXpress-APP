@@ -52,14 +52,6 @@ const globalLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many auth attempts, try again later.' },
-});
-
 app.use(globalLimiter);
 
 // ─── Body parsing ─────────────────────────────────────────────────────────────
@@ -71,7 +63,7 @@ app.use('/uploads', express.static(uploadDir));
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.use('/api/health', healthRouter);
-app.use('/api/auth', authLimiter, authRouter);
+app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/profiles', profilesRouter);
 app.use('/api/stops', stopsRouter);

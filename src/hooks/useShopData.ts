@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { stopsApi, fetchAllPages } from '@/lib/api';
+import { fetchPricingZones } from '@/lib/delivery-zones';
 import { useAuth } from '@/hooks/useAuth';
 import type { Stop } from '@/lib/supabase-types';
 import { toast } from 'sonner';
@@ -13,6 +14,7 @@ export function useShopData() {
   const fetchData = useCallback(async () => {
     if (!profile) return;
     try {
+      fetchPricingZones().catch(() => {});
       // Backend filters stops by shop_id automatically for shop role
       const newStops = await fetchAllPages<Stop>((page) =>
         stopsApi.list({ page, limit: 100 }) as Promise<{ data: Stop[]; total: number; totalPages: number }>

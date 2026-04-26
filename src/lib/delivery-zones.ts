@@ -88,3 +88,13 @@ export function getDeliveryZoneWithPrice(distanceKm: number): { zone: string; pr
     price: getDeliveryPrice(distanceKm),
   };
 }
+
+export function getDeliveryZoneWithRange(distanceKm: number): string {
+  if (cachedZones?.length) {
+    const z = resolveZone(cachedZones, distanceKm);
+    if (!z) return 'Sin zona';
+    const rangeStr = z.max_km != null ? `${z.min_km}–${z.max_km} km` : `+${z.min_km} km`;
+    return `${z.name} (${rangeStr})`;
+  }
+  return getDeliveryZone(distanceKm);
+}
