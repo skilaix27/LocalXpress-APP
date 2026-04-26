@@ -59,7 +59,11 @@ export const DeliveryReceipt = forwardRef<HTMLDivElement, DeliveryReceiptProps>(
         <Card className="border-2 border-status-delivered/30 overflow-hidden">
           {/* Header */}
           <div className="bg-status-delivered/10 p-4 text-center space-y-2">
-            <img src={logoLocalxpress} alt="LocalXpress" className="h-8 mx-auto" />
+            <img
+                src={logoLocalxpress}
+                alt="LocalXpress"
+                className="h-18 w-auto object-contain"
+            />
             <CheckCircle className="w-6 h-6 text-status-delivered mx-auto" />
             <h3 className="text-lg font-bold">Justificante de Entrega</h3>
             <p className="text-sm font-mono font-bold">

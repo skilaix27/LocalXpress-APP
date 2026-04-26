@@ -20,10 +20,12 @@ export function ShopSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
   return (
     <>
       <aside className="w-64 bg-sidebar text-sidebar-foreground flex flex-col h-full min-h-0">
-        <div className="p-6 border-b border-sidebar-border">
-          <div className="flex items-center gap-3">
-            <img src={logoLocalxpress} alt="LocalXpress" className="h-9" />
-          </div>
+        <div className="h-20 flex items-center justify-center px-8 border-b border-white/10">
+          <img
+            src={logoLocalxpress}
+            alt="LocalXpress"
+            className="h-8 w-auto object-contain"
+          />
         </div>
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
