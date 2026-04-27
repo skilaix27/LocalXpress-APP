@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { User, Lock } from 'lucide-react';
-import logoLocalxpress from '@/assets/logo-localxpress.png';
+import logoLocalxpress from '@/assets/logo-localxpress-inicio.png';
 
 export default function Auth() {
   const [identifier, setIdentifier] = useState('');
