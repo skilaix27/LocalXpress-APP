@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import type { Stop } from '@/lib/supabase-types';
 import { toast } from 'sonner';
 
-export function useShopData() {
+export function useShopData({ poll = true }: { poll?: boolean } = {}) {
   const { profile } = useAuth();
   const [stops, setStops] = useState<Stop[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,9 +47,15 @@ export function useShopData() {
 
   useEffect(() => {
     fetchData();
-    const pollingInterval = setInterval(() => fetchData(), 8000);
-    return () => clearInterval(pollingInterval);
-  }, [fetchData]);
+    if (!poll) return;
+    const handleVisibility = () => { if (!document.hidden) fetchData(); };
+    document.addEventListener('visibilitychange', handleVisibility);
+    const pollingInterval = setInterval(() => { if (!document.hidden) fetchData(); }, 8000);
+    return () => {
+      clearInterval(pollingInterval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [fetchData, poll]);
 
   const todayStart = useMemo(() => {
     const d = new Date();

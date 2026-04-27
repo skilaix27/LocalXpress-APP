@@ -3,7 +3,7 @@ import { stopsApi, profilesApi, locationsApi, fetchAllPages } from '@/lib/api';
 import type { Stop, Profile, DriverLocation, ProfileWithRole, AppRole } from '@/lib/supabase-types';
 import { toast } from 'sonner';
 
-export function useAdminData() {
+export function useAdminData({ poll = true }: { poll?: boolean } = {}) {
   const [stops, setStops] = useState<Stop[]>([]);
   const [drivers, setDrivers] = useState<Profile[]>([]);
   const [allUsers, setAllUsers] = useState<ProfileWithRole[]>([]);
@@ -80,12 +80,17 @@ export function useAdminData() {
 
   useEffect(() => {
     fetchData();
+    if (!poll) return;
+    const handleVisibility = () => { if (!document.hidden) { fetchStops(); fetchLocations(); } };
+    document.addEventListener('visibilitychange', handleVisibility);
     const pollingInterval = setInterval(() => {
-      fetchStops();
-      fetchLocations();
+      if (!document.hidden) { fetchStops(); fetchLocations(); }
     }, 10000);
-    return () => clearInterval(pollingInterval);
-  }, [fetchData, fetchStops, fetchLocations]);
+    return () => {
+      clearInterval(pollingInterval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [fetchData, fetchStops, fetchLocations, poll]);
 
   const getDriverById = useCallback(
     (driverId: string | null) => {

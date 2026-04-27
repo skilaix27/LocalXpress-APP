@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer, { FileFilterCallback } from 'multer';
+import rateLimit from 'express-rate-limit';
 import path from 'path';
 import fs from 'fs';
 import { query, queryOne } from '../db';
@@ -9,9 +10,16 @@ import { AuthenticatedRequest, Stop, OrderPhoto } from '../types';
 import { ok, created, noContent } from '../utils/response';
 import { AppError } from '../middleware/errorHandler';
 import { config } from '../config';
+import { cleanupPhotos } from '../scripts/cleanup-photos';
 
 const router = Router();
 router.use(requireAuth);
+
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  message: { error: 'Demasiadas subidas, espera un momento.' },
+});
 
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'];
 
@@ -41,7 +49,7 @@ const upload = multer({
 });
 
 // POST /api/uploads/proof/:stop_id — driver uploads proof photo
-router.post('/proof/:stop_id', upload.single('photo'), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/proof/:stop_id', uploadLimiter, upload.single('photo'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authReq = req as AuthenticatedRequest;
     if (authReq.user.role !== 'driver' && authReq.user.role !== 'admin') {
@@ -131,6 +139,22 @@ router.delete('/proof/:stop_id', requireAdmin, async (req: Request, res: Respons
     await query('UPDATE stops SET proof_photo_url = NULL, updated_at = NOW() WHERE id = $1', [req.params.stop_id]);
 
     noContent(res);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/uploads/cleanup — admin triggers manual photo cleanup (supports ?dry_run=true)
+router.post('/cleanup', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const dryRun = req.query.dry_run === 'true';
+    const result = await cleanupPhotos(dryRun);
+    ok(res, {
+      message: dryRun ? 'Simulación completada (dry-run, no se borró nada)' : 'Limpieza completada',
+      dryRun,
+      ...result,
+      freedMB: Number((result.freedBytes / 1024 / 1024).toFixed(2)),
+    });
   } catch (err) {
     next(err);
   }

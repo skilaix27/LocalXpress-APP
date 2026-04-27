@@ -60,6 +60,9 @@ export default function DriverApp() {
   const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
   const [stopDetailDialogOpen, setStopDetailDialogOpen] = useState(false);
 
+  const selectedStopRef = useRef<Stop | null>(null);
+  useEffect(() => { selectedStopRef.current = selectedStop; }, [selectedStop]);
+
   const fetchStops = useCallback(async () => {
     if (!profile) return;
     try {
@@ -84,7 +87,8 @@ export default function DriverApp() {
         if (typedData.length <= 1) {
           setViewMode('detail');
         }
-        if (!selectedStop || !typedData.find(s => s.id === selectedStop.id)) {
+        const current = selectedStopRef.current;
+        if (!current || !typedData.find(s => s.id === current.id)) {
           setSelectedStop(typedData[0] || null);
         }
       }
@@ -93,7 +97,7 @@ export default function DriverApp() {
     } finally {
       setLoading(false);
     }
-  }, [profile, selectedStop]);
+  }, [profile]);
 
   // Throttle location updates to max once every 10 seconds
   const lastLocationUpdateRef = useRef<number>(0);
@@ -151,9 +155,14 @@ export default function DriverApp() {
 
   useEffect(() => {
     fetchStops();
-    const pollingInterval = setInterval(() => fetchStops(), 8000);
-    return () => clearInterval(pollingInterval);
-  }, [profile, fetchStops]);
+    const handleVisibility = () => { if (!document.hidden) fetchStops(); };
+    document.addEventListener('visibilitychange', handleVisibility);
+    const pollingInterval = setInterval(() => { if (!document.hidden) fetchStops(); }, 8000);
+    return () => {
+      clearInterval(pollingInterval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [fetchStops]);
 
   const markAsPicked = async () => {
     if (!selectedStop) return;

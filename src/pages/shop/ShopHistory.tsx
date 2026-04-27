@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 type SortOption = 'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'distance_asc' | 'distance_desc';
 
 export default function ShopHistory() {
-  const { deliveredStops: historyStops } = useShopData();
+  const { deliveredStops: historyStops } = useShopData({ poll: false });
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [search, setSearch] = useState('');

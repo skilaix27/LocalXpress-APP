@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { Image } from 'lucide-react';
 import { getPhotoUrl } from '@/lib/api';
 
 interface ProofImageProps {
@@ -9,8 +11,17 @@ export function ProofImage({
   proofPhotoUrl,
   className = 'w-full rounded-lg border max-h-[50vh] object-contain bg-muted/30',
 }: ProofImageProps) {
+  const [deleted, setDeleted] = useState(false);
   const url = getPhotoUrl(proofPhotoUrl);
-  if (!url) return null;
+
+  if (!url || deleted) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted rounded-lg p-3">
+        <Image className="w-4 h-4 shrink-0" />
+        {deleted ? 'Foto eliminada por política de retención' : 'Sin foto de entrega'}
+      </div>
+    );
+  }
 
   return (
     <img
@@ -18,10 +29,8 @@ export function ProofImage({
       alt="Prueba de entrega"
       className={className}
       crossOrigin="anonymous"
-      onError={(e) => {
-        // Hide broken image icon instead of showing a broken placeholder
-        (e.currentTarget as HTMLImageElement).style.display = 'none';
-      }}
+      loading="lazy"
+      onError={() => setDeleted(true)}
     />
   );
 }

@@ -25,7 +25,7 @@ type SortOption = 'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'distance_asc
 const PAGE_SIZE = 30;
 
 export default function AdminHistory() {
-  const { allStops, drivers, loading, fetchData, getDriverById } = useAdminData();
+  const { allStops, drivers, loading, fetchData, getDriverById } = useAdminData({ poll: false });
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [search, setSearch] = useState('');

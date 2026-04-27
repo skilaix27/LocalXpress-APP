@@ -9,6 +9,7 @@ import { config } from './config';
 import { testConnection } from './db';
 import { errorHandler } from './middleware/errorHandler';
 
+import './scheduler';
 import healthRouter from './routes/health';
 import authRouter from './routes/auth';
 import usersRouter from './routes/users';
@@ -59,7 +60,7 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // ─── Static uploads ───────────────────────────────────────────────────────────
-app.use('/uploads', express.static(uploadDir));
+app.use('/uploads', express.static(uploadDir, { maxAge: '7d', etag: true, lastModified: true }));
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.use('/api/health', healthRouter);
