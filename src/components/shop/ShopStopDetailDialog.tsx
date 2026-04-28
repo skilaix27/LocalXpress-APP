@@ -160,7 +160,7 @@ export function ShopStopDetailDialog({ stop, open, onOpenChange }: ShopStopDetai
               <h3 className="font-semibold text-xs text-muted-foreground flex items-center gap-1.5 uppercase tracking-wider">
                 <Image className="w-3.5 h-3.5" /> Prueba de entrega
               </h3>
-              <ProofImage proofPhotoUrl={stop.proof_photo_url} />
+              <ProofImage proofPhotoUrl={stop.proof_photo_url} isArchived={!!stop.is_archived} />
             </div>
           )}
         </div>

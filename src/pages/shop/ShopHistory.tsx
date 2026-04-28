@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useShopData } from '@/hooks/useShopData';
 import { ShopStopCard } from '@/components/shop/ShopStopCard';
 import { ShopStopDetailDialog } from '@/components/shop/ShopStopDetailDialog';
@@ -9,15 +9,29 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Stop } from '@/lib/supabase-types';
-import { Search, History, Package, Download, CalendarIcon, X, ArrowUpDown, SlidersHorizontal } from 'lucide-react';
+import { Search, History, Package, Download, CalendarIcon, X, ArrowUpDown, SlidersHorizontal, Archive } from 'lucide-react';
 import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { archivedStopsApi, fetchAllPages } from '@/lib/api';
 
 type SortOption = 'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'distance_asc' | 'distance_desc';
 
 export default function ShopHistory() {
-  const { deliveredStops: historyStops } = useShopData({ poll: false });
+  const { deliveredStops: activeDelivered } = useShopData({ poll: false });
+  const [archivedStops, setArchivedStops] = useState<Stop[]>([]);
+
+  useEffect(() => {
+    fetchAllPages<Stop>((page) =>
+      archivedStopsApi.list({ page, limit: 100 }) as Promise<{ data: Stop[]; total: number; totalPages: number }>
+    ).then(setArchivedStops).catch(() => {});
+  }, []);
+
+  const historyStops = useMemo(() => {
+    const activeIds = new Set(activeDelivered.map((s) => s.id));
+    return [...activeDelivered, ...archivedStops.filter((s) => !activeIds.has(s.id))];
+  }, [activeDelivered, archivedStops]);
+
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -225,7 +239,14 @@ export default function ShopHistory() {
 
       <div className="space-y-3">
         {filtered.map((stop) => (
-          <ShopStopCard key={stop.id} stop={stop} onClick={() => { setSelectedStop(stop); setDetailOpen(true); }} />
+          <div key={stop.id} className="relative">
+            {stop.is_archived && (
+              <div className="absolute top-2 right-2 z-10 flex items-center gap-1 text-[10px] font-semibold text-muted-foreground bg-muted border rounded-full px-2 py-0.5">
+                <Archive className="w-3 h-3" /> Archivado
+              </div>
+            )}
+            <ShopStopCard stop={stop} onClick={() => { setSelectedStop(stop); setDetailOpen(true); }} />
+          </div>
         ))}
         {filtered.length === 0 && (
           <Card>

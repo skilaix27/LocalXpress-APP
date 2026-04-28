@@ -281,7 +281,7 @@ export function StopDetailDialog({ stop, open, onOpenChange, drivers, onUpdate, 
               <div className="flex items-center gap-2 text-sm font-medium">
                 <Camera className="w-4 h-4 text-status-delivered" /> Foto de entrega
               </div>
-              <ProofImage proofPhotoUrl={stop.proof_photo_url} />
+              <ProofImage proofPhotoUrl={stop.proof_photo_url} isArchived={!!stop.is_archived} />
             </div>
           )}
 

@@ -202,6 +202,16 @@ export const stopsApi = {
     apiFetch<void>(`/api/stops/${id}`, { method: 'DELETE' }),
 };
 
+// ─── Archived stops ───────────────────────────────────────────────────────────
+export const archivedStopsApi = {
+  list: (params?: { limit?: number; page?: number }) => {
+    const q = new URLSearchParams();
+    q.set('limit', String(params?.limit ?? 100));
+    if (params?.page) q.set('page', String(params.page));
+    return apiFetch<{ data: unknown[]; total: number; totalPages: number }>(`/api/stops/archived?${q}`);
+  },
+};
+
 // ─── Driver locations ─────────────────────────────────────────────────────────
 export const locationsApi = {
   list: () => apiFetch<unknown[]>('/api/driver-locations'),

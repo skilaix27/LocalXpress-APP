@@ -1,10 +1,12 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { query, queryOne, withTransaction } from '../db';
 import { requireAuth, requireApiKey } from '../middleware/auth';
+import { requireAdmin } from '../middleware/roles';
 import { createStopSchema, updateStopSchema, updateStopStatusSchema, createOrderApiSchema } from '../utils/schemas';
 import { AuthenticatedRequest, Stop } from '../types';
 import { ok, created, noContent, parsePagination } from '../utils/response';
 import { AppError } from '../middleware/errorHandler';
+import { archiveStops } from '../scripts/archive-stops';
 
 const router = Router();
 
@@ -98,6 +100,67 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       page,
       limit,
       totalPages: Math.ceil(parseInt(countRow?.count ?? '0') / limit),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/stops/archived — role-filtered archived stops (must be before /:id)
+router.get('/archived', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const { role, profileId } = authReq.user;
+    const { limit, offset, page } = parsePagination(req.query as Record<string, unknown>);
+
+    if (role === 'driver') {
+      return ok(res, { data: [], total: 0, page: 1, limit, totalPages: 0 });
+    }
+
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    let idx = 1;
+
+    if (role === 'shop') {
+      conditions.push(`shop_id = $${idx++}`);
+      params.push(profileId);
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const [rows, countRow] = await Promise.all([
+      query<Record<string, unknown>>(
+        `SELECT *, true AS is_archived FROM stops_archive ${where}
+         ORDER BY archived_at DESC LIMIT $${idx++} OFFSET $${idx++}`,
+        [...params, limit, offset]
+      ),
+      queryOne<{ count: string }>(
+        `SELECT COUNT(*) AS count FROM stops_archive ${where}`,
+        params
+      ),
+    ]);
+
+    ok(res, {
+      data: rows,
+      total: parseInt(countRow?.count ?? '0'),
+      page,
+      limit,
+      totalPages: Math.ceil(parseInt(countRow?.count ?? '0') / limit),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/stops/archive — admin triggers manual archive (supports ?dry_run=true)
+router.post('/archive', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const dryRun = req.query.dry_run === 'true';
+    const result = await archiveStops(dryRun);
+    ok(res, {
+      message: dryRun ? 'Simulación completada (dry-run, no se archivó nada)' : 'Archivado completado',
+      dryRun,
+      ...result,
     });
   } catch (err) {
     next(err);

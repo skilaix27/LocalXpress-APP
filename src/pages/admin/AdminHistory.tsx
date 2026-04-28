@@ -5,7 +5,7 @@ import { StopDetailDialog } from '@/components/admin/StopDetailDialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import type { Stop } from '@/lib/supabase-types';
-import { Search, History, Package, Download, CalendarIcon, User, X, Store, ArrowUpDown, SlidersHorizontal, Trash2, Loader2 } from 'lucide-react';
+import { Search, History, Package, Download, CalendarIcon, User, X, Store, ArrowUpDown, SlidersHorizontal, Trash2, Loader2, Archive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -17,7 +17,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
-import { stopsApi } from '@/lib/api';
+import { stopsApi, archivedStopsApi, fetchAllPages } from '@/lib/api';
 import { toast } from 'sonner';
 
 type SortOption = 'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'distance_asc' | 'distance_desc';
@@ -26,6 +26,7 @@ const PAGE_SIZE = 30;
 
 export default function AdminHistory() {
   const { allStops, drivers, loading, fetchData, getDriverById } = useAdminData({ poll: false });
+  const [archivedStops, setArchivedStops] = useState<Stop[]>([]);
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -49,7 +50,10 @@ export default function AdminHistory() {
       s.status === 'delivered' ||
       (s.scheduled_pickup_at && new Date(s.scheduled_pickup_at) < todayStart && s.status !== 'picked');
 
-    let result = allStops.filter((s) => isExpiredOrDone(s));
+    // Merge active history stops + archived stops (archived stops already have is_archived: true)
+    const activeHistoryIds = new Set(allStops.filter(isExpiredOrDone).map((s) => s.id));
+    const archivedNotInActive = archivedStops.filter((s) => !activeHistoryIds.has(s.id));
+    let result = [...allStops.filter((s) => isExpiredOrDone(s)), ...archivedNotInActive];
 
     if (selectedDriverId !== 'all') result = result.filter((s) => s.driver_id === selectedDriverId);
     if (selectedShopName !== 'all') result = result.filter((s) => s.shop_name === selectedShopName);
@@ -92,7 +96,14 @@ export default function AdminHistory() {
     });
 
     return result;
-  }, [allStops, search, dateFrom, dateTo, selectedDriverId, selectedShopName, selectedPackageSize, selectedStatus, sortBy]);
+  }, [allStops, archivedStops, search, dateFrom, dateTo, selectedDriverId, selectedShopName, selectedPackageSize, selectedStatus, sortBy]);
+
+  // Load archived stops once on mount
+  useEffect(() => {
+    fetchAllPages<Stop>((page) =>
+      archivedStopsApi.list({ page, limit: 100 }) as Promise<{ data: Stop[]; total: number; totalPages: number }>
+    ).then(setArchivedStops).catch(() => {});
+  }, []);
 
   // Reset visible count when filters change
   useEffect(() => {
@@ -385,13 +396,19 @@ export default function AdminHistory() {
 
       <div className="space-y-3">
         {visibleStops.map((stop) => (
-          <StopCard
-            key={stop.id}
-            stop={stop}
-            driver={getDriverById(stop.driver_id)}
-            shopName={stop.shop_name}
-            onClick={() => { setSelectedStop(stop); setDetailDialogOpen(true); }}
-          />
+          <div key={stop.id} className="relative">
+            {stop.is_archived && (
+              <div className="absolute top-2 right-2 z-10 flex items-center gap-1 text-[10px] font-semibold text-muted-foreground bg-muted border rounded-full px-2 py-0.5">
+                <Archive className="w-3 h-3" /> Archivado
+              </div>
+            )}
+            <StopCard
+              stop={stop}
+              driver={getDriverById(stop.driver_id)}
+              shopName={stop.shop_name}
+              onClick={() => { setSelectedStop(stop); setDetailDialogOpen(true); }}
+            />
+          </div>
         ))}
 
         {/* Infinite scroll sentinel */}

@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer, { FileFilterCallback } from 'multer';
 import rateLimit from 'express-rate-limit';
+import sharp from 'sharp';
 import path from 'path';
 import fs from 'fs';
 import { query, queryOne } from '../db';
@@ -23,21 +24,9 @@ const uploadLimiter = rateLimit({
 
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'];
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    const dir = path.resolve(config.STORAGE_DIR, 'proofs');
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
-    const unique = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-    cb(null, unique);
-  },
-});
-
+// Memory storage — file processed by sharp before writing to disk
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: config.MAX_FILE_SIZE_MB * 1024 * 1024 },
   fileFilter: (_req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
     if (ALLOWED_MIME.includes(file.mimetype)) {
@@ -48,8 +37,9 @@ const upload = multer({
   },
 });
 
-// POST /api/uploads/proof/:stop_id — driver uploads proof photo
+// POST /api/uploads/proof/:stop_id — driver uploads proof photo (compressed via sharp)
 router.post('/proof/:stop_id', uploadLimiter, upload.single('photo'), async (req: Request, res: Response, next: NextFunction) => {
+  let finalPath: string | null = null;
   try {
     const authReq = req as AuthenticatedRequest;
     if (authReq.user.role !== 'driver' && authReq.user.role !== 'admin') {
@@ -64,12 +54,34 @@ router.post('/proof/:stop_id', uploadLimiter, upload.single('photo'), async (req
     if (!stop) throw new AppError(404, 'Stop not found');
 
     if (authReq.user.role === 'driver' && stop.driver_id !== authReq.user.profileId) {
-      // clean up uploaded file before rejecting
-      fs.unlinkSync(req.file.path);
       throw new AppError(403, 'This stop is not assigned to you');
     }
 
-    const relativePath = `proofs/${req.file.filename}`;
+    // Ensure proofs directory exists
+    const proofsDir = path.resolve(config.STORAGE_DIR, 'proofs');
+    if (!fs.existsSync(proofsDir)) fs.mkdirSync(proofsDir, { recursive: true });
+
+    // Generate final filename (always .jpg after compression)
+    const finalName = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+    finalPath = path.join(proofsDir, finalName);
+
+    // Compress with sharp: auto-rotate (EXIF), max 1600px, JPEG quality 78, strip metadata
+    let compressedBuffer: Buffer;
+    try {
+      compressedBuffer = await sharp(req.file.buffer)
+        .rotate()
+        .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 78 })
+        .toBuffer();
+    } catch (sharpErr) {
+      console.error('[uploads] sharp compression failed:', sharpErr);
+      throw new AppError(500, 'Error al procesar la imagen. Inténtalo de nuevo.');
+    }
+
+    fs.writeFileSync(finalPath, compressedBuffer);
+    const fileSize = compressedBuffer.length;
+
+    const relativePath = `proofs/${finalName}`;
     const publicUrl = `/uploads/${relativePath}`;
 
     const [photo] = await Promise.all([
@@ -77,7 +89,7 @@ router.post('/proof/:stop_id', uploadLimiter, upload.single('photo'), async (req
         `INSERT INTO order_photos (stop_id, driver_id, file_path, file_size, mime_type)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING *`,
-        [stop.id, authReq.user.profileId, relativePath, req.file.size, req.file.mimetype]
+        [stop.id, authReq.user.profileId, relativePath, fileSize, 'image/jpeg']
       ),
       query(
         'UPDATE stops SET proof_photo_url = $1, updated_at = NOW() WHERE id = $2',
@@ -85,10 +97,12 @@ router.post('/proof/:stop_id', uploadLimiter, upload.single('photo'), async (req
       ),
     ]);
 
+    console.log(`[uploads] Foto comprimida: ${(req.file.size / 1024).toFixed(0)}KB → ${(fileSize / 1024).toFixed(0)}KB (${finalName})`);
     created(res, { photo, url: publicUrl });
   } catch (err) {
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
+    // Clean up file if it was partially written
+    if (finalPath && fs.existsSync(finalPath)) {
+      fs.unlinkSync(finalPath);
     }
     next(err);
   }
