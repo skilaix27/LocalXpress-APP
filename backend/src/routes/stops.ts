@@ -7,6 +7,7 @@ import { AuthenticatedRequest, Stop } from '../types';
 import { ok, created, noContent, parsePagination } from '../utils/response';
 import { AppError } from '../middleware/errorHandler';
 import { archiveStops } from '../scripts/archive-stops';
+import { sendNewStopNotification } from '../services/email';
 
 const router = Router();
 
@@ -36,6 +37,7 @@ router.post('/order', requireApiKey, async (req: Request, res: Response, next: N
     );
 
     created(res, stop);
+    if (stop) sendNewStopNotification(stop).catch((err) => console.error('[email] Error enviando notificación:', err));
   } catch (err) {
     next(err);
   }
@@ -247,6 +249,7 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
     );
 
     created(res, stop);
+    if (stop) sendNewStopNotification(stop).catch((err) => console.error('[email] Error enviando notificación:', err));
   } catch (err) {
     next(err);
   }
