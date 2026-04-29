@@ -127,6 +127,7 @@ export const createPricingZoneSchema = z.object({
   max_km: z.number().optional().nullable(),
   fixed_price: z.number().optional().nullable(),
   per_km_price: z.number().optional().nullable(),
+  price_driver: z.number().min(0).optional().nullable(),
   sort_order: z.number().int().default(0),
 });
 

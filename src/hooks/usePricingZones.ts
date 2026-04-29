@@ -25,6 +25,7 @@ export function usePricingZones() {
         max_km: zone.max_km,
         fixed_price: zone.fixed_price,
         per_km_price: zone.per_km_price,
+        price_driver: zone.price_driver ?? 0,
         sort_order: zone.sort_order,
       });
     } else {
@@ -34,6 +35,7 @@ export function usePricingZones() {
         max_km: zone.max_km,
         fixed_price: zone.fixed_price,
         per_km_price: zone.per_km_price,
+        price_driver: zone.price_driver ?? 0,
         sort_order: zone.sort_order ?? zones.length + 1,
       });
     }

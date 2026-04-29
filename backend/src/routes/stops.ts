@@ -214,6 +214,39 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
     const shopId = role === 'shop' ? profileId : (data.shop_id ?? null);
     const orderCode = await generateOrderCode(data.scheduled_pickup_at ?? null);
 
+    // Auto-calculate price, price_driver, price_company from pricing_zones
+    let resolvedPrice = data.price ?? null;
+    let resolvedPriceDriver = data.price_driver ?? null;
+    let resolvedPriceCompany = data.price_company ?? null;
+
+    if (data.distance_km != null && resolvedPrice == null) {
+      const MARGIN_KM = 0.15;
+      const adjusted = data.distance_km + MARGIN_KM;
+      const zone = await queryOne<{
+        fixed_price: number | null; per_km_price: number | null;
+        min_km: number; price_driver: number | null;
+      }>(
+        `SELECT fixed_price, per_km_price, min_km, price_driver
+         FROM pricing_zones
+         WHERE $1 > min_km AND ($1 <= max_km OR max_km IS NULL)
+         ORDER BY sort_order ASC
+         LIMIT 1`,
+        [adjusted]
+      );
+      if (zone) {
+        if (zone.fixed_price != null) {
+          resolvedPrice = zone.fixed_price;
+        } else if (zone.per_km_price != null) {
+          const extraKm = Math.max(0, data.distance_km - zone.min_km);
+          resolvedPrice = Math.round(zone.per_km_price * extraKm * 100) / 100;
+        }
+        resolvedPriceDriver = zone.price_driver ?? 0;
+        if (resolvedPrice != null) {
+          resolvedPriceCompany = Math.round((resolvedPrice - (resolvedPriceDriver ?? 0)) * 100) / 100;
+        }
+      }
+    }
+
     const stop = await queryOne<Stop>(
       `INSERT INTO stops
          (order_code, pickup_address, pickup_lat, pickup_lng,
@@ -240,9 +273,9 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
         sub,
         data.package_size ?? 'medium',
         data.distance_km ?? null,
-        data.price ?? null,
-        data.price_driver ?? null,
-        data.price_company ?? null,
+        resolvedPrice,
+        resolvedPriceDriver,
+        resolvedPriceCompany,
         data.shop_name ?? null,
         data.scheduled_pickup_at ?? null,
       ]

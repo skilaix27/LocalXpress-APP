@@ -90,6 +90,7 @@ export interface PricingZone {
   max_km: number | null;
   fixed_price: number | null;
   per_km_price: number | null;
+  price_driver: number | null;
   sort_order: number;
   created_at: Date;
   updated_at: Date;

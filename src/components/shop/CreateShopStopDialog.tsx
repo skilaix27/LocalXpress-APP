@@ -25,7 +25,7 @@ import { AddressInput } from '@/components/admin/AddressInput';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { PlaceDetails } from '@/hooks/useGooglePlaces';
-import { getDeliveryZone, adjustDistance, getDeliveryPrice } from '@/lib/delivery-zones';
+import { getDeliveryZone, adjustDistance, getDeliveryPrice, getDeliveryDriverPrice, resolveZone, getZonePrice, getZoneDriverPrice, fetchPricingZones } from '@/lib/delivery-zones';
 
 const stopSchema = z.object({
   pickup_address: z.string().min(1, 'Dirección de recogida requerida'),
@@ -133,6 +133,15 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
       const [hours, minutes] = data.scheduled_pickup_time.split(':').map(Number);
       const scheduledDate = new Date(pickupDate.getFullYear(), pickupDate.getMonth(), pickupDate.getDate(), hours, minutes);
 
+      // Calculate prices from current zones — backend also recalculates as fallback
+      const zones = await fetchPricingZones();
+      const resolvedZone = routeDistance != null ? resolveZone(zones, routeDistance) : null;
+      const calculatedPrice = resolvedZone ? getZonePrice(resolvedZone, routeDistance!) : null;
+      const calculatedPriceDriver = getZoneDriverPrice(resolvedZone);
+      const calculatedPriceCompany = calculatedPrice != null
+        ? Math.round((calculatedPrice - calculatedPriceDriver) * 100) / 100
+        : null;
+
       await stopsApi.create({
         pickup_address: data.pickup_address,
         pickup_lat: data.pickup_lat,
@@ -144,6 +153,9 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
         client_phone: data.client_phone || null,
         client_notes: data.client_notes || null,
         distance_km: routeDistance,
+        price: calculatedPrice,
+        price_driver: calculatedPriceDriver,
+        price_company: calculatedPriceCompany,
         shop_id: profile.id,
         shop_name: profile.shop_name || profile.full_name,
         scheduled_pickup_at: scheduledDate.toISOString(),
@@ -378,12 +390,14 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
 
           {routeDistance !== null && (() => {
             const price = getDeliveryPrice(routeDistance);
+            const driverPrice = getDeliveryDriverPrice(routeDistance);
             return (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 text-sm">
+              <div className="flex items-center flex-wrap gap-2 p-3 rounded-lg bg-muted/50 text-sm">
                 <MapPin className="w-4 h-4 text-primary" />
                 <span className="text-primary font-bold">{adjustDistance(routeDistance)} km</span>
                 <span className="font-medium">· {getDeliveryZone(routeDistance)}</span>
                 {price != null && <span className="font-bold text-primary">· {price} €</span>}
+                {driverPrice > 0 && <span className="text-muted-foreground text-xs">Rep. {driverPrice} €</span>}
               </div>
             );
           })()}

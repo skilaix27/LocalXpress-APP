@@ -320,6 +320,22 @@ router.get('/export/stops', async (req: Request, res: Response, next: NextFuncti
     const { where, params, nextIdx } = buildStopsWhere(q);
     const source = buildStopsSource(q.archived, where);
 
+    // Load pricing zones to compute zone name for each row
+    const MARGIN_KM = 0.15;
+    const pricingZones = await query<{
+      name: string; min_km: number; max_km: number | null;
+      fixed_price: number | null; per_km_price: number | null;
+    }>('SELECT name, min_km, max_km, fixed_price, per_km_price FROM pricing_zones ORDER BY sort_order ASC, min_km ASC');
+
+    function resolveZoneName(distanceKm: unknown): string {
+      if (distanceKm == null || typeof distanceKm !== 'number') return '';
+      const adjusted = distanceKm + MARGIN_KM;
+      for (const z of pricingZones) {
+        if (adjusted > z.min_km && (z.max_km == null || adjusted <= z.max_km)) return z.name;
+      }
+      return pricingZones.length ? pricingZones[pricingZones.length - 1].name : '';
+    }
+
     const rows = await query(
       `SELECT * FROM (${source}) AS combined
        ORDER BY created_at DESC
@@ -330,7 +346,7 @@ router.get('/export/stops', async (req: Request, res: Response, next: NextFuncti
     const headers = [
       'Referencia', 'Estado', 'Tienda', 'Repartidor',
       'Cliente', 'Teléfono', 'Recogida', 'Entrega',
-      'Distancia km', 'Precio €', 'Precio repartidor €', 'Margen empresa €',
+      'Distancia km', 'Zona', 'Precio €', 'Precio repartidor €', 'Margen empresa €',
       'Cobrado cliente', 'Pagado repartidor',
       'Creado', 'Programado', 'Entregado', 'Archivado',
     ];
@@ -345,6 +361,7 @@ router.get('/export/stops', async (req: Request, res: Response, next: NextFuncti
       `"${String(r.pickup_address ?? '').replace(/"/g, '""')}"`,
       `"${String(r.delivery_address ?? '').replace(/"/g, '""')}"`,
       r.distance_km != null ? Number(r.distance_km).toFixed(1) : '',
+      resolveZoneName(r.distance_km),
       r.price ?? '',
       r.price_driver ?? '',
       r.price_company ?? '',

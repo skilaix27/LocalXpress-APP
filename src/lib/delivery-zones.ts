@@ -7,6 +7,7 @@ export interface PricingZone {
   max_km: number | null;
   fixed_price: number | null;
   per_km_price: number | null;
+  price_driver: number | null;
   sort_order: number;
 }
 
@@ -60,18 +61,24 @@ export function getZonePrice(zone: PricingZone | null, distanceKm: number): numb
   return null;
 }
 
-// Backward-compatible sync helpers (use hardcoded fallback if zones not loaded yet)
+export function getZoneDriverPrice(zone: PricingZone | null): number {
+  return zone?.price_driver ?? 0;
+}
+
+export function getDeliveryDriverPrice(distanceKm: number): number {
+  if (cachedZones?.length) {
+    return getZoneDriverPrice(resolveZone(cachedZones, distanceKm));
+  }
+  return 0;
+}
+
+// Backward-compatible sync helpers — require zones to be fetched first via fetchPricingZones()
 export function getDeliveryZone(distanceKm: number): string {
   if (cachedZones?.length) {
     const z = resolveZone(cachedZones, distanceKm);
     return z?.name || 'Sin zona';
   }
-  // Fallback
-  const adj = distanceKm + MARGIN_KM;
-  if (adj <= 2.5) return 'Zona 1';
-  if (adj <= 7) return 'Zona 2';
-  if (adj <= 15) return 'Zona 3';
-  return 'Zona 4+';
+  return 'Sin zona';
 }
 
 export function getDeliveryPrice(distanceKm: number): number | null {

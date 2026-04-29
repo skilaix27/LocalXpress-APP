@@ -41,10 +41,10 @@ router.post('/', requireAdmin, async (req: Request, res: Response, next: NextFun
   try {
     const data = createPricingZoneSchema.parse(req.body);
     const zone = await queryOne<PricingZone>(
-      `INSERT INTO pricing_zones (name, min_km, max_km, fixed_price, per_km_price, sort_order)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO pricing_zones (name, min_km, max_km, fixed_price, per_km_price, price_driver, sort_order)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [data.name, data.min_km, data.max_km ?? null, data.fixed_price ?? null, data.per_km_price ?? null, data.sort_order]
+      [data.name, data.min_km, data.max_km ?? null, data.fixed_price ?? null, data.per_km_price ?? null, data.price_driver ?? 0, data.sort_order]
     );
     created(res, zone);
   } catch (err) {
