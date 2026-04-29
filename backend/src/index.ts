@@ -18,6 +18,7 @@ import stopsRouter from './routes/stops';
 import driverLocationsRouter from './routes/driver-locations';
 import pricingZonesRouter from './routes/pricing-zones';
 import uploadsRouter from './routes/uploads';
+import superadminRouter from './routes/superadmin';
 
 const app = express();
 
@@ -71,6 +72,7 @@ app.use('/api/stops', stopsRouter);
 app.use('/api/driver-locations', driverLocationsRouter);
 app.use('/api/pricing-zones', pricingZonesRouter);
 app.use('/api/uploads', uploadsRouter);
+app.use('/api/superadmin', superadminRouter);
 
 // ─── 404 ──────────────────────────────────────────────────────────────────────
 app.use((_req, res) => {

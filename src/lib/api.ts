@@ -239,6 +239,52 @@ export const uploadsApi = {
   },
 };
 
+// ─── Superadmin ───────────────────────────────────────────────────────────────
+export interface SuperAdminMetrics {
+  users: {
+    total_users: number;
+    active_users: number;
+    total_admins: number;
+    total_shops: number;
+    total_drivers: number;
+  };
+  stops: {
+    total_active_stops: number;
+    total_archived_stops: number;
+    stops_today: number;
+    stops_this_week: number;
+    stops_this_month: number;
+    pending_stops: number;
+    assigned_stops: number;
+    picked_stops: number;
+    delivered_stops: number;
+    cancelled_stops: number;
+  };
+  finances: {
+    revenue_today: number;
+    revenue_this_month: number;
+    total_pending_client_payment: number;
+    total_pending_driver_payment: number;
+    total_paid_by_clients: number;
+    total_paid_to_drivers: number;
+    estimated_company_margin: number;
+  };
+  photos: {
+    total_photos: number;
+    total_photo_size_bytes: number;
+    total_photo_size_mb: number;
+    latest_photo_created_at: string | null;
+  };
+  activity: {
+    last_stop_created_at: string | null;
+    last_user_created_at: string | null;
+  };
+}
+
+export const superadminApi = {
+  getMetrics: () => apiFetch<SuperAdminMetrics>('/api/superadmin/metrics'),
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 export function getPhotoUrl(urlOrPath: string | null | undefined): string | null {
   if (!urlOrPath) return null;

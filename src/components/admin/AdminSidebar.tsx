@@ -9,6 +9,7 @@ import {
   History,
   LogOut,
   Settings,
+  ShieldCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import logoLocalxpress from '@/assets/logo-localxpress.png';
@@ -20,6 +21,7 @@ const navItems = [
   { to: '/admin/map', icon: MapPin, label: 'Mapa' },
   { to: '/admin/history', icon: History, label: 'Historial' },
   { to: '/admin/settings', icon: Settings, label: 'Configuración' },
+  { to: '/admin/superadmin', icon: ShieldCheck, label: 'Superadmin' },
 ];
 
 export function AdminSidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
