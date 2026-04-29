@@ -25,7 +25,6 @@ import { useToast } from '@/hooks/use-toast';
 import {
   ShieldCheck, Package, Search, Download, RefreshCw,
   SlidersHorizontal, X, ChevronLeft, ChevronRight,
-  MapPin,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -37,9 +36,9 @@ interface PricingZone {
   id: string;
   name: string;
   min_km: number;
-  max_km: number;
-  fixed_price: number;
-  per_km_price: number;
+  max_km: number | null;
+  fixed_price: number | null;
+  per_km_price: number | null;
 }
 
 interface ShopOrDriver {
@@ -72,8 +71,23 @@ function fmtEur(v: number | null | undefined): string {
 
 function getZoneName(distanceKm: number | null | undefined, zones: PricingZone[]): string {
   if (distanceKm == null || zones.length === 0) return '—';
-  const zone = zones.find((z) => distanceKm >= z.min_km && distanceKm < z.max_km);
-  return zone ? zone.name : `${Number(distanceKm).toFixed(1)} km`;
+  const MARGIN = 0.15;
+  const adj = distanceKm + MARGIN;
+  const zone = zones.find((z) => adj > z.min_km && (z.max_km == null || adj <= z.max_km));
+  return zone?.name ?? '—';
+}
+
+function effectivePriceDriver(stop: SuperAdminStop): number | null {
+  if (stop.price_driver != null) return stop.price_driver;
+  if (stop.price != null) return Math.round(stop.price * 0.70 * 100) / 100;
+  return null;
+}
+
+function effectiveMargin(stop: SuperAdminStop): number | null {
+  if (stop.price == null) return null;
+  const pd = effectivePriceDriver(stop);
+  if (pd == null) return null;
+  return Math.round((stop.price - pd) * 100) / 100;
 }
 
 function serviceDate(stop: SuperAdminStop): string {
@@ -110,6 +124,7 @@ export function SuperAdminNav() {
 
 const LIMIT = 30;
 
+// Use '_all' sentinel instead of '' to avoid Radix UI SelectItem crash on empty value
 interface Filters {
   search: string;
   status: string;
@@ -126,8 +141,8 @@ const DEFAULT_FILTERS: Filters = {
   search: '',
   status: 'all',
   archived: 'all',
-  shop_id: '',
-  driver_id: '',
+  shop_id: '_all',
+  driver_id: '_all',
   date_from: '',
   date_to: '',
   paid_by_client: 'all',
@@ -158,7 +173,6 @@ export default function SuperAdminOrders() {
   const [shops, setShops] = useState<ShopOrDriver[]>([]);
   const [drivers, setDrivers] = useState<ShopOrDriver[]>([]);
 
-  // Load reference data once
   useEffect(() => {
     zonesApi.list().then((z) => setZones(z as PricingZone[])).catch(() => {});
     profilesApi.listAll('shop').then((s) => setShops(s as ShopOrDriver[])).catch(() => {});
@@ -170,10 +184,11 @@ export default function SuperAdminOrders() {
     const params: SuperAdminStopsParams = { page: p, limit: LIMIT };
     if (f.search)                   params.search = f.search;
     if (f.status !== 'all')         params.status = f.status;
-    if (f.archived !== 'all')       params.archived = f.archived;
-    if (f.archived === 'all')       params.archived = 'all';
-    if (f.shop_id)                  params.shop_id = f.shop_id;
-    if (f.driver_id)                params.driver_id = f.driver_id;
+    // archived: 'all' means both, 'false' means active only, 'true' means archived only
+    params.archived = f.archived;
+    // '_all' sentinel means no filter
+    if (f.shop_id && f.shop_id !== '_all')     params.shop_id = f.shop_id;
+    if (f.driver_id && f.driver_id !== '_all') params.driver_id = f.driver_id;
     if (f.date_from)                params.date_from = f.date_from;
     if (f.date_to)                  params.date_to = f.date_to;
     if (f.paid_by_client !== 'all') params.paid_by_client = f.paid_by_client;
@@ -220,7 +235,6 @@ export default function SuperAdminOrders() {
   };
 
   // ─── Selection ───────────────────────────────────────────────────────────
-  // Bulk actions only apply to active (non-archived) stops
   const activeStopsOnPage = data.filter((s) => !s.is_archived);
   const allPageSelected =
     activeStopsOnPage.length > 0 &&
@@ -243,7 +257,7 @@ export default function SuperAdminOrders() {
   };
 
   const toggleRow = (id: string, isArchived: boolean) => {
-    if (isArchived) return; // archived can't be bulk-updated
+    if (isArchived) return;
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -364,7 +378,7 @@ export default function SuperAdminOrders() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
-          placeholder="Buscar por referencia, cliente, teléfono..."
+          placeholder="Buscar por referencia, cliente, teléfono, tienda, repartidor, dirección..."
           value={pendingFilters.search}
           onChange={(e) => setPendingFilters((f) => ({ ...f, search: e.target.value }))}
           onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
@@ -397,7 +411,7 @@ export default function SuperAdminOrders() {
                 </SelectContent>
               </Select>
 
-              {/* Fuente: activos / archivados / todos */}
+              {/* Fuente */}
               <Select
                 value={pendingFilters.archived}
                 onValueChange={(v) => setPendingFilters((f) => ({ ...f, archived: v }))}
@@ -412,7 +426,7 @@ export default function SuperAdminOrders() {
                 </SelectContent>
               </Select>
 
-              {/* Tienda */}
+              {/* Tienda — uses '_all' sentinel to avoid Radix crash on empty value */}
               <Select
                 value={pendingFilters.shop_id}
                 onValueChange={(v) => setPendingFilters((f) => ({ ...f, shop_id: v }))}
@@ -421,7 +435,7 @@ export default function SuperAdminOrders() {
                   <SelectValue placeholder="Tienda" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todas las tiendas</SelectItem>
+                  <SelectItem value="_all">Todas las tiendas</SelectItem>
                   {shops.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
                       {s.shop_name ?? s.full_name}
@@ -430,7 +444,7 @@ export default function SuperAdminOrders() {
                 </SelectContent>
               </Select>
 
-              {/* Repartidor */}
+              {/* Repartidor — uses '_all' sentinel */}
               <Select
                 value={pendingFilters.driver_id}
                 onValueChange={(v) => setPendingFilters((f) => ({ ...f, driver_id: v }))}
@@ -439,7 +453,7 @@ export default function SuperAdminOrders() {
                   <SelectValue placeholder="Repartidor" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos los repartidores</SelectItem>
+                  <SelectItem value="_all">Todos los repartidores</SelectItem>
                   {drivers.map((d) => (
                     <SelectItem key={d.id} value={d.id}>
                       {d.full_name}
@@ -481,7 +495,7 @@ export default function SuperAdminOrders() {
               {/* Fecha desde */}
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] text-muted-foreground uppercase tracking-wide pl-1">
-                  Desde
+                  Desde (fecha servicio)
                 </label>
                 <Input
                   type="date"
@@ -494,7 +508,7 @@ export default function SuperAdminOrders() {
               {/* Fecha hasta */}
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] text-muted-foreground uppercase tracking-wide pl-1">
-                  Hasta
+                  Hasta (fecha servicio)
                 </label>
                 <Input
                   type="date"
@@ -525,45 +539,19 @@ export default function SuperAdminOrders() {
           <span className="text-sm font-medium text-foreground mr-1">
             {selectedCount} seleccionado{selectedCount !== 1 ? 's' : ''}
           </span>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={bulkLoading}
-            onClick={() => runBulkAction('mark_client_paid')}
-          >
+          <Button size="sm" variant="outline" disabled={bulkLoading} onClick={() => runBulkAction('mark_client_paid')}>
             ✓ Cobrado cliente
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={bulkLoading}
-            onClick={() => runBulkAction('mark_client_unpaid')}
-          >
+          <Button size="sm" variant="outline" disabled={bulkLoading} onClick={() => runBulkAction('mark_client_unpaid')}>
             ✗ Cobro pendiente
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={bulkLoading}
-            onClick={() => runBulkAction('mark_driver_paid')}
-          >
+          <Button size="sm" variant="outline" disabled={bulkLoading} onClick={() => runBulkAction('mark_driver_paid')}>
             ✓ Pagado repartidor
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={bulkLoading}
-            onClick={() => runBulkAction('mark_driver_unpaid')}
-          >
+          <Button size="sm" variant="outline" disabled={bulkLoading} onClick={() => runBulkAction('mark_driver_unpaid')}>
             ✗ Pago pendiente
           </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={bulkLoading}
-            onClick={() => setSelected(new Set())}
-            className="ml-auto"
-          >
+          <Button size="sm" variant="ghost" disabled={bulkLoading} onClick={() => setSelected(new Set())} className="ml-auto">
             <X className="w-3.5 h-3.5 mr-1" /> Deseleccionar
           </Button>
         </div>
@@ -572,8 +560,7 @@ export default function SuperAdminOrders() {
       {/* Summary bar */}
       <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
         <span>
-          <span className="font-semibold text-foreground">{total.toLocaleString('es-ES')}</span>{' '}
-          pedidos
+          <span className="font-semibold text-foreground">{total.toLocaleString('es-ES')}</span>{' '}pedidos
         </span>
         <span>·</span>
         <span>
@@ -591,162 +578,229 @@ export default function SuperAdminOrders() {
         </span>
       </div>
 
-      {/* Table */}
+      {/* Table — horizontally scrollable, fixed min-width */}
       <div className="border rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-8 px-3">
-                  <Checkbox
-                    checked={allPageSelected}
-                    onCheckedChange={toggleSelectAll}
-                    aria-label="Seleccionar página"
-                    disabled={activeStopsOnPage.length === 0 || loading}
-                  />
-                </TableHead>
-                <TableHead className="text-xs w-10">#</TableHead>
-                <TableHead className="text-xs">Referencia</TableHead>
-                <TableHead className="text-xs">Estado</TableHead>
-                <TableHead className="text-xs">Cliente</TableHead>
-                <TableHead className="text-xs hidden md:table-cell">Tienda</TableHead>
-                <TableHead className="text-xs hidden lg:table-cell">Repartidor</TableHead>
-                <TableHead className="text-xs hidden xl:table-cell">Zona</TableHead>
-                <TableHead className="text-xs text-right hidden sm:table-cell">Precio</TableHead>
-                <TableHead className="text-xs text-right hidden xl:table-cell">Rep.</TableHead>
-                <TableHead className="text-xs hidden lg:table-cell">Fecha servicio</TableHead>
-                <TableHead className="text-xs hidden xl:table-cell">Dirección entrega</TableHead>
-                <TableHead className="text-xs hidden lg:table-cell">Cobro</TableHead>
-                <TableHead className="text-xs hidden lg:table-cell">Pago rep.</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading && data.length === 0 && (
+          <div className="min-w-[2000px]">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={14} className="text-center py-12 text-muted-foreground">
-                    <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2" />
-                    Cargando pedidos...
-                  </TableCell>
+                  <TableHead className="w-8 px-3">
+                    <Checkbox
+                      checked={allPageSelected}
+                      onCheckedChange={toggleSelectAll}
+                      aria-label="Seleccionar página"
+                      disabled={activeStopsOnPage.length === 0 || loading}
+                    />
+                  </TableHead>
+                  <TableHead className="text-xs w-10">#</TableHead>
+                  <TableHead className="text-xs">Referencia</TableHead>
+                  <TableHead className="text-xs">Estado</TableHead>
+                  <TableHead className="text-xs">Cliente</TableHead>
+                  <TableHead className="text-xs">Teléfono</TableHead>
+                  <TableHead className="text-xs">Tienda</TableHead>
+                  <TableHead className="text-xs">Repartidor</TableHead>
+                  <TableHead className="text-xs">Zona</TableHead>
+                  <TableHead className="text-xs text-right">Km</TableHead>
+                  <TableHead className="text-xs text-right">Precio</TableHead>
+                  <TableHead className="text-xs text-right">Rep.</TableHead>
+                  <TableHead className="text-xs text-right">Margen</TableHead>
+                  <TableHead className="text-xs">Fecha servicio</TableHead>
+                  <TableHead className="text-xs">Recogida</TableHead>
+                  <TableHead className="text-xs">Entrega</TableHead>
+                  <TableHead className="text-xs">Cobro</TableHead>
+                  <TableHead className="text-xs">Pago rep.</TableHead>
+                  <TableHead className="text-xs">Archivado</TableHead>
                 </TableRow>
-              )}
-              {!loading && data.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={14} className="text-center py-12 text-muted-foreground">
-                    <Package className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                    No hay pedidos con estos filtros
-                  </TableCell>
-                </TableRow>
-              )}
-              {data.map((stop, idx) => {
-                const st = STATUS_LABELS[stop.status] ?? { label: stop.status, variant: 'secondary' as const };
-                const rowNum = (page - 1) * LIMIT + idx + 1;
-                const isSelected = selected.has(stop.id);
-                const zoneName = getZoneName(stop.distance_km, zones);
-
-                return (
-                  <TableRow
-                    key={stop.id}
-                    className={cn(
-                      loading ? 'opacity-50' : '',
-                      isSelected ? 'bg-muted/40' : '',
-                    )}
-                  >
-                    <TableCell className="px-3 py-2">
-                      {!stop.is_archived ? (
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={() => toggleRow(stop.id, stop.is_archived)}
-                          aria-label={`Seleccionar pedido ${stop.order_code}`}
-                        />
-                      ) : (
-                        <span className="w-4 h-4 block" />
-                      )}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground py-2 w-10">
-                      {rowNum}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs py-2">
-                      {stop.order_code ?? <span className="text-muted-foreground">—</span>}
-                    </TableCell>
-                    <TableCell className="py-2">
-                      <Badge variant={st.variant} className="text-[10px] whitespace-nowrap">
-                        {st.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="py-2">
-                      <div className="max-w-[120px]">
-                        <p className="text-xs font-medium truncate">{stop.client_name}</p>
-                        {stop.client_phone && (
-                          <p className="text-[10px] text-muted-foreground">{stop.client_phone}</p>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-2 hidden md:table-cell">
-                      <span className="text-xs truncate max-w-[100px] block">
-                        {stop.shop_name ?? <span className="text-muted-foreground">—</span>}
-                      </span>
-                    </TableCell>
-                    <TableCell className="py-2 hidden lg:table-cell">
-                      <span className="text-xs text-muted-foreground">
-                        {stop.driver_name || '—'}
-                      </span>
-                    </TableCell>
-                    <TableCell className="py-2 hidden xl:table-cell">
-                      <span className="text-xs text-muted-foreground">{zoneName}</span>
-                    </TableCell>
-                    <TableCell className="py-2 text-right hidden sm:table-cell">
-                      <span className="text-xs font-medium">{fmtEur(stop.price)}</span>
-                    </TableCell>
-                    <TableCell className="py-2 text-right hidden xl:table-cell">
-                      <span className="text-xs text-muted-foreground">{fmtEur(stop.price_driver)}</span>
-                    </TableCell>
-                    <TableCell className="py-2 hidden lg:table-cell">
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">
-                        {serviceDate(stop)}
-                      </span>
-                    </TableCell>
-                    <TableCell className="py-2 hidden xl:table-cell max-w-[140px]">
-                      {stop.delivery_address ? (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="text-xs text-muted-foreground truncate block cursor-default">
-                              <MapPin className="w-3 h-3 inline mr-1 shrink-0" />
-                              {stop.delivery_address}
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent side="left" className="max-w-[260px] text-xs">
-                            {stop.delivery_address}
-                          </TooltipContent>
-                        </Tooltip>
-                      ) : (
-                        <span className="text-muted-foreground text-xs">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="py-2 hidden lg:table-cell">
-                      <span
-                        className={cn(
-                          'text-[10px] font-semibold',
-                          stop.paid_by_client ? 'text-emerald-600' : 'text-orange-500',
-                        )}
-                      >
-                        {stop.paid_by_client ? '✓ Cobrado' : '⏳ Pendiente'}
-                      </span>
-                    </TableCell>
-                    <TableCell className="py-2 hidden lg:table-cell">
-                      <span
-                        className={cn(
-                          'text-[10px] font-semibold',
-                          stop.paid_to_driver ? 'text-emerald-600' : 'text-red-500',
-                        )}
-                      >
-                        {stop.paid_to_driver ? '✓ Pagado' : '⏳ Pendiente'}
-                      </span>
+              </TableHeader>
+              <TableBody>
+                {loading && data.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={19} className="text-center py-12 text-muted-foreground">
+                      <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2" />
+                      Cargando pedidos...
                     </TableCell>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                )}
+                {!loading && data.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={19} className="text-center py-12 text-muted-foreground">
+                      <Package className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                      No hay pedidos con estos filtros
+                    </TableCell>
+                  </TableRow>
+                )}
+                {data.map((stop, idx) => {
+                  const st = STATUS_LABELS[stop.status] ?? { label: stop.status, variant: 'secondary' as const };
+                  const rowNum = (page - 1) * LIMIT + idx + 1;
+                  const isSelected = selected.has(stop.id);
+                  const zoneName = getZoneName(stop.distance_km, zones);
+                  const priceDriver = effectivePriceDriver(stop);
+                  const margin = effectiveMargin(stop);
+
+                  return (
+                    <TableRow
+                      key={stop.id}
+                      className={cn(
+                        loading ? 'opacity-50' : '',
+                        isSelected ? 'bg-muted/40' : '',
+                      )}
+                    >
+                      {/* Checkbox */}
+                      <TableCell className="px-3 py-2">
+                        {!stop.is_archived ? (
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleRow(stop.id, stop.is_archived)}
+                            aria-label={`Seleccionar ${stop.order_code}`}
+                          />
+                        ) : (
+                          <span className="w-4 h-4 block" />
+                        )}
+                      </TableCell>
+
+                      {/* # */}
+                      <TableCell className="text-xs text-muted-foreground py-2 w-10">
+                        {rowNum}
+                      </TableCell>
+
+                      {/* Referencia */}
+                      <TableCell className="font-mono text-xs py-2 whitespace-nowrap">
+                        {stop.order_code ?? <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+
+                      {/* Estado */}
+                      <TableCell className="py-2">
+                        <Badge variant={st.variant} className="text-[10px] whitespace-nowrap">
+                          {st.label}
+                        </Badge>
+                      </TableCell>
+
+                      {/* Cliente */}
+                      <TableCell className="py-2">
+                        <span className="text-xs font-medium truncate max-w-[110px] block">{stop.client_name}</span>
+                      </TableCell>
+
+                      {/* Teléfono */}
+                      <TableCell className="py-2">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          {stop.client_phone ?? '—'}
+                        </span>
+                      </TableCell>
+
+                      {/* Tienda */}
+                      <TableCell className="py-2">
+                        <span className="text-xs truncate max-w-[100px] block">
+                          {stop.shop_name ?? <span className="text-muted-foreground">—</span>}
+                        </span>
+                      </TableCell>
+
+                      {/* Repartidor */}
+                      <TableCell className="py-2">
+                        <span className="text-xs text-muted-foreground truncate max-w-[100px] block">
+                          {stop.driver_name || '—'}
+                        </span>
+                      </TableCell>
+
+                      {/* Zona */}
+                      <TableCell className="py-2">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">{zoneName}</span>
+                      </TableCell>
+
+                      {/* Km */}
+                      <TableCell className="py-2 text-right">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          {stop.distance_km != null ? `${Number(stop.distance_km).toFixed(1)} km` : '—'}
+                        </span>
+                      </TableCell>
+
+                      {/* Precio total */}
+                      <TableCell className="py-2 text-right">
+                        <span className="text-xs font-medium whitespace-nowrap">{fmtEur(stop.price)}</span>
+                      </TableCell>
+
+                      {/* Precio repartidor (70% fallback) */}
+                      <TableCell className="py-2 text-right">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          {fmtEur(priceDriver)}
+                          {stop.price_driver == null && stop.price != null && (
+                            <span className="text-[9px] ml-0.5 opacity-60">est.</span>
+                          )}
+                        </span>
+                      </TableCell>
+
+                      {/* Margen empresa */}
+                      <TableCell className="py-2 text-right">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">{fmtEur(margin)}</span>
+                      </TableCell>
+
+                      {/* Fecha servicio */}
+                      <TableCell className="py-2">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">{serviceDate(stop)}</span>
+                      </TableCell>
+
+                      {/* Recogida */}
+                      <TableCell className="py-2 max-w-[140px]">
+                        {stop.pickup_address ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-xs text-muted-foreground truncate block cursor-default" title={stop.pickup_address}>
+                                {stop.pickup_address}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="max-w-[280px] text-xs">
+                              {stop.pickup_address}
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
+
+                      {/* Entrega */}
+                      <TableCell className="py-2 max-w-[140px]">
+                        {stop.delivery_address ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-xs text-muted-foreground truncate block cursor-default" title={stop.delivery_address}>
+                                {stop.delivery_address}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="max-w-[280px] text-xs">
+                              {stop.delivery_address}
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
+
+                      {/* Cobro cliente */}
+                      <TableCell className="py-2">
+                        <span className={cn('text-[10px] font-semibold whitespace-nowrap', stop.paid_by_client ? 'text-emerald-600' : 'text-orange-500')}>
+                          {stop.paid_by_client ? '✓ Cobrado' : '⏳ Pendiente'}
+                        </span>
+                      </TableCell>
+
+                      {/* Pago repartidor */}
+                      <TableCell className="py-2">
+                        <span className={cn('text-[10px] font-semibold whitespace-nowrap', stop.paid_to_driver ? 'text-emerald-600' : 'text-red-500')}>
+                          {stop.paid_to_driver ? '✓ Pagado' : '⏳ Pendiente'}
+                        </span>
+                      </TableCell>
+
+                      {/* Archivado */}
+                      <TableCell className="py-2">
+                        <span className="text-xs text-muted-foreground">
+                          {stop.is_archived ? '✓' : '—'}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </div>
 
@@ -757,12 +811,7 @@ export default function SuperAdminOrders() {
             Página {page} de {totalPages} · {total.toLocaleString('es-ES')} pedidos
           </span>
           <div className="flex gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1 || loading}
-              onClick={() => goToPage(page - 1)}
-            >
+            <Button variant="outline" size="sm" disabled={page <= 1 || loading} onClick={() => goToPage(page - 1)}>
               <ChevronLeft className="w-4 h-4" />
             </Button>
             {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
@@ -781,12 +830,7 @@ export default function SuperAdminOrders() {
                 </Button>
               );
             })}
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages || loading}
-              onClick={() => goToPage(page + 1)}
-            >
+            <Button variant="outline" size="sm" disabled={page >= totalPages || loading} onClick={() => goToPage(page + 1)}>
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>

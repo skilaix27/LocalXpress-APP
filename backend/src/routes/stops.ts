@@ -240,11 +240,15 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
           const extraKm = Math.max(0, data.distance_km - zone.min_km);
           resolvedPrice = Math.round(zone.per_km_price * extraKm * 100) / 100;
         }
-        resolvedPriceDriver = zone.price_driver ?? 0;
-        if (resolvedPrice != null) {
-          resolvedPriceCompany = Math.round((resolvedPrice - (resolvedPriceDriver ?? 0)) * 100) / 100;
-        }
       }
+    }
+
+    // price_driver = 70% of price, price_company = remaining 30%
+    if (resolvedPrice != null && resolvedPriceDriver == null) {
+      resolvedPriceDriver = Math.round(resolvedPrice * 0.70 * 100) / 100;
+      resolvedPriceCompany = Math.round((resolvedPrice - resolvedPriceDriver) * 100) / 100;
+    } else if (resolvedPrice != null && resolvedPriceDriver != null && resolvedPriceCompany == null) {
+      resolvedPriceCompany = Math.round((resolvedPrice - resolvedPriceDriver) * 100) / 100;
     }
 
     const stop = await queryOne<Stop>(

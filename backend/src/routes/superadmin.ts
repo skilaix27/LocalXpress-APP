@@ -224,8 +224,8 @@ function buildStopsWhere(q: Record<string, string | undefined>): StopsFilterResu
     conditions.push(`s.status::text = $${idx++}`);
     params.push(q.status);
   }
-  if (q.date_from) { conditions.push(`s.created_at >= $${idx++}`); params.push(q.date_from); }
-  if (q.date_to)   { conditions.push(`s.created_at <= $${idx++}`); params.push(q.date_to); }
+  if (q.date_from) { conditions.push(`COALESCE(s.scheduled_pickup_at, s.created_at) >= $${idx++}`); params.push(q.date_from); }
+  if (q.date_to)   { conditions.push(`COALESCE(s.scheduled_pickup_at, s.created_at) <= $${idx++}`); params.push(q.date_to); }
   if (q.shop_id)   { conditions.push(`s.shop_id = $${idx++}::uuid`); params.push(q.shop_id); }
   if (q.driver_id) { conditions.push(`s.driver_id = $${idx++}::uuid`); params.push(q.driver_id); }
   if (q.paid_by_client === 'true')  { conditions.push(`s.paid_by_client = $${idx++}`); params.push(true); }
@@ -234,7 +234,11 @@ function buildStopsWhere(q: Record<string, string | undefined>): StopsFilterResu
   else if (q.paid_to_driver === 'false') { conditions.push(`s.paid_to_driver = $${idx++}`); params.push(false); }
   if (q.search?.trim()) {
     const like = `%${q.search.trim()}%`;
-    conditions.push(`(s.order_code ILIKE $${idx} OR s.client_name ILIKE $${idx} OR s.client_phone ILIKE $${idx})`);
+    conditions.push(
+      `(s.order_code ILIKE $${idx} OR s.client_name ILIKE $${idx} OR s.client_phone ILIKE $${idx}` +
+      ` OR s.pickup_address ILIKE $${idx} OR s.delivery_address ILIKE $${idx}` +
+      ` OR s.shop_name ILIKE $${idx} OR dp.full_name ILIKE $${idx})`
+    );
     params.push(like);
     idx++;
   }
@@ -289,7 +293,7 @@ router.get('/stops', async (req: Request, res: Response, next: NextFunction) => 
         `SELECT
            COUNT(*)::text AS total,
            COALESCE(SUM(price), 0)::text AS total_price,
-           COALESCE(SUM(price_driver), 0)::text AS total_price_driver
+           COALESCE(SUM(COALESCE(price_driver, price * 0.70)), 0)::text AS total_price_driver
          FROM (${source}) AS combined`,
         params
       ),
@@ -363,8 +367,8 @@ router.get('/export/stops', async (req: Request, res: Response, next: NextFuncti
       r.distance_km != null ? Number(r.distance_km).toFixed(1) : '',
       resolveZoneName(r.distance_km),
       r.price ?? '',
-      r.price_driver ?? '',
-      r.price_company ?? '',
+      r.price_driver != null ? r.price_driver : (r.price != null ? Math.round(Number(r.price) * 0.70 * 100) / 100 : ''),
+      r.price_company != null ? r.price_company : (r.price != null ? Math.round((Number(r.price) - Math.round(Number(r.price) * 0.70 * 100) / 100) * 100) / 100 : ''),
       r.paid_by_client ? 'Sí' : 'No',
       r.paid_to_driver ? 'Sí' : 'No',
       r.created_at ? new Date(r.created_at as string).toISOString() : '',
