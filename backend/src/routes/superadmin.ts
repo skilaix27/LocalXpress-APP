@@ -1,10 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import path from 'path';
 import fs from 'fs';
-import { query, queryOne } from '../db';
+import { query, queryOne, withTransaction } from '../db';
 import { requireAuth } from '../middleware/auth';
 import { requireAdmin } from '../middleware/roles';
 import { ok, parsePagination } from '../utils/response';
+import { AppError } from '../middleware/errorHandler';
 import { config } from '../config';
 
 const router = Router();
@@ -359,6 +360,44 @@ router.get('/export/stops', async (req: Request, res: Response, next: NextFuncti
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="pedidos-${Date.now()}.csv"`);
     res.send(csv);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PATCH /api/superadmin/stops/payments — bulk payment status update
+router.patch('/stops/payments', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { stop_ids, action } = req.body as { stop_ids: unknown; action: unknown };
+
+    const validActions = ['mark_client_paid', 'mark_client_unpaid', 'mark_driver_paid', 'mark_driver_unpaid'];
+
+    if (!Array.isArray(stop_ids) || stop_ids.length === 0)
+      throw new AppError(400, 'stop_ids must be a non-empty array');
+    if (stop_ids.length > 100)
+      throw new AppError(400, 'Maximum 100 stops per request');
+    if (typeof action !== 'string' || !validActions.includes(action))
+      throw new AppError(400, `Invalid action. Must be one of: ${validActions.join(', ')}`);
+
+    const fieldMap: Record<string, string> = {
+      mark_client_paid:    'paid_by_client = true',
+      mark_client_unpaid:  'paid_by_client = false',
+      mark_driver_paid:    'paid_to_driver = true',
+      mark_driver_unpaid:  'paid_to_driver = false',
+    };
+
+    const updated = await withTransaction(async (client) => {
+      const placeholders = (stop_ids as unknown[]).map((_: unknown, i: number) => `$${i + 1}`).join(', ');
+      const result = await client.query(
+        `UPDATE stops SET ${fieldMap[action as string]}, updated_at = NOW()
+         WHERE id::text = ANY(ARRAY[${placeholders}])
+         RETURNING id`,
+        stop_ids as unknown[]
+      );
+      return result.rowCount ?? 0;
+    });
+
+    ok(res, { updated });
   } catch (err) {
     next(err);
   }

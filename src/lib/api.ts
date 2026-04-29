@@ -331,8 +331,20 @@ export interface SuperAdminStopsParams {
   archived?: string;
 }
 
+export type BulkPaymentAction =
+  | 'mark_client_paid'
+  | 'mark_client_unpaid'
+  | 'mark_driver_paid'
+  | 'mark_driver_unpaid';
+
 export const superadminApi = {
   getMetrics: () => apiFetch<SuperAdminMetrics>('/api/superadmin/metrics'),
+
+  bulkUpdatePayments: (stop_ids: string[], action: BulkPaymentAction) =>
+    apiFetch<{ updated: number }>('/api/superadmin/stops/payments', {
+      method: 'PATCH',
+      body: JSON.stringify({ stop_ids, action }),
+    }),
 
   getStops: (params: SuperAdminStopsParams = {}) => {
     const q = new URLSearchParams();
