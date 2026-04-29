@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useSuperAdminMetrics } from '@/hooks/useSuperAdminMetrics';
+import { SuperAdminNav } from './SuperAdminOrders';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -104,6 +105,9 @@ export default function SuperAdminOverview() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      {/* Sub-nav */}
+      <SuperAdminNav />
+
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">

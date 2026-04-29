@@ -4,7 +4,7 @@ import fs from 'fs';
 import { query, queryOne } from '../db';
 import { requireAuth } from '../middleware/auth';
 import { requireAdmin } from '../middleware/roles';
-import { ok } from '../utils/response';
+import { ok, parsePagination } from '../utils/response';
 import { config } from '../config';
 
 const router = Router();
@@ -206,4 +206,163 @@ router.get('/metrics', async (_req: Request, res: Response, next: NextFunction) 
   }
 });
 
+// ─── Shared stops filter builder ──────────────────────────────────────────────
+
+interface StopsFilterResult {
+  where: string;
+  params: unknown[];
+  nextIdx: number;
+}
+
+function buildStopsWhere(q: Record<string, string | undefined>): StopsFilterResult {
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  let idx = 1;
+
+  if (q.status && q.status !== 'all') {
+    conditions.push(`s.status::text = $${idx++}`);
+    params.push(q.status);
+  }
+  if (q.date_from) { conditions.push(`s.created_at >= $${idx++}`); params.push(q.date_from); }
+  if (q.date_to)   { conditions.push(`s.created_at <= $${idx++}`); params.push(q.date_to); }
+  if (q.shop_id)   { conditions.push(`s.shop_id = $${idx++}::uuid`); params.push(q.shop_id); }
+  if (q.driver_id) { conditions.push(`s.driver_id = $${idx++}::uuid`); params.push(q.driver_id); }
+  if (q.paid_by_client === 'true')  { conditions.push(`s.paid_by_client = $${idx++}`); params.push(true); }
+  else if (q.paid_by_client === 'false') { conditions.push(`s.paid_by_client = $${idx++}`); params.push(false); }
+  if (q.paid_to_driver === 'true')  { conditions.push(`s.paid_to_driver = $${idx++}`); params.push(true); }
+  else if (q.paid_to_driver === 'false') { conditions.push(`s.paid_to_driver = $${idx++}`); params.push(false); }
+  if (q.search?.trim()) {
+    const like = `%${q.search.trim()}%`;
+    conditions.push(`(s.order_code ILIKE $${idx} OR s.client_name ILIKE $${idx} OR s.client_phone ILIKE $${idx})`);
+    params.push(like);
+    idx++;
+  }
+
+  return {
+    where: conditions.length ? `WHERE ${conditions.join(' AND ')}` : '',
+    params,
+    nextIdx: idx,
+  };
+}
+
+const STOPS_SELECT_COLS = `
+  s.id, s.order_code, s.status::text AS status,
+  s.client_name, s.client_phone,
+  s.pickup_address, s.delivery_address,
+  s.shop_name, s.shop_id::text, s.driver_id::text,
+  COALESCE(dp.full_name, '') AS driver_name,
+  s.distance_km, s.price, s.price_driver, s.price_company,
+  s.paid_by_client, s.paid_to_driver,
+  s.created_at, s.scheduled_pickup_at, s.delivered_at`;
+
+function buildStopsSource(archived: string | undefined, where: string): string {
+  const active   = `SELECT ${STOPS_SELECT_COLS}, false AS is_archived
+                    FROM stops s LEFT JOIN profiles dp ON s.driver_id = dp.id ${where}`;
+  const archived_ = `SELECT ${STOPS_SELECT_COLS}, true AS is_archived
+                    FROM stops_archive s LEFT JOIN profiles dp ON s.driver_id = dp.id ${where}`;
+  if (archived === 'true')  return archived_;
+  if (archived === 'all')   return `${active} UNION ALL ${archived_}`;
+  return active; // default: active only
+}
+
+// GET /api/superadmin/stops — pedidos globales con filtros y paginación
+router.get('/stops', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { limit, offset, page } = parsePagination(req.query as Record<string, unknown>);
+    const q = req.query as Record<string, string | undefined>;
+    const { where, params, nextIdx } = buildStopsWhere(q);
+    const source = buildStopsSource(q.archived, where);
+
+    const paginationParams = [...params, limit, offset];
+    const limitIdx  = nextIdx;
+    const offsetIdx = nextIdx + 1;
+
+    const [rows, summary] = await Promise.all([
+      query(
+        `SELECT * FROM (${source}) AS combined
+         ORDER BY created_at DESC
+         LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+        paginationParams
+      ),
+      queryOne<{ total: string; total_price: string; total_price_driver: string }>(
+        `SELECT
+           COUNT(*)::text AS total,
+           COALESCE(SUM(price), 0)::text AS total_price,
+           COALESCE(SUM(price_driver), 0)::text AS total_price_driver
+         FROM (${source}) AS combined`,
+        params
+      ),
+    ]);
+
+    const total = parseInt(summary?.total ?? '0');
+
+    ok(res, {
+      data: rows,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      summary: {
+        total_price: parseFloat(summary?.total_price ?? '0'),
+        total_price_driver: parseFloat(summary?.total_price_driver ?? '0'),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/superadmin/export/stops — descarga CSV con los mismos filtros
+router.get('/export/stops', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const q = req.query as Record<string, string | undefined>;
+    const { where, params, nextIdx } = buildStopsWhere(q);
+    const source = buildStopsSource(q.archived, where);
+
+    const rows = await query(
+      `SELECT * FROM (${source}) AS combined
+       ORDER BY created_at DESC
+       LIMIT $${nextIdx}`,
+      [...params, 5000]
+    ) as Record<string, unknown>[];
+
+    const headers = [
+      'Referencia', 'Estado', 'Tienda', 'Repartidor',
+      'Cliente', 'Teléfono', 'Recogida', 'Entrega',
+      'Distancia km', 'Precio €', 'Precio repartidor €', 'Margen empresa €',
+      'Cobrado cliente', 'Pagado repartidor',
+      'Creado', 'Programado', 'Entregado', 'Archivado',
+    ];
+
+    const csvRows = rows.map((r) => [
+      r.order_code ?? '',
+      r.status ?? '',
+      r.shop_name ?? '',
+      r.driver_name ?? '',
+      r.client_name ?? '',
+      r.client_phone ?? '',
+      `"${String(r.pickup_address ?? '').replace(/"/g, '""')}"`,
+      `"${String(r.delivery_address ?? '').replace(/"/g, '""')}"`,
+      r.distance_km != null ? Number(r.distance_km).toFixed(1) : '',
+      r.price ?? '',
+      r.price_driver ?? '',
+      r.price_company ?? '',
+      r.paid_by_client ? 'Sí' : 'No',
+      r.paid_to_driver ? 'Sí' : 'No',
+      r.created_at ? new Date(r.created_at as string).toISOString() : '',
+      r.scheduled_pickup_at ? new Date(r.scheduled_pickup_at as string).toISOString() : '',
+      r.delivered_at ? new Date(r.delivered_at as string).toISOString() : '',
+      r.is_archived ? 'Sí' : 'No',
+    ].join(','));
+
+    const csv = '\uFEFF' + [headers.join(','), ...csvRows].join('\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="pedidos-${Date.now()}.csv"`);
+    res.send(csv);
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
+

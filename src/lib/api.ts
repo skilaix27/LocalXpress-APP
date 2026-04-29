@@ -281,8 +281,74 @@ export interface SuperAdminMetrics {
   };
 }
 
+export interface SuperAdminStop {
+  id: string;
+  order_code: string | null;
+  status: string;
+  client_name: string;
+  client_phone: string | null;
+  pickup_address: string;
+  delivery_address: string;
+  shop_name: string | null;
+  shop_id: string | null;
+  driver_id: string | null;
+  driver_name: string;
+  distance_km: number | null;
+  price: number | null;
+  price_driver: number | null;
+  price_company: number | null;
+  paid_by_client: boolean;
+  paid_to_driver: boolean;
+  created_at: string;
+  scheduled_pickup_at: string | null;
+  delivered_at: string | null;
+  is_archived: boolean;
+}
+
+export interface SuperAdminStopsResponse {
+  data: SuperAdminStop[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  summary: {
+    total_price: number;
+    total_price_driver: number;
+  };
+}
+
+export interface SuperAdminStopsParams {
+  page?: number;
+  limit?: number;
+  status?: string;
+  date_from?: string;
+  date_to?: string;
+  shop_id?: string;
+  driver_id?: string;
+  paid_by_client?: string;
+  paid_to_driver?: string;
+  search?: string;
+  archived?: string;
+}
+
 export const superadminApi = {
   getMetrics: () => apiFetch<SuperAdminMetrics>('/api/superadmin/metrics'),
+
+  getStops: (params: SuperAdminStopsParams = {}) => {
+    const q = new URLSearchParams();
+    if (params.page)          q.set('page', String(params.page));
+    if (params.limit)         q.set('limit', String(params.limit));
+    if (params.status)        q.set('status', params.status);
+    if (params.date_from)     q.set('date_from', params.date_from);
+    if (params.date_to)       q.set('date_to', params.date_to);
+    if (params.shop_id)       q.set('shop_id', params.shop_id);
+    if (params.driver_id)     q.set('driver_id', params.driver_id);
+    if (params.paid_by_client !== undefined) q.set('paid_by_client', params.paid_by_client);
+    if (params.paid_to_driver !== undefined) q.set('paid_to_driver', params.paid_to_driver);
+    if (params.search)        q.set('search', params.search);
+    if (params.archived)      q.set('archived', params.archived);
+    return apiFetch<SuperAdminStopsResponse>(`/api/superadmin/stops?${q}`);
+  },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

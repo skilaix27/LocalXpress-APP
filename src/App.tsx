@@ -20,6 +20,7 @@ const AdminMap = lazy(() => import("./pages/admin/AdminMap"));
 const AdminHistory = lazy(() => import("./pages/admin/AdminHistory"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
 const SuperAdminOverview = lazy(() => import("./pages/admin/SuperAdminOverview"));
+const SuperAdminOrders = lazy(() => import("./pages/admin/SuperAdminOrders"));
 const ShopLayout = lazy(() => import("./pages/shop/ShopLayout"));
 const ShopDashboard = lazy(() => import("./pages/shop/ShopDashboard"));
 const ShopNewStop = lazy(() => import("./pages/shop/ShopNewStop"));
@@ -78,6 +79,7 @@ const App = () => {
               <Route path="history" element={<AdminHistory />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="superadmin" element={<SuperAdminOverview />} />
+              <Route path="superadmin/orders" element={<SuperAdminOrders />} />
             </Route>
             
             {/* Shop routes */}
