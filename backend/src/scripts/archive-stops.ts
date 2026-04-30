@@ -94,7 +94,8 @@ async function archiveStops(dryRun = false): Promise<ArchiveResult> {
             paid_to_driver, paid_to_driver_at,
             proof_photo_url, shop_name,
             scheduled_pickup_at, picked_at, delivered_at,
-            created_at, updated_at, archived_at)
+            created_at, updated_at, archived_at,
+            source, email_from, email_subject)
          SELECT
            id, order_code,
            pickup_address, pickup_lat, pickup_lng,
@@ -107,7 +108,8 @@ async function archiveStops(dryRun = false): Promise<ArchiveResult> {
            paid_to_driver, paid_to_driver_at,
            NULL AS proof_photo_url, shop_name,
            scheduled_pickup_at, picked_at, delivered_at,
-           created_at, updated_at, NOW()
+           created_at, updated_at, NOW(),
+           COALESCE(source, 'app'), email_from, email_subject
          FROM stops
          WHERE created_at < $1
          ON CONFLICT (id) DO NOTHING`,

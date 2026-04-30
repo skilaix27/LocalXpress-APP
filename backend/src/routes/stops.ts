@@ -17,26 +17,75 @@ router.post('/order', requireApiKey, async (req: Request, res: Response, next: N
     const data = createOrderApiSchema.parse(req.body);
     const orderCode = await generateOrderCode(data.scheduled_pickup_at ?? null);
 
+    // ── Pricing: calculate from pricing_zones if distance_km is provided ────────
+    const MARGIN_KM = 0.15;
+    let resolvedPrice: number | null = null;
+    let resolvedPriceDriver: number | null = null;
+    let resolvedPriceCompany: number | null = null;
+
+    if (data.distance_km != null) {
+      const adjusted = data.distance_km + MARGIN_KM;
+      const zone = await queryOne<{
+        fixed_price: number | null;
+        per_km_price: number | null;
+        min_km: number;
+      }>(
+        `SELECT fixed_price, per_km_price, min_km
+         FROM pricing_zones
+         WHERE $1 > min_km AND ($1 <= max_km OR max_km IS NULL)
+         ORDER BY sort_order ASC
+         LIMIT 1`,
+        [adjusted]
+      );
+      if (zone) {
+        if (zone.fixed_price != null) {
+          resolvedPrice = zone.fixed_price;
+        } else if (zone.per_km_price != null) {
+          const extraKm = Math.max(0, data.distance_km - zone.min_km);
+          resolvedPrice = Math.round(zone.per_km_price * extraKm * 100) / 100;
+        }
+      }
+    }
+
+    if (resolvedPrice != null) {
+      resolvedPriceDriver  = Math.round(resolvedPrice * 0.70 * 100) / 100;
+      resolvedPriceCompany = Math.round((resolvedPrice - resolvedPriceDriver) * 100) / 100;
+    }
+
+    // ── Source/email traceability ─────────────────────────────────────────────
+    const source       = data.source       ?? 'api';
+    const emailFrom    = data.email_from   ?? null;
+    const emailSubject = data.email_subject ?? null;
+
     const stop = await queryOne<Stop>(
       `INSERT INTO stops
          (order_code, pickup_address, delivery_address, client_name, client_phone,
-          client_notes, package_size, shop_name, scheduled_pickup_at, status)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'pending')
+          client_notes, package_size, shop_name, scheduled_pickup_at, status,
+          distance_km, price, price_driver, price_company,
+          source, email_from, email_subject)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'pending',$10,$11,$12,$13,$14,$15,$16)
        RETURNING *`,
       [
         orderCode,
         data.pickup_address,
         data.delivery_address,
         data.client_name,
-        data.client_phone ?? null,
-        data.client_notes ?? null,
-        data.package_size ?? 'medium',
-        data.shop_name ?? null,
+        data.client_phone   ?? null,
+        data.client_notes   ?? null,
+        data.package_size   ?? 'medium',
+        data.shop_name      ?? null,
         data.scheduled_pickup_at ?? null,
+        data.distance_km    ?? null,
+        resolvedPrice,
+        resolvedPriceDriver,
+        resolvedPriceCompany,
+        source,
+        emailFrom,
+        emailSubject,
       ]
     );
 
-    created(res, stop);
+    res.status(201).json({ ok: true, stop });
     if (stop) sendNewStopNotification(stop).catch((err) => console.error('[email] Error enviando notificación:', err));
   } catch (err) {
     next(err);

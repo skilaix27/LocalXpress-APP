@@ -109,7 +109,11 @@ export const createOrderApiSchema = z.object({
   client_notes: z.string().optional().nullable(),
   package_size: z.enum(['small', 'medium', 'large']).optional(),
   shop_name: z.string().optional().nullable(),
-  scheduled_pickup_at: z.string().datetime().optional().nullable(),
+  scheduled_pickup_at: z.string().datetime({ offset: true }).optional().nullable(),
+  distance_km: z.number().positive().optional().nullable(),
+  source: z.string().max(64).optional().nullable(),
+  email_from: z.string().max(320).optional().nullable(),
+  email_subject: z.string().max(998).optional().nullable(),
 });
 
 // ─── Driver locations ─────────────────────────────────────────────────────────

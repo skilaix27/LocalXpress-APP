@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "n8n-mcp": {
+      "command": "npx",
+      "args": ["n8n-mcp"],
+      "env": {
+        "MCP_MODE": "stdio",
+        "LOG_LEVEL": "error",
+        "DISABLE_CONSOLE_OUTPUT": "true",
+        "N8N_API_URL": "https://infostay-n8n.xgtbiz.easypanel.host",
+        "N8N_API_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3NDJlZDllMy04ODNiLTRiMjUtOThjOC1mMTU3NmIyZDdhOWEiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiZGQ3YmViOWUtMTg0Ny00ZDdkLTg5MTgtOWI5NTI0YzVkNGQ0IiwiaWF0IjoxNzc3NTM0OTkxfQ.Rkvoc_RBuJt8jyzPbPnAuEg_eAeREE3wjxJksOpSb10"
+      }
+    }
+  }
+}
