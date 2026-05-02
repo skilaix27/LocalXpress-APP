@@ -185,12 +185,22 @@ export const profilesApi = {
 
 // ─── Stops ────────────────────────────────────────────────────────────────────
 export const stopsApi = {
-  list: (params?: { limit?: number; page?: number }) => {
+  list: (params?: { limit?: number; page?: number; date?: string; date_from?: string; date_to?: string; status?: string }) => {
     const q = new URLSearchParams();
     q.set('limit', String(params?.limit ?? 100));
-    if (params?.page) q.set('page', String(params.page));
+    if (params?.page)      q.set('page',      String(params.page));
+    if (params?.date)      q.set('date',      params.date);
+    if (params?.date_from) q.set('date_from', params.date_from);
+    if (params?.date_to)   q.set('date_to',   params.date_to);
+    if (params?.status)    q.set('status',    params.status);
     return apiFetch<{ data: unknown[]; total: number; totalPages: number }>(`/api/stops?${q}`);
   },
+
+  geocodeMissing: () =>
+    apiFetch<{ processed: number; updated: number; failed: number; remaining: number }>(
+      '/api/stops/geocode-missing',
+      { method: 'POST' },
+    ),
 
   create: (body: Record<string, unknown>) =>
     apiFetch<unknown>('/api/stops', { method: 'POST', body: JSON.stringify(body) }),

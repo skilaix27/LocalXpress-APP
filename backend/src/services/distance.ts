@@ -2,6 +2,28 @@ import { config } from '../config';
 
 const MARGIN_KM = 0.15;
 
+// ─── Geocoding (Maps Geocoding API) ──────────────────────────────────────────
+
+export async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+  const apiKey = config.GOOGLE_MAPS_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const res = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`,
+    );
+    if (!res.ok) return null;
+    const data = await res.json() as {
+      status: string;
+      results?: { geometry?: { location?: { lat: number; lng: number } } }[];
+    };
+    const loc = data.results?.[0]?.geometry?.location;
+    if (data.status !== 'OK' || !loc) return null;
+    return { lat: loc.lat, lng: loc.lng };
+  } catch {
+    return null;
+  }
+}
+
 interface DistanceResult {
   distance_km: number;
   adjusted_km: number;

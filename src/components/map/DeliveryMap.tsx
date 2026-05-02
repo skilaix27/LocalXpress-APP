@@ -143,12 +143,14 @@ export function DeliveryMap({
     // Add stop markers — skip any stop with missing/null coordinates
     stops.forEach((stop) => {
       if (validCoord(stop.pickup_lat, stop.pickup_lng)) {
+        const ref = stop.order_code ? `<span style="font-size:10px;color:#888">${stop.order_code}</span><br>` : '';
         const pickupMarker = L.marker([stop.pickup_lat as number, stop.pickup_lng as number], { icon: pickupIcon })
           .bindPopup(`
-            <div style="padding:8px;min-width:150px">
+            <div style="padding:8px;min-width:160px">
+              ${ref}
               <strong style="color:#f97316">📦 Recogida</strong>
               <p style="font-size:13px;margin:4px 0 0">${stop.pickup_address}</p>
-              <p style="font-size:11px;color:#888">${stop.client_name}</p>
+              <p style="font-size:11px;color:#888">${stop.client_name}${stop.status ? ` · ${stop.status}` : ''}</p>
             </div>
           `);
         if (onStopClick) pickupMarker.on('click', () => onStopClick(stop));
@@ -156,12 +158,14 @@ export function DeliveryMap({
       }
 
       if (validCoord(stop.delivery_lat, stop.delivery_lng)) {
+        const ref = stop.order_code ? `<span style="font-size:10px;color:#888">${stop.order_code}</span><br>` : '';
         const deliveryMarker = L.marker([stop.delivery_lat as number, stop.delivery_lng as number], { icon: deliveryIcon })
           .bindPopup(`
-            <div style="padding:8px;min-width:150px">
+            <div style="padding:8px;min-width:160px">
+              ${ref}
               <strong style="color:#22c55e">🏠 Entrega</strong>
               <p style="font-size:13px;margin:4px 0 0">${stop.delivery_address}</p>
-              <p style="font-size:11px;color:#888">${stop.client_name}</p>
+              <p style="font-size:11px;color:#888">${stop.client_name}${stop.status ? ` · ${stop.status}` : ''}</p>
             </div>
           `);
         if (onStopClick) deliveryMarker.on('click', () => onStopClick(stop));

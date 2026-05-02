@@ -8,6 +8,7 @@ import { ok, created, noContent, parsePagination } from '../utils/response';
 import { AppError } from '../middleware/errorHandler';
 import { archiveStops } from '../scripts/archive-stops';
 import { sendNewStopNotification } from '../services/email';
+import { geocodeAddress } from '../services/distance';
 
 const router = Router();
 
@@ -188,6 +189,25 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
       params.push(req.query.driver_id);
     }
 
+    // Date filters — admin only
+    // date=YYYY-MM-DD filters by scheduled_pickup_at date, falling back to created_at date
+    if (role === 'admin' && req.query.date) {
+      conditions.push(
+        `(s.scheduled_pickup_at::date = $${idx} OR (s.scheduled_pickup_at IS NULL AND s.created_at::date = $${idx}))`,
+      );
+      params.push(req.query.date);
+      idx++;
+    } else if (role === 'admin') {
+      if (req.query.date_from) {
+        conditions.push(`COALESCE(s.scheduled_pickup_at, s.created_at) >= $${idx++}::date`);
+        params.push(req.query.date_from);
+      }
+      if (req.query.date_to) {
+        conditions.push(`COALESCE(s.scheduled_pickup_at, s.created_at) < ($${idx++}::date + interval '1 day')`);
+        params.push(req.query.date_to);
+      }
+    }
+
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const [stops, countRow] = await Promise.all([
@@ -277,6 +297,65 @@ router.post('/archive', requireAdmin, async (req: Request, res: Response, next: 
       dryRun,
       ...result,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/stops/geocode-missing — admin: geocode up to 20 stops missing coordinates
+router.post('/geocode-missing', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const missing = await query<{
+      id: string; pickup_address: string; pickup_lat: number | null; pickup_lng: number | null;
+      delivery_address: string; delivery_lat: number | null; delivery_lng: number | null;
+    }>(
+      `SELECT id, pickup_address, pickup_lat, pickup_lng, delivery_address, delivery_lat, delivery_lng
+       FROM stops
+       WHERE (pickup_lat IS NULL OR delivery_lat IS NULL)
+         AND pickup_address IS NOT NULL AND delivery_address IS NOT NULL
+       ORDER BY created_at DESC
+       LIMIT 20`,
+      [],
+    );
+
+    let processed = 0, updated = 0, failed = 0;
+
+    for (const stop of missing) {
+      processed++;
+      try {
+        const fields: string[] = [];
+        const vals: unknown[] = [];
+        let idx = 1;
+
+        if (stop.pickup_lat == null || stop.pickup_lng == null) {
+          const coords = await geocodeAddress(stop.pickup_address);
+          if (coords) {
+            fields.push(`pickup_lat = $${idx++}`, `pickup_lng = $${idx++}`);
+            vals.push(coords.lat, coords.lng);
+          }
+        }
+        if (stop.delivery_lat == null || stop.delivery_lng == null) {
+          const coords = await geocodeAddress(stop.delivery_address);
+          if (coords) {
+            fields.push(`delivery_lat = $${idx++}`, `delivery_lng = $${idx++}`);
+            vals.push(coords.lat, coords.lng);
+          }
+        }
+
+        if (fields.length > 0) {
+          vals.push(stop.id);
+          await queryOne(
+            `UPDATE stops SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${idx}`,
+            vals,
+          );
+          updated++;
+        }
+      } catch {
+        failed++;
+      }
+    }
+
+    ok(res, { processed, updated, failed, remaining: missing.length - updated });
   } catch (err) {
     next(err);
   }

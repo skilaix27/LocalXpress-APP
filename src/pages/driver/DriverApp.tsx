@@ -210,7 +210,8 @@ export default function DriverApp() {
     }
   };
 
-  const NavigateButton = ({ lat, lng, color }: { lat: number; lng: number; color: string }) => {
+  const NavigateButton = ({ lat, lng, color }: { lat: number | null; lng: number | null; color: string }) => {
+    if (lat == null || lng == null || !isFinite(lat) || !isFinite(lng)) return null;
     const urls = getNavUrls(lat, lng);
     return (
       <DropdownMenu modal={true}>
@@ -481,6 +482,9 @@ export default function DriverApp() {
                         <div className="flex-1 min-w-0">
                           <p className="text-[10px] font-bold text-muted-foreground tracking-wider">RECOGIDA</p>
                           <p className="text-sm leading-snug truncate">{selectedStop.pickup_address}</p>
+                          {(selectedStop.pickup_lat == null || selectedStop.pickup_lng == null) && (
+                            <p className="text-[10px] text-amber-500 mt-0.5">Sin coordenadas guardadas</p>
+                          )}
                         </div>
                         <NavigateButton lat={selectedStop.pickup_lat} lng={selectedStop.pickup_lng} color="bg-primary/10 text-primary" />
                       </CardContent>
@@ -493,6 +497,9 @@ export default function DriverApp() {
                         <div className="flex-1 min-w-0">
                           <p className="text-[10px] font-bold text-muted-foreground tracking-wider">ENTREGA</p>
                           <p className="text-sm leading-snug truncate">{selectedStop.delivery_address}</p>
+                          {(selectedStop.delivery_lat == null || selectedStop.delivery_lng == null) && (
+                            <p className="text-[10px] text-amber-500 mt-0.5">Sin coordenadas guardadas</p>
+                          )}
                         </div>
                         <NavigateButton lat={selectedStop.delivery_lat} lng={selectedStop.delivery_lng} color="bg-status-delivered/10 text-status-delivered" />
                       </CardContent>

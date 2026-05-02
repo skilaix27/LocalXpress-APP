@@ -31,11 +31,11 @@ export interface Stop {
   is_archived?: boolean;
   archived_at?: string | null;
   pickup_address: string;
-  pickup_lat: number;
-  pickup_lng: number;
+  pickup_lat: number | null;
+  pickup_lng: number | null;
   delivery_address: string;
-  delivery_lat: number;
-  delivery_lng: number;
+  delivery_lat: number | null;
+  delivery_lng: number | null;
   client_name: string;
   client_phone: string | null;
   client_notes: string | null;
