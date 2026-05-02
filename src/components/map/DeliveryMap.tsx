@@ -45,6 +45,15 @@ const driverIcon = L.divIcon({
   popupAnchor: [0, -18],
 });
 
+// Returns true only when both values are finite numbers (rejects null/undefined/NaN)
+function validCoord(lat: unknown, lng: unknown): lat is number {
+  return (
+    typeof lat === 'number' && typeof lng === 'number' &&
+    !Number.isNaN(lat) && !Number.isNaN(lng) &&
+    isFinite(lat) && isFinite(lng)
+  );
+}
+
 interface DeliveryMapProps {
   stops?: Stop[];
   driverLocations?: (DriverLocation & { driver?: Profile })[];
@@ -131,55 +140,53 @@ export function DeliveryMap({
       routeRef.current = null;
     }
 
-    // Add stop markers
+    // Add stop markers — skip any stop with missing/null coordinates
     stops.forEach((stop) => {
-      const pickupMarker = L.marker([stop.pickup_lat, stop.pickup_lng], { icon: pickupIcon })
-        .bindPopup(`
-          <div style="padding:8px;min-width:150px">
-            <strong style="color:#f97316">📦 Recogida</strong>
-            <p style="font-size:13px;margin:4px 0 0">${stop.pickup_address}</p>
-            <p style="font-size:11px;color:#888">${stop.client_name}</p>
-          </div>
-        `);
-      
-      if (onStopClick) {
-        pickupMarker.on('click', () => onStopClick(stop));
+      if (validCoord(stop.pickup_lat, stop.pickup_lng)) {
+        const pickupMarker = L.marker([stop.pickup_lat as number, stop.pickup_lng as number], { icon: pickupIcon })
+          .bindPopup(`
+            <div style="padding:8px;min-width:150px">
+              <strong style="color:#f97316">📦 Recogida</strong>
+              <p style="font-size:13px;margin:4px 0 0">${stop.pickup_address}</p>
+              <p style="font-size:11px;color:#888">${stop.client_name}</p>
+            </div>
+          `);
+        if (onStopClick) pickupMarker.on('click', () => onStopClick(stop));
+        markersRef.current?.addLayer(pickupMarker);
       }
-      markersRef.current?.addLayer(pickupMarker);
 
-      const deliveryMarker = L.marker([stop.delivery_lat, stop.delivery_lng], { icon: deliveryIcon })
-        .bindPopup(`
-          <div style="padding:8px;min-width:150px">
-            <strong style="color:#22c55e">🏠 Entrega</strong>
-            <p style="font-size:13px;margin:4px 0 0">${stop.delivery_address}</p>
-            <p style="font-size:11px;color:#888">${stop.client_name}</p>
-          </div>
-        `);
-      
-      if (onStopClick) {
-        deliveryMarker.on('click', () => onStopClick(stop));
+      if (validCoord(stop.delivery_lat, stop.delivery_lng)) {
+        const deliveryMarker = L.marker([stop.delivery_lat as number, stop.delivery_lng as number], { icon: deliveryIcon })
+          .bindPopup(`
+            <div style="padding:8px;min-width:150px">
+              <strong style="color:#22c55e">🏠 Entrega</strong>
+              <p style="font-size:13px;margin:4px 0 0">${stop.delivery_address}</p>
+              <p style="font-size:11px;color:#888">${stop.client_name}</p>
+            </div>
+          `);
+        if (onStopClick) deliveryMarker.on('click', () => onStopClick(stop));
+        markersRef.current?.addLayer(deliveryMarker);
       }
-      markersRef.current?.addLayer(deliveryMarker);
 
-      // Draw route line
-      if (showRoute || stop.id === selectedStopId) {
+      // Draw route line only when both endpoints have valid coords
+      if (
+        (showRoute || stop.id === selectedStopId) &&
+        validCoord(stop.pickup_lat, stop.pickup_lng) &&
+        validCoord(stop.delivery_lat, stop.delivery_lng)
+      ) {
         routeRef.current = L.polyline(
           [
-            [stop.pickup_lat, stop.pickup_lng],
-            [stop.delivery_lat, stop.delivery_lng],
+            [stop.pickup_lat as number, stop.pickup_lng as number],
+            [stop.delivery_lat as number, stop.delivery_lng as number],
           ],
-          {
-            color: '#f97316',
-            weight: 4,
-            opacity: 0.8,
-            dashArray: '8, 8',
-          }
+          { color: '#f97316', weight: 4, opacity: 0.8, dashArray: '8, 8' }
         ).addTo(mapInstanceRef.current!);
       }
     });
 
-    // Add driver markers
+    // Add driver markers — skip locations without valid coordinates
     driverLocations.forEach((location) => {
+      if (!validCoord(location.lat, location.lng)) return;
       const driverMarker = L.marker([location.lat, location.lng], { icon: driverIcon })
         .bindPopup(`
           <div style="padding:8px;min-width:150px">
@@ -209,23 +216,41 @@ export function DeliveryMap({
       userInteractedRef.current = false;
       mapInstanceRef.current.setView([centerOn.lat, centerOn.lng], 15, { animate: true });
     } else if (stops.length > 0 && !initialFitDoneRef.current && !userInteractedRef.current) {
-      // Fit bounds on first load or when stops change
-      const bounds = L.latLngBounds(
-        stops.flatMap((stop) => [
-          [stop.pickup_lat, stop.pickup_lng] as [number, number],
-          [stop.delivery_lat, stop.delivery_lng] as [number, number],
-        ])
-      );
-      mapInstanceRef.current.fitBounds(bounds, { padding: [40, 40], animate: true });
+      // Fit bounds — only include points with valid coordinates
+      const validPoints: [number, number][] = stops.flatMap((stop) => {
+        const pts: [number, number][] = [];
+        if (validCoord(stop.pickup_lat, stop.pickup_lng))
+          pts.push([stop.pickup_lat as number, stop.pickup_lng as number]);
+        if (validCoord(stop.delivery_lat, stop.delivery_lng))
+          pts.push([stop.delivery_lat as number, stop.delivery_lng as number]);
+        return pts;
+      });
+      if (validPoints.length > 0) {
+        const bounds = L.latLngBounds(validPoints);
+        mapInstanceRef.current.fitBounds(bounds, { padding: [40, 40], animate: true });
+      }
       initialFitDoneRef.current = true;
     }
   }, [centerOn, stops]);
 
+  const hasAnyCoords =
+    stops.some((s) => validCoord(s.pickup_lat, s.pickup_lng) || validCoord(s.delivery_lat, s.delivery_lng)) ||
+    driverLocations.some((l) => validCoord(l.lat, l.lng));
+
   return (
-    <div 
-      ref={mapRef} 
-      className={`w-full h-full min-h-[200px] ${className}`}
-      style={{ zIndex: 0, touchAction: 'none' }}
-    />
+    <div className={`relative w-full h-full min-h-[200px] ${className}`}>
+      <div
+        ref={mapRef}
+        className="w-full h-full"
+        style={{ zIndex: 0, touchAction: 'none' }}
+      />
+      {!hasAnyCoords && (
+        <div className="absolute inset-0 flex items-center justify-center bg-muted/60 pointer-events-none" style={{ zIndex: 1 }}>
+          <p className="text-sm text-muted-foreground px-4 py-2 bg-background rounded-lg shadow">
+            No hay ubicaciones disponibles en el mapa
+          </p>
+        </div>
+      )}
+    </div>
   );
 }
