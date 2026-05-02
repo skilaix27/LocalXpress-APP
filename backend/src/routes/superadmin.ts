@@ -414,7 +414,7 @@ router.get('/export/stops', async (req: Request, res: Response, next: NextFuncti
     const csvRows = rows.map((r) => [
       r.order_code ?? '',
       r.status ?? '',
-      (r.order_type === 'individual' ? 'Particular' : 'Empresa'),
+      (r.order_type === 'individual' || r.source === 'individual_web' || String(r.order_code ?? '').startsWith('LXP-') ? 'Particular' : 'Empresa'),
       r.source ?? '',
       r.payment_status ?? 'unpaid',
       r.shop_name ?? '',

@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { fetchPricingZones } from "@/lib/delivery-zones";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // Lazy-loaded pages for code splitting
 const Index = lazy(() => import("./pages/Index"));
@@ -29,7 +30,7 @@ const DriverApp = lazy(() => import("./pages/driver/DriverApp"));
 
 const PageLoader = () => (
   <div className="h-[100dvh] flex items-center justify-center bg-background">
-    <div className="animate-spin w-8 h-8 border-3 border-primary border-t-transparent rounded-full" />
+    <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
   </div>
 );
 
@@ -55,6 +56,7 @@ const App = () => {
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <ErrorBoundary>
           <Suspense fallback={<PageLoader />}>
           <Routes>
             {/* Public routes */}
@@ -110,6 +112,7 @@ const App = () => {
             <Route path="*" element={<NotFound />} />
           </Routes>
           </Suspense>
+          </ErrorBoundary>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

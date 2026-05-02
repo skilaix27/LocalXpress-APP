@@ -768,9 +768,12 @@ export default function SuperAdminOrders() {
                         {(() => {
                           const isIndividual = stop.order_type === 'individual' || stop.source === 'individual_web' || (stop.order_code?.startsWith('LXP-') ?? false);
                           return (
-                            <span className={`text-[10px] font-medium whitespace-nowrap ${isIndividual ? 'text-blue-600' : 'text-muted-foreground'}`}>
+                            <Badge
+                              variant={isIndividual ? 'default' : 'secondary'}
+                              className={`text-[10px] whitespace-nowrap ${isIndividual ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}`}
+                            >
                               {isIndividual ? 'Particular' : 'Empresa'}
-                            </span>
+                            </Badge>
                           );
                         })()}
                       </TableCell>

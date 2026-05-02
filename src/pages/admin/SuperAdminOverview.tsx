@@ -301,45 +301,47 @@ export default function SuperAdminOverview() {
 
           <Separator />
 
-          {/* 6. Pedidos por tipo (hoy) */}
-          <Section title="Empresa vs Particular (hoy)" icon={<Globe className="w-4 h-4" />}>
-            <MetricCard
-              label="Empresa hoy"
-              value={data.order_types.business_today}
-              icon={<Building2 className="w-4 h-4" />}
-              accent="blue"
-            />
-            <MetricCard
-              label="Particular hoy"
-              value={data.order_types.individual_today}
-              icon={<Globe className="w-4 h-4" />}
-              accent="orange"
-            />
-            <MetricCard
-              label="Particulares pagados hoy"
-              value={data.order_types.individual_paid_today}
-              icon={<DollarSign className="w-4 h-4" />}
-              accent="green"
-            />
-            <MetricCard
-              label="Particulares pendientes/fallidos"
-              value={data.order_types.individual_pending_today}
-              icon={<Activity className="w-4 h-4" />}
-              accent={data.order_types.individual_pending_today > 0 ? 'orange' : 'default'}
-            />
-            <MetricCard
-              label="Ingresos empresa (hoy)"
-              value={fmtEur(data.order_types.revenue_business_today)}
-              icon={<Building2 className="w-4 h-4" />}
-              accent="blue"
-            />
-            <MetricCard
-              label="Ingresos particular (hoy)"
-              value={fmtEur(data.order_types.revenue_individual_today)}
-              icon={<Globe className="w-4 h-4" />}
-              accent="green"
-            />
-          </Section>
+          {/* 6. Pedidos por tipo (hoy) — only shown if backend returns this section */}
+          {data.order_types && (
+            <Section title="Empresa vs Particular (hoy)" icon={<Globe className="w-4 h-4" />}>
+              <MetricCard
+                label="Empresa hoy"
+                value={data.order_types.business_today ?? 0}
+                icon={<Building2 className="w-4 h-4" />}
+                accent="blue"
+              />
+              <MetricCard
+                label="Particular hoy"
+                value={data.order_types.individual_today ?? 0}
+                icon={<Globe className="w-4 h-4" />}
+                accent="orange"
+              />
+              <MetricCard
+                label="Particulares pagados hoy"
+                value={data.order_types.individual_paid_today ?? 0}
+                icon={<DollarSign className="w-4 h-4" />}
+                accent="green"
+              />
+              <MetricCard
+                label="Particulares pendientes/fallidos"
+                value={data.order_types.individual_pending_today ?? 0}
+                icon={<Activity className="w-4 h-4" />}
+                accent={(data.order_types.individual_pending_today ?? 0) > 0 ? 'orange' : 'default'}
+              />
+              <MetricCard
+                label="Ingresos empresa (hoy)"
+                value={fmtEur(data.order_types.revenue_business_today ?? 0)}
+                icon={<Building2 className="w-4 h-4" />}
+                accent="blue"
+              />
+              <MetricCard
+                label="Ingresos particular (hoy)"
+                value={fmtEur(data.order_types.revenue_individual_today ?? 0)}
+                icon={<Globe className="w-4 h-4" />}
+                accent="green"
+              />
+            </Section>
+          )}
 
           <Separator />
 
