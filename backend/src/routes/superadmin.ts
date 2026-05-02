@@ -25,6 +25,7 @@ router.get('/metrics', async (_req: Request, res: Response, next: NextFunction) 
       pendingPayments,
       photoStats,
       lastActivity,
+      orderTypeBreakdown,
     ] = await Promise.all([
       // Usuarios: total, activos, por rol
       queryOne<{
@@ -147,6 +148,33 @@ router.get('/metrics', async (_req: Request, res: Response, next: NextFunction) 
            (SELECT MAX(created_at)::text FROM stops) AS last_stop_created_at,
            (SELECT MAX(created_at)::text FROM users) AS last_user_created_at`
       ),
+
+      // Desglose por tipo de pedido (hoy)
+      queryOne<{
+        business_today: string;
+        individual_today: string;
+        individual_paid_today: string;
+        individual_pending_today: string;
+        revenue_business_today: string;
+        revenue_individual_today: string;
+      }>(
+        `SELECT
+           (SELECT COUNT(*) FROM stops
+            WHERE created_at >= CURRENT_DATE AND COALESCE(order_type,'business') = 'business')::text AS business_today,
+           (SELECT COUNT(*) FROM stops
+            WHERE created_at >= CURRENT_DATE AND order_type = 'individual')::text AS individual_today,
+           (SELECT COUNT(*) FROM stops
+            WHERE created_at >= CURRENT_DATE AND order_type = 'individual' AND payment_status = 'paid')::text AS individual_paid_today,
+           (SELECT COUNT(*) FROM stops
+            WHERE created_at >= CURRENT_DATE AND order_type = 'individual'
+              AND payment_status IN ('unpaid','pending','failed'))::text AS individual_pending_today,
+           COALESCE((SELECT SUM(price) FROM stops
+            WHERE status = 'delivered' AND delivered_at >= CURRENT_DATE
+              AND COALESCE(order_type,'business') = 'business'), 0)::text AS revenue_business_today,
+           COALESCE((SELECT SUM(price) FROM stops
+            WHERE status = 'delivered' AND delivered_at >= CURRENT_DATE
+              AND order_type = 'individual'), 0)::text AS revenue_individual_today`
+      ),
     ]);
 
     // Construir byStatus desde el array de stops activos
@@ -201,6 +229,14 @@ router.get('/metrics', async (_req: Request, res: Response, next: NextFunction) 
         last_stop_created_at: lastActivity?.last_stop_created_at ?? null,
         last_user_created_at: lastActivity?.last_user_created_at ?? null,
       },
+      order_types: {
+        business_today: parseInt(orderTypeBreakdown?.business_today ?? '0'),
+        individual_today: parseInt(orderTypeBreakdown?.individual_today ?? '0'),
+        individual_paid_today: parseInt(orderTypeBreakdown?.individual_paid_today ?? '0'),
+        individual_pending_today: parseInt(orderTypeBreakdown?.individual_pending_today ?? '0'),
+        revenue_business_today: parseFloat(orderTypeBreakdown?.revenue_business_today ?? '0'),
+        revenue_individual_today: parseFloat(orderTypeBreakdown?.revenue_individual_today ?? '0'),
+      },
     });
   } catch (err) {
     next(err);
@@ -232,12 +268,25 @@ function buildStopsWhere(q: Record<string, string | undefined>): StopsFilterResu
   else if (q.paid_by_client === 'false') { conditions.push(`s.paid_by_client = $${idx++}`); params.push(false); }
   if (q.paid_to_driver === 'true')  { conditions.push(`s.paid_to_driver = $${idx++}`); params.push(true); }
   else if (q.paid_to_driver === 'false') { conditions.push(`s.paid_to_driver = $${idx++}`); params.push(false); }
+  if (q.order_type && q.order_type !== 'all') {
+    conditions.push(`COALESCE(s.order_type, 'business') = $${idx++}`);
+    params.push(q.order_type);
+  }
+  if (q.source && q.source !== 'all') {
+    conditions.push(`s.source = $${idx++}`);
+    params.push(q.source);
+  }
+  if (q.payment_status && q.payment_status !== 'all') {
+    conditions.push(`COALESCE(s.payment_status, 'unpaid') = $${idx++}`);
+    params.push(q.payment_status);
+  }
   if (q.search?.trim()) {
     const like = `%${q.search.trim()}%`;
     conditions.push(
       `(s.order_code ILIKE $${idx} OR s.client_name ILIKE $${idx} OR s.client_phone ILIKE $${idx}` +
       ` OR s.pickup_address ILIKE $${idx} OR s.delivery_address ILIKE $${idx}` +
-      ` OR s.shop_name ILIKE $${idx} OR dp.full_name ILIKE $${idx})`
+      ` OR s.shop_name ILIKE $${idx} OR dp.full_name ILIKE $${idx}` +
+      ` OR s.customer_email ILIKE $${idx})`
     );
     params.push(like);
     idx++;
@@ -258,7 +307,12 @@ const STOPS_SELECT_COLS = `
   COALESCE(dp.full_name, '') AS driver_name,
   s.distance_km, s.price, s.price_driver, s.price_company,
   s.paid_by_client, s.paid_to_driver,
-  s.created_at, s.scheduled_pickup_at, s.delivered_at`;
+  s.created_at, s.scheduled_pickup_at, s.delivered_at,
+  COALESCE(s.order_type, 'business') AS order_type,
+  COALESCE(s.payment_status, 'unpaid') AS payment_status,
+  COALESCE(s.source, 'app') AS source,
+  s.customer_email,
+  s.stripe_checkout_session_id`;
 
 function buildStopsSource(archived: string | undefined, where: string): string {
   const active   = `SELECT ${STOPS_SELECT_COLS}, false AS is_archived
@@ -348,20 +402,26 @@ router.get('/export/stops', async (req: Request, res: Response, next: NextFuncti
     ) as Record<string, unknown>[];
 
     const headers = [
-      'Referencia', 'Estado', 'Tienda', 'Repartidor',
-      'Cliente', 'Teléfono', 'Recogida', 'Entrega',
+      'Referencia', 'Estado', 'Tipo', 'Origen', 'Estado pago',
+      'Tienda', 'Repartidor',
+      'Cliente', 'Teléfono', 'Email cliente', 'Recogida', 'Entrega',
       'Distancia km', 'Zona', 'Precio €', 'Precio repartidor €', 'Margen empresa €',
       'Cobrado cliente', 'Pagado repartidor',
       'Creado', 'Programado', 'Entregado', 'Archivado',
+      'Stripe Session ID',
     ];
 
     const csvRows = rows.map((r) => [
       r.order_code ?? '',
       r.status ?? '',
+      (r.order_type === 'individual' ? 'Particular' : 'Empresa'),
+      r.source ?? '',
+      r.payment_status ?? 'unpaid',
       r.shop_name ?? '',
       r.driver_name ?? '',
       r.client_name ?? '',
       r.client_phone ?? '',
+      r.customer_email ?? '',
       `"${String(r.pickup_address ?? '').replace(/"/g, '""')}"`,
       `"${String(r.delivery_address ?? '').replace(/"/g, '""')}"`,
       r.distance_km != null ? Number(r.distance_km).toFixed(1) : '',
@@ -375,6 +435,7 @@ router.get('/export/stops', async (req: Request, res: Response, next: NextFuncti
       r.scheduled_pickup_at ? new Date(r.scheduled_pickup_at as string).toISOString() : '',
       r.delivered_at ? new Date(r.delivered_at as string).toISOString() : '',
       r.is_archived ? 'Sí' : 'No',
+      r.stripe_checkout_session_id ?? '',
     ].join(','));
 
     const csv = '\uFEFF' + [headers.join(','), ...csvRows].join('\n');

@@ -15,6 +15,11 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
   RESEND_FROM: z.string().optional(),
   NOTIFICATION_EMAIL: z.string().optional(),
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  PUBLIC_APP_URL: z.string().optional(),
+  PUBLIC_APP_SUCCESS_URL: z.string().optional(),
+  PUBLIC_APP_CANCEL_URL: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

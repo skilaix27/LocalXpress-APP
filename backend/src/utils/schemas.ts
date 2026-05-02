@@ -103,7 +103,11 @@ export const updateStopStatusSchema = z.object({
 
 export const createOrderApiSchema = z.object({
   pickup_address: z.string().min(1),
+  pickup_lat: z.number().optional().nullable(),
+  pickup_lng: z.number().optional().nullable(),
   delivery_address: z.string().min(1),
+  delivery_lat: z.number().optional().nullable(),
+  delivery_lng: z.number().optional().nullable(),
   client_name: z.string().min(1),
   client_phone: z.string().optional().nullable(),
   client_notes: z.string().optional().nullable(),
@@ -114,6 +118,16 @@ export const createOrderApiSchema = z.object({
   source: z.string().max(64).optional().nullable(),
   email_from: z.string().max(320).optional().nullable(),
   email_subject: z.string().max(998).optional().nullable(),
+  // Individual orders support
+  order_type: z.enum(['business', 'individual']).optional(),
+  payment_status: z.enum(['unpaid', 'pending', 'paid', 'failed', 'refunded']).optional(),
+  customer_email: z.string().email().max(320).optional().nullable(),
+  customer_full_name: z.string().max(255).optional().nullable(),
+  customer_phone: z.string().max(50).optional().nullable(),
+  stripe_checkout_session_id: z.string().max(255).optional().nullable(),
+  stripe_payment_intent_id: z.string().max(255).optional().nullable(),
+  // External order code accepted only for individual orders (must match LXP- format)
+  order_code: z.string().max(64).optional().nullable(),
 });
 
 // ─── Driver locations ─────────────────────────────────────────────────────────

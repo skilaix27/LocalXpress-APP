@@ -15,7 +15,47 @@ const router = Router();
 router.post('/order', requireApiKey, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const data = createOrderApiSchema.parse(req.body);
-    const orderCode = await generateOrderCode(data.scheduled_pickup_at ?? null);
+
+    // ── Resolve order type first (needed for prefix and order_code logic) ────
+    const source    = data.source ?? 'api';
+    const orderType = source === 'individual_web'
+      ? 'individual'
+      : (data.order_type ?? 'business');
+    const isIndividual = orderType === 'individual';
+
+    // ── Objective 3: Stripe deduplication — highest priority ─────────────────
+    if (data.stripe_checkout_session_id) {
+      const existing = await queryOne<Stop>(
+        `SELECT * FROM stops WHERE stripe_checkout_session_id = $1 LIMIT 1`,
+        [data.stripe_checkout_session_id],
+      );
+      if (existing) {
+        return res.status(200).json({ ok: true, stop: existing, duplicate: true });
+      }
+    }
+
+    // ── Objective 2: optional external order_code (individual orders only) ───
+    let orderCode: string;
+
+    if (data.order_code) {
+      if (!isIndividual) {
+        return res.status(400).json({ error: 'order_code externo solo se acepta para pedidos particulares' });
+      }
+      if (!LXP_CODE_REGEX.test(data.order_code)) {
+        return res.status(400).json({ error: 'Formato de order_code inválido. Debe ser LXP-D{número}{letrasMes}-P{número}' });
+      }
+      // Check if code already exists
+      const codeExists = await queryOne<Stop>('SELECT * FROM stops WHERE order_code = $1 LIMIT 1', [data.order_code]);
+      if (codeExists) {
+        // If same Stripe session, already handled above — this means different session, real conflict
+        return res.status(409).json({ error: 'order_code already exists' });
+      }
+      orderCode = data.order_code;
+    } else {
+      // Objective 1: auto-generate with correct prefix
+      const prefix = isIndividual ? 'LXP' : 'LX';
+      orderCode = await generateOrderCode(data.scheduled_pickup_at ?? null, prefix);
+    }
 
     // ── Pricing: calculate from pricing_zones if distance_km is provided ────────
     const MARGIN_KM = 0.15;
@@ -52,23 +92,38 @@ router.post('/order', requireApiKey, async (req: Request, res: Response, next: N
       resolvedPriceCompany = Math.round((resolvedPrice - resolvedPriceDriver) * 100) / 100;
     }
 
-    // ── Source/email traceability ─────────────────────────────────────────────
-    const source       = data.source       ?? 'api';
+    // ── Remaining scalar fields ──────────────────────────────────────────────
     const emailFrom    = data.email_from   ?? null;
     const emailSubject = data.email_subject ?? null;
 
+    const paymentStatus   = data.payment_status ?? 'unpaid';
+    const isPaidIndividual = isIndividual && paymentStatus === 'paid';
+    const paidByClient    = isPaidIndividual;
+    const paidByClientAt  = isPaidIndividual ? new Date() : null;
+
     const stop = await queryOne<Stop>(
       `INSERT INTO stops
-         (order_code, pickup_address, delivery_address, client_name, client_phone,
+         (order_code,
+          pickup_address, pickup_lat, pickup_lng,
+          delivery_address, delivery_lat, delivery_lng,
+          client_name, client_phone,
           client_notes, package_size, shop_name, scheduled_pickup_at, status,
           distance_km, price, price_driver, price_company,
-          source, email_from, email_subject)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'pending',$10,$11,$12,$13,$14,$15,$16)
+          source, email_from, email_subject,
+          order_type, payment_status, paid_by_client, paid_by_client_at,
+          customer_email, customer_full_name, customer_phone,
+          stripe_checkout_session_id, stripe_payment_intent_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'pending',
+               $14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29)
        RETURNING *`,
       [
         orderCode,
         data.pickup_address,
+        data.pickup_lat  ?? null,
+        data.pickup_lng  ?? null,
         data.delivery_address,
+        data.delivery_lat ?? null,
+        data.delivery_lng ?? null,
         data.client_name,
         data.client_phone   ?? null,
         data.client_notes   ?? null,
@@ -82,6 +137,15 @@ router.post('/order', requireApiKey, async (req: Request, res: Response, next: N
         source,
         emailFrom,
         emailSubject,
+        orderType,
+        paymentStatus,
+        paidByClient,
+        paidByClientAt,
+        data.customer_email      ?? null,
+        data.customer_full_name  ?? null,
+        data.customer_phone      ?? null,
+        data.stripe_checkout_session_id ?? null,
+        data.stripe_payment_intent_id   ?? null,
       ]
     );
 
@@ -440,34 +504,38 @@ const MONTH_LETTERS: Record<number, string> = {
   11: 'N', 12: 'D',
 };
 
-async function generateOrderCode(referenceDate?: string | null): Promise<string> {
+// LXP- regex: accepts external codes from the individual orders app
+const LXP_CODE_REGEX = /^LXP-D\d+[A-Z]+-P\d+$/;
+
+async function generateOrderCode(
+  referenceDate?: string | null,
+  prefix: 'LX' | 'LXP' = 'LX',
+): Promise<string> {
   const date = referenceDate ? new Date(referenceDate) : new Date();
   const dayCode = date.getDate() + 27;
   const monthLetter = MONTH_LETTERS[date.getMonth() + 1];
 
-  // Get the global maximum P number across all existing order codes
+  // Query max P-number across both LX- and LXP- codes so numbers never collide
   const row = await queryOne<{ max_p: number }>(
     `SELECT COALESCE(
        MAX(CAST(SUBSTRING(order_code, '-P([0-9]+)$') AS INTEGER)),
        79
      ) AS max_p
      FROM stops
-     WHERE order_code LIKE 'LX-D%-P%'`,
-    []
+     WHERE order_code LIKE 'LX-D%-P%' OR order_code LIKE 'LXP-D%-P%'`,
+    [],
   );
 
   let currentMax = row?.max_p ?? 79;
 
   for (let attempt = 0; attempt < 5; attempt++) {
-    const increment = Math.floor(Math.random() * 5) + 1; // +1 to +5
-    currentMax += increment;
-    const code = `LX-D${dayCode}${monthLetter}-P${currentMax}`;
+    currentMax += Math.floor(Math.random() * 5) + 1;
+    const code = `${prefix}-D${dayCode}${monthLetter}-P${currentMax}`;
     const exists = await queryOne('SELECT 1 AS one FROM stops WHERE order_code = $1', [code]);
     if (!exists) return code;
   }
 
-  // Rare fallback: bump well above current max to ensure uniqueness
-  return `LX-D${dayCode}${monthLetter}-P${currentMax + Math.floor(Math.random() * 20) + 10}`;
+  return `${prefix}-D${dayCode}${monthLetter}-P${currentMax + Math.floor(Math.random() * 20) + 10}`;
 }
 
 export default router;

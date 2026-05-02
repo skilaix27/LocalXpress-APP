@@ -30,6 +30,29 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+const ORDER_TYPE_LABELS: Record<string, string> = {
+  business: 'Empresa',
+  individual: 'Particular',
+};
+
+const SOURCE_LABELS: Record<string, string> = {
+  app: 'App',
+  email: 'Email',
+  api: 'API',
+  whatsapp: 'WhatsApp',
+  individual_web: 'Particular web',
+};
+
+const PAYMENT_STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  unpaid:   { label: 'No pagado',  color: 'text-muted-foreground' },
+  pending:  { label: 'Pendiente',  color: 'text-orange-500' },
+  paid:     { label: 'Pagado',     color: 'text-emerald-600' },
+  failed:   { label: 'Fallido',    color: 'text-red-500' },
+  refunded: { label: 'Reembolsado', color: 'text-blue-500' },
+};
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface PricingZone {
@@ -135,6 +158,9 @@ interface Filters {
   date_to: string;
   paid_by_client: string;
   paid_to_driver: string;
+  order_type: string;
+  source: string;
+  payment_status: string;
 }
 
 const DEFAULT_FILTERS: Filters = {
@@ -147,6 +173,9 @@ const DEFAULT_FILTERS: Filters = {
   date_to: '',
   paid_by_client: 'all',
   paid_to_driver: 'all',
+  order_type: 'all',
+  source: 'all',
+  payment_status: 'all',
 };
 
 export default function SuperAdminOrders() {
@@ -193,6 +222,9 @@ export default function SuperAdminOrders() {
     if (f.date_to)                  params.date_to = f.date_to;
     if (f.paid_by_client !== 'all') params.paid_by_client = f.paid_by_client;
     if (f.paid_to_driver !== 'all') params.paid_to_driver = f.paid_to_driver;
+    if (f.order_type !== 'all')     params.order_type = f.order_type;
+    if (f.source !== 'all')         params.source = f.source;
+    if (f.payment_status !== 'all') params.payment_status = f.payment_status;
     return params;
   }, []);
 
@@ -492,6 +524,57 @@ export default function SuperAdminOrders() {
                 </SelectContent>
               </Select>
 
+              {/* Tipo pedido */}
+              <Select
+                value={pendingFilters.order_type}
+                onValueChange={(v) => setPendingFilters((f) => ({ ...f, order_type: v }))}
+              >
+                <SelectTrigger className="text-xs h-9">
+                  <SelectValue placeholder="Tipo pedido" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tipo: todos</SelectItem>
+                  <SelectItem value="business">Empresa</SelectItem>
+                  <SelectItem value="individual">Particular</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Origen */}
+              <Select
+                value={pendingFilters.source}
+                onValueChange={(v) => setPendingFilters((f) => ({ ...f, source: v }))}
+              >
+                <SelectTrigger className="text-xs h-9">
+                  <SelectValue placeholder="Origen" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Origen: todos</SelectItem>
+                  <SelectItem value="app">App</SelectItem>
+                  <SelectItem value="email">Email</SelectItem>
+                  <SelectItem value="api">API</SelectItem>
+                  <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                  <SelectItem value="individual_web">Particular web</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Estado pago */}
+              <Select
+                value={pendingFilters.payment_status}
+                onValueChange={(v) => setPendingFilters((f) => ({ ...f, payment_status: v }))}
+              >
+                <SelectTrigger className="text-xs h-9">
+                  <SelectValue placeholder="Estado pago" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Estado pago: todos</SelectItem>
+                  <SelectItem value="unpaid">No pagado</SelectItem>
+                  <SelectItem value="pending">Pendiente</SelectItem>
+                  <SelectItem value="paid">Pagado</SelectItem>
+                  <SelectItem value="failed">Fallido</SelectItem>
+                  <SelectItem value="refunded">Reembolsado</SelectItem>
+                </SelectContent>
+              </Select>
+
               {/* Fecha desde */}
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] text-muted-foreground uppercase tracking-wide pl-1">
@@ -581,7 +664,7 @@ export default function SuperAdminOrders() {
       {/* Table — horizontally scrollable, fixed min-width */}
       <div className="border rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
-          <div className="min-w-[2000px]">
+          <div className="min-w-[2600px]">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -596,8 +679,12 @@ export default function SuperAdminOrders() {
                   <TableHead className="text-xs w-10">#</TableHead>
                   <TableHead className="text-xs">Referencia</TableHead>
                   <TableHead className="text-xs">Estado</TableHead>
+                  <TableHead className="text-xs">Tipo</TableHead>
+                  <TableHead className="text-xs">Origen</TableHead>
+                  <TableHead className="text-xs">Estado pago</TableHead>
                   <TableHead className="text-xs">Cliente</TableHead>
                   <TableHead className="text-xs">Teléfono</TableHead>
+                  <TableHead className="text-xs">Email cliente</TableHead>
                   <TableHead className="text-xs">Tienda</TableHead>
                   <TableHead className="text-xs">Repartidor</TableHead>
                   <TableHead className="text-xs">Zona</TableHead>
@@ -616,7 +703,7 @@ export default function SuperAdminOrders() {
               <TableBody>
                 {loading && data.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={19} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={22} className="text-center py-12 text-muted-foreground">
                       <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2" />
                       Cargando pedidos...
                     </TableCell>
@@ -624,7 +711,7 @@ export default function SuperAdminOrders() {
                 )}
                 {!loading && data.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={19} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={22} className="text-center py-12 text-muted-foreground">
                       <Package className="w-8 h-8 mx-auto mb-2 opacity-30" />
                       No hay pedidos con estos filtros
                     </TableCell>
@@ -676,6 +763,37 @@ export default function SuperAdminOrders() {
                         </Badge>
                       </TableCell>
 
+                      {/* Tipo */}
+                      <TableCell className="py-2">
+                        {(() => {
+                          const isIndividual = stop.order_type === 'individual' || stop.source === 'individual_web' || (stop.order_code?.startsWith('LXP-') ?? false);
+                          return (
+                            <span className={`text-[10px] font-medium whitespace-nowrap ${isIndividual ? 'text-blue-600' : 'text-muted-foreground'}`}>
+                              {isIndividual ? 'Particular' : 'Empresa'}
+                            </span>
+                          );
+                        })()}
+                      </TableCell>
+
+                      {/* Origen */}
+                      <TableCell className="py-2">
+                        <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                          {SOURCE_LABELS[stop.source] ?? stop.source}
+                        </span>
+                      </TableCell>
+
+                      {/* Estado pago */}
+                      <TableCell className="py-2">
+                        {(() => {
+                          const ps = PAYMENT_STATUS_LABELS[stop.payment_status] ?? { label: stop.payment_status, color: 'text-muted-foreground' };
+                          return (
+                            <span className={`text-[10px] font-medium whitespace-nowrap ${ps.color}`}>
+                              {ps.label}
+                            </span>
+                          );
+                        })()}
+                      </TableCell>
+
                       {/* Cliente */}
                       <TableCell className="py-2">
                         <span className="text-xs font-medium truncate max-w-[110px] block">{stop.client_name}</span>
@@ -685,6 +803,13 @@ export default function SuperAdminOrders() {
                       <TableCell className="py-2">
                         <span className="text-xs text-muted-foreground whitespace-nowrap">
                           {stop.client_phone ?? '—'}
+                        </span>
+                      </TableCell>
+
+                      {/* Email cliente */}
+                      <TableCell className="py-2">
+                        <span className="text-xs text-muted-foreground truncate max-w-[130px] block">
+                          {stop.customer_email ?? '—'}
                         </span>
                       </TableCell>
 

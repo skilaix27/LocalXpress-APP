@@ -19,6 +19,8 @@ import driverLocationsRouter from './routes/driver-locations';
 import pricingZonesRouter from './routes/pricing-zones';
 import uploadsRouter from './routes/uploads';
 import superadminRouter from './routes/superadmin';
+import publicRouter from './routes/public';
+import stripeRouter from './routes/stripe';
 
 const app = express();
 
@@ -56,6 +58,9 @@ const globalLimiter = rateLimit({
 
 app.use(globalLimiter);
 
+// ─── Stripe webhook — raw body required, must be before express.json() ────────
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
+
 // ─── Body parsing ─────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -73,6 +78,8 @@ app.use('/api/driver-locations', driverLocationsRouter);
 app.use('/api/pricing-zones', pricingZonesRouter);
 app.use('/api/uploads', uploadsRouter);
 app.use('/api/superadmin', superadminRouter);
+app.use('/api/public', publicRouter);
+app.use('/api/stripe', stripeRouter);
 
 // ─── 404 ──────────────────────────────────────────────────────────────────────
 app.use((_req, res) => {

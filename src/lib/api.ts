@@ -279,6 +279,14 @@ export interface SuperAdminMetrics {
     last_stop_created_at: string | null;
     last_user_created_at: string | null;
   };
+  order_types: {
+    business_today: number;
+    individual_today: number;
+    individual_paid_today: number;
+    individual_pending_today: number;
+    revenue_business_today: number;
+    revenue_individual_today: number;
+  };
 }
 
 export interface SuperAdminStop {
@@ -303,6 +311,11 @@ export interface SuperAdminStop {
   scheduled_pickup_at: string | null;
   delivered_at: string | null;
   is_archived: boolean;
+  order_type: string;
+  payment_status: string;
+  source: string;
+  customer_email: string | null;
+  stripe_checkout_session_id: string | null;
 }
 
 export interface SuperAdminStopsResponse {
@@ -329,6 +342,9 @@ export interface SuperAdminStopsParams {
   paid_to_driver?: string;
   search?: string;
   archived?: string;
+  order_type?: string;
+  source?: string;
+  payment_status?: string;
 }
 
 export type BulkPaymentAction =
@@ -359,7 +375,31 @@ export const superadminApi = {
     if (params.paid_to_driver !== undefined) q.set('paid_to_driver', params.paid_to_driver);
     if (params.search)        q.set('search', params.search);
     if (params.archived)      q.set('archived', params.archived);
+    if (params.order_type)    q.set('order_type', params.order_type);
+    if (params.source)        q.set('source', params.source);
+    if (params.payment_status) q.set('payment_status', params.payment_status);
     return apiFetch<SuperAdminStopsResponse>(`/api/superadmin/stops?${q}`);
+  },
+
+  exportStops: (params: SuperAdminStopsParams = {}) => {
+    const token = getToken();
+    const q = new URLSearchParams();
+    if (params.status)        q.set('status', params.status);
+    if (params.date_from)     q.set('date_from', params.date_from);
+    if (params.date_to)       q.set('date_to', params.date_to);
+    if (params.shop_id)       q.set('shop_id', params.shop_id);
+    if (params.driver_id)     q.set('driver_id', params.driver_id);
+    if (params.paid_by_client !== undefined) q.set('paid_by_client', params.paid_by_client);
+    if (params.paid_to_driver !== undefined) q.set('paid_to_driver', params.paid_to_driver);
+    if (params.search)        q.set('search', params.search);
+    if (params.archived)      q.set('archived', params.archived);
+    if (params.order_type)    q.set('order_type', params.order_type);
+    if (params.source)        q.set('source', params.source);
+    if (params.payment_status) q.set('payment_status', params.payment_status);
+    const API_URL_VAL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    return fetch(`${API_URL_VAL}/api/superadmin/export/stops?${q}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
   },
 };
 
