@@ -71,7 +71,9 @@ export interface Stop {
   delivered_at: Date | null;
   created_at: Date;
   updated_at: Date;
-  // individual order delivery notification
+  // customer email idempotency guards
+  payment_confirmation_sent_at: Date | null;
+  payment_confirmation_error: string | null;
   delivery_notified_at: Date | null;
   delivery_notification_error: string | null;
   // extra fields from individual / B2B orders

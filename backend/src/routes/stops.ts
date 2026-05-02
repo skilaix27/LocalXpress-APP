@@ -7,7 +7,7 @@ import { AuthenticatedRequest, Stop } from '../types';
 import { ok, created, noContent, parsePagination } from '../utils/response';
 import { AppError } from '../middleware/errorHandler';
 import { archiveStops } from '../scripts/archive-stops';
-import { sendNewStopNotification, sendIndividualDeliveryNotification } from '../services/email';
+import { sendNewStopNotification, sendPaymentConfirmationToCustomer, sendIndividualDeliveryNotification } from '../services/email';
 import { geocodeAddress } from '../services/distance';
 
 const router = Router();
@@ -175,7 +175,14 @@ router.post('/order', requireApiKey, async (req: Request, res: Response, next: N
     );
 
     res.status(201).json({ ok: true, stop });
-    if (stop) sendNewStopNotification(stop).catch((err) => console.error('[email] Error enviando notificación:', err));
+    if (stop) {
+      // Internal notification always fires
+      sendNewStopNotification(stop).catch((err) => console.error('[email] Internal notification error:', err));
+      // Customer confirmation only for paid individual orders (guard inside the function)
+      if (isIndividual && paymentStatus === 'paid') {
+        sendPaymentConfirmationToCustomer(stop).catch((err) => console.error('[email] Payment confirmation error:', err));
+      }
+    }
   } catch (err) {
     next(err);
   }
