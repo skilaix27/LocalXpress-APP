@@ -128,10 +128,6 @@ export const createOrderApiSchema = z.object({
   stripe_payment_intent_id: z.string().max(255).optional().nullable(),
   // External order code accepted only for individual orders (must match LXP- format)
   order_code: z.string().max(64).optional().nullable(),
-  // Explicit pricing — if provided, takes priority over pricing_zones calculation
-  price: z.number().nonnegative().optional().nullable(),
-  price_driver: z.number().nonnegative().optional().nullable(),
-  price_company: z.number().nonnegative().optional().nullable(),
 });
 
 // ─── Driver locations ─────────────────────────────────────────────────────────
