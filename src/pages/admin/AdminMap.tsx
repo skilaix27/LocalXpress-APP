@@ -55,6 +55,7 @@ export default function AdminMap() {
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [showNoCoords, setShowNoCoords] = useState(false);
+  const [geocodeErrors, setGeocodeErrors] = useState<Record<string, { pickup: string | null; delivery: string | null }>>({});
 
   // Driver locations come from useAdminData (still polling)
   const { driverLocations, drivers, fetchData: refreshAdmin } = useAdminData({ poll: false });
@@ -98,13 +99,42 @@ export default function AdminMap() {
         customDate ? { date: customDate } : {};
 
       const result = await stopsApi.geocodeMissing(params);
-      const details = result.items?.length
-        ? result.items.map(i => `${i.order_code ?? '?'}: recogida=${i.pickup_geocoded ? '✓' : '✗'} entrega=${i.delivery_geocoded ? '✓' : '✗'}`).join('\n')
-        : undefined;
-      toast({
-        title: `Geocodificación: ${result.updated} actualizados, ${result.failed} fallidos`,
-        description: details ?? `${result.processed} procesados`,
-      });
+
+      // Store per-order errors for the expanded list
+      const errMap: Record<string, { pickup: string | null; delivery: string | null }> = {};
+      for (const item of result.items ?? []) {
+        if (item.order_code && (item.pickup_error || item.delivery_error)) {
+          errMap[item.order_code] = { pickup: item.pickup_error, delivery: item.delivery_error };
+        }
+      }
+      setGeocodeErrors(errMap);
+
+      // Detect REQUEST_DENIED — show prominent warning
+      const anyDenied = result.items?.some(
+        i => i.pickup_error?.includes('REQUEST_DENIED') || i.delivery_error?.includes('REQUEST_DENIED')
+      );
+      if (anyDenied) {
+        toast({
+          title: 'Google Geocoding API denegada',
+          description: 'Revisa que Geocoding API esté activada y que la API key permita llamadas desde el backend.',
+          variant: 'destructive',
+        });
+      } else {
+        const summary = result.items?.length
+          ? result.items
+              .map(i => {
+                const p = i.pickup_geocoded ? '✓' : `✗${i.pickup_error ? ' ' + i.pickup_error.split(':')[0] : ''}`;
+                const d = i.delivery_geocoded ? '✓' : `✗${i.delivery_error ? ' ' + i.delivery_error.split(':')[0] : ''}`;
+                return `${i.order_code ?? '?'}: recogida ${p} · entrega ${d}`;
+              })
+              .join('\n')
+          : `${result.processed} procesados`;
+        toast({
+          title: `Geocodificación: ${result.updated} actualizados, ${result.failed} fallidos`,
+          description: summary,
+        });
+      }
+
       fetchStops();
     } catch (err: unknown) {
       toast({ title: 'Error al geocodificar', description: String(err), variant: 'destructive' });
@@ -207,20 +237,35 @@ export default function AdminMap() {
 
         {/* Expandable list of stops without coords */}
         {showNoCoords && stopsNoCoords.length > 0 && (
-          <div className="mt-2 max-h-40 overflow-y-auto border rounded bg-amber-50 text-xs divide-y">
-            {stopsNoCoords.map((s) => (
-              <div key={s.id} className="px-3 py-1.5 flex flex-col gap-0.5">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono font-semibold text-amber-800">{s.order_code ?? s.id.slice(0, 8)}</span>
-                  <span className="text-muted-foreground">{s.client_name}</span>
+          <div className="mt-2 max-h-48 overflow-y-auto border rounded bg-amber-50 text-xs divide-y">
+            {stopsNoCoords.map((s) => {
+              const code = s.order_code ?? s.id.slice(0, 8);
+              const errs = geocodeErrors[code];
+              return (
+                <div key={s.id} className="px-3 py-1.5 flex flex-col gap-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-semibold text-amber-800">{code}</span>
+                    <span className="text-muted-foreground">{s.client_name}</span>
+                  </div>
+                  {!isValidCoord(s.pickup_lat, s.pickup_lng) && (
+                    <div>
+                      <span className="text-orange-600">📦 {s.pickup_address}</span>
+                      {errs?.pickup && (
+                        <span className="ml-1 text-red-600 font-medium"> — {errs.pickup}</span>
+                      )}
+                    </div>
+                  )}
+                  {!isValidCoord(s.delivery_lat, s.delivery_lng) && (
+                    <div>
+                      <span className="text-emerald-700">🏠 {s.delivery_address}</span>
+                      {errs?.delivery && (
+                        <span className="ml-1 text-red-600 font-medium"> — {errs.delivery}</span>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div className="text-muted-foreground">
-                  {!isValidCoord(s.pickup_lat, s.pickup_lng) && <span className="text-orange-600">📦 {s.pickup_address}</span>}
-                  {!isValidCoord(s.pickup_lat, s.pickup_lng) && !isValidCoord(s.delivery_lat, s.delivery_lng) && ' · '}
-                  {!isValidCoord(s.delivery_lat, s.delivery_lng) && <span className="text-emerald-700">🏠 {s.delivery_address}</span>}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

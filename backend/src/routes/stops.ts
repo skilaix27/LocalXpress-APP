@@ -107,18 +107,14 @@ router.post('/order', requireApiKey, async (req: Request, res: Response, next: N
     let finalDeliveryLng = data.delivery_lng ?? null;
 
     if ((finalPickupLat == null || finalPickupLng == null) && data.pickup_address) {
-      try {
-        const coords = await geocodeAddress(data.pickup_address);
-        if (coords) { finalPickupLat = coords.lat; finalPickupLng = coords.lng; }
-        else console.warn(`[geocode] ZERO_RESULTS pickup for ${orderCode}: ${data.pickup_address}`);
-      } catch (err) { console.error(`[geocode] Failed pickup for ${orderCode}:`, err); }
+      const r = await geocodeAddress(data.pickup_address);
+      if (r.ok) { finalPickupLat = r.lat; finalPickupLng = r.lng; }
+      else console.warn(`[geocode] pickup failed for ${orderCode}: ${r.google_status} — ${r.error_message}`);
     }
     if ((finalDeliveryLat == null || finalDeliveryLng == null) && data.delivery_address) {
-      try {
-        const coords = await geocodeAddress(data.delivery_address);
-        if (coords) { finalDeliveryLat = coords.lat; finalDeliveryLng = coords.lng; }
-        else console.warn(`[geocode] ZERO_RESULTS delivery for ${orderCode}: ${data.delivery_address}`);
-      } catch (err) { console.error(`[geocode] Failed delivery for ${orderCode}:`, err); }
+      const r = await geocodeAddress(data.delivery_address);
+      if (r.ok) { finalDeliveryLat = r.lat; finalDeliveryLng = r.lng; }
+      else console.warn(`[geocode] delivery failed for ${orderCode}: ${r.google_status} — ${r.error_message}`);
     }
 
     // ── Remaining scalar fields ──────────────────────────────────────────────
@@ -380,20 +376,25 @@ router.post('/geocode-missing', requireAdmin, async (req: Request, res: Response
       params,
     );
 
-    console.log(`[geocode-missing] Found ${missing.length} stops to process`);
+    console.log(`[geocode-missing] found ${missing.length} stops`);
 
     let updated = 0, failed = 0;
     const items: {
       order_code: string | null;
       pickup_geocoded: boolean; delivery_geocoded: boolean;
-      pickup_error?: string; delivery_error?: string;
+      pickup_error: string | null; delivery_error: string | null;
+      pickup_formatted_address: string | null; delivery_formatted_address: string | null;
     }[] = [];
 
     for (const stop of missing) {
-      const item: typeof items[0] = {
+      const item = {
         order_code: stop.order_code,
         pickup_geocoded: false,
         delivery_geocoded: false,
+        pickup_error: null as string | null,
+        delivery_error: null as string | null,
+        pickup_formatted_address: null as string | null,
+        delivery_formatted_address: null as string | null,
       };
 
       const fields: string[] = [];
@@ -401,34 +402,32 @@ router.post('/geocode-missing', requireAdmin, async (req: Request, res: Response
       let fi = 1;
 
       if (stop.pickup_lat == null || stop.pickup_lng == null) {
-        try {
-          const coords = await geocodeAddress(stop.pickup_address);
-          if (coords) {
-            fields.push(`pickup_lat = $${fi++}`, `pickup_lng = $${fi++}`);
-            vals.push(coords.lat, coords.lng);
-            item.pickup_geocoded = true;
-          } else {
-            item.pickup_error = 'ZERO_RESULTS';
-          }
-        } catch (err) {
-          item.pickup_error = String(err);
+        const r = await geocodeAddress(stop.pickup_address);
+        if (r.ok) {
+          fields.push(`pickup_lat = $${fi++}`, `pickup_lng = $${fi++}`);
+          vals.push(r.lat, r.lng);
+          item.pickup_geocoded = true;
+          item.pickup_formatted_address = r.formatted_address;
+          console.log(`[geocode-missing] ${stop.order_code} pickup OK → ${r.lat},${r.lng}`);
+        } else {
+          item.pickup_error = `${r.google_status}: ${r.error_message}`;
+          console.warn(`[geocode-missing] ${stop.order_code} pickup FAILED ${r.google_status}: ${r.error_message}`);
         }
       } else {
-        item.pickup_geocoded = true; // already had coords
+        item.pickup_geocoded = true;
       }
 
       if (stop.delivery_lat == null || stop.delivery_lng == null) {
-        try {
-          const coords = await geocodeAddress(stop.delivery_address);
-          if (coords) {
-            fields.push(`delivery_lat = $${fi++}`, `delivery_lng = $${fi++}`);
-            vals.push(coords.lat, coords.lng);
-            item.delivery_geocoded = true;
-          } else {
-            item.delivery_error = 'ZERO_RESULTS';
-          }
-        } catch (err) {
-          item.delivery_error = String(err);
+        const r = await geocodeAddress(stop.delivery_address);
+        if (r.ok) {
+          fields.push(`delivery_lat = $${fi++}`, `delivery_lng = $${fi++}`);
+          vals.push(r.lat, r.lng);
+          item.delivery_geocoded = true;
+          item.delivery_formatted_address = r.formatted_address;
+          console.log(`[geocode-missing] ${stop.order_code} delivery OK → ${r.lat},${r.lng}`);
+        } else {
+          item.delivery_error = `${r.google_status}: ${r.error_message}`;
+          console.warn(`[geocode-missing] ${stop.order_code} delivery FAILED ${r.google_status}: ${r.error_message}`);
         }
       } else {
         item.delivery_geocoded = true;
@@ -443,20 +442,38 @@ router.post('/geocode-missing', requireAdmin, async (req: Request, res: Response
           );
           updated++;
         } catch (err) {
-          failed++;
           item.pickup_geocoded = false;
           item.delivery_geocoded = false;
           item.pickup_error = String(err);
+          failed++;
         }
-      } else if (item.pickup_error || item.delivery_error) {
-        failed++;
+      } else {
+        // nothing new to save — at least one address failed for this stop
+        if (item.pickup_error || item.delivery_error) failed++;
       }
 
       items.push(item);
-      console.log(`[geocode-missing] ${stop.order_code}: pickup=${item.pickup_geocoded} delivery=${item.delivery_geocoded}`);
     }
 
+    console.log(`[geocode-missing] completed processed=${missing.length} updated=${updated} failed=${failed}`);
     ok(res, { processed: missing.length, updated, failed, remaining: missing.length - updated, items });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/stops/geocode-test — admin: test geocoding for a single address
+router.post('/geocode-test', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { address } = req.body as { address?: string };
+    if (!address || typeof address !== 'string' || !address.trim()) {
+      return res.status(400).json({ ok: false, error: 'Missing address in body' });
+    }
+    const result = await geocodeAddress(address.trim());
+    return res.json(result.ok
+      ? { ok: true, lat: result.lat, lng: result.lng, formatted_address: result.formatted_address, google_status: result.google_status }
+      : { ok: false, google_status: result.google_status, error_message: result.error_message }
+    );
   } catch (err) {
     next(err);
   }

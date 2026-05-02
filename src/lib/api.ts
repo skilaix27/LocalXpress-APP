@@ -201,11 +201,16 @@ export const stopsApi = {
     if (params?.all)       q.set('all', 'true');
     else if (params?.date) q.set('date', params.date);
     else if (params?.date_from) q.set('date_from', params.date_from);
-    if (params?.date_to)   q.set('date_to', params.date_to!);
+    if (params?.date_to)   q.set('date_to', params.date_to);
     const qs = q.toString();
     return apiFetch<{
       processed: number; updated: number; failed: number; remaining: number;
-      items: { order_code: string | null; pickup_geocoded: boolean; delivery_geocoded: boolean; pickup_error?: string; delivery_error?: string }[];
+      items: {
+        order_code: string | null;
+        pickup_geocoded: boolean; delivery_geocoded: boolean;
+        pickup_error: string | null; delivery_error: string | null;
+        pickup_formatted_address: string | null; delivery_formatted_address: string | null;
+      }[];
     }>(`/api/stops/geocode-missing${qs ? '?' + qs : ''}`, { method: 'POST' });
   },
 
