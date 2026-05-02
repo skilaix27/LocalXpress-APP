@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import Stripe from 'stripe';
 import { queryOne } from '../db';
 import { config } from '../config';
-import { sendNewStopNotification } from '../services/email';
+import { sendNewStopNotification, sendPaymentConfirmationToCustomer } from '../services/email';
 import { Stop } from '../types';
 
 const router = Router();
@@ -166,8 +166,13 @@ async function handleSessionCompleted(session: any): Promise<void> {
   console.log(`[stripe/webhook] Stop created: ${stop?.order_code} (session ${sessionId})`);
 
   if (stop) {
+    // Internal admin notification
     sendNewStopNotification(stop).catch((err) =>
-      console.error('[stripe/webhook] Email notification failed:', err),
+      console.error('[stripe/webhook] Internal email notification failed:', err),
+    );
+    // Customer payment confirmation
+    sendPaymentConfirmationToCustomer(stop).catch((err) =>
+      console.error('[stripe/webhook] Customer confirmation email failed:', err),
     );
   }
 }

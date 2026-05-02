@@ -12,6 +12,37 @@ const ALLOWED_EXTENSIONS   = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 
 const FALLBACK_NOTIFICATION_EMAIL = 'robertogarcia2772@gmail.com';
 
+// ─── Shared footer ────────────────────────────────────────────────────────────
+
+function getEmailFooterHtml(): string {
+  return `
+  <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;" />
+  <p style="font-size:12px;line-height:18px;color:#6b7280;margin:0;">
+    Si tienes cualquier incidencia, duda o problema relacionado con este servicio,
+    puedes contactar con nuestro equipo de soporte escribiendo a
+    <a href="mailto:incidencias@localxpress.es" style="color:#ff6b00;text-decoration:none;">incidencias@localxpress.es</a>
+    o llamando al
+    <a href="tel:+34711225793" style="color:#ff6b00;text-decoration:none;">+34 711 22 57 93</a>.
+  </p>
+  <p style="font-size:11px;line-height:16px;color:#9ca3af;margin-top:12px;">
+    LocalXpress · Gestión logística de última milla en Barcelona
+  </p>`;
+}
+
+function getEmailFooterText(): string {
+  return [
+    '',
+    '---',
+    'Si tienes cualquier incidencia, duda o problema relacionado con este servicio,',
+    'puedes contactar con nuestro equipo de soporte escribiendo a incidencias@localxpress.es',
+    'o llamando al +34 711 22 57 93.',
+    '',
+    'LocalXpress · Gestión logística de última milla en Barcelona',
+  ].join('\n');
+}
+
+// ─── Internal helpers ─────────────────────────────────────────────────────────
+
 function getResendClient(): Resend | null {
   if (!config.RESEND_API_KEY) {
     console.warn('[email] RESEND_API_KEY no configurado — notificaciones desactivadas');
@@ -23,21 +54,96 @@ function getResendClient(): Resend | null {
 function formatDatetime(dateStr: string | Date | null | undefined): string {
   if (!dateStr) return 'Sin fecha programada';
   const d = new Date(dateStr);
-  const day = String(d.getDate()).padStart(2, '0');
+  const day   = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
+  const year  = d.getFullYear();
   const hours = String(d.getHours()).padStart(2, '0');
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-  return `${day}/${month}/${year} ${hours}:${minutes}`;
+  const mins  = String(d.getMinutes()).padStart(2, '0');
+  return `${day}/${month}/${year} ${hours}:${mins}`;
 }
+
+function isIndividualOrder(stop: Stop): boolean {
+  return (
+    stop.order_type === 'individual' ||
+    stop.source === 'individual_web' ||
+    (stop.order_code?.startsWith('LXP-') ?? false)
+  );
+}
+
+function resolveProofPhotoPath(proofUrl: string | null): string | null {
+  if (!proofUrl) return null;
+  const relative = proofUrl.replace(/^\/uploads\//, '');
+  const storageDir = path.resolve(config.STORAGE_DIR);
+  return path.resolve(storageDir, relative);
+}
+
+// ─── Photo compression ────────────────────────────────────────────────────────
+
+async function compressProofPhoto(
+  orderCode: string,
+  proofUrl: string | null,
+): Promise<{ filename: string; content: Buffer; contentType: string } | null> {
+  const photoPath = resolveProofPhotoPath(proofUrl);
+  if (!photoPath) return null;
+
+  const ext = path.extname(photoPath).toLowerCase();
+  if (!ALLOWED_EXTENSIONS.has(ext)) {
+    console.warn(`[email] Delivery photo skipped for ${orderCode} reason=unsupported format ext=${ext}`);
+    return null;
+  }
+
+  let stat: fs.Stats;
+  try {
+    stat = fs.statSync(photoPath);
+  } catch {
+    console.warn(`[email] Delivery photo not found for ${orderCode}, sending without attachment`);
+    return null;
+  }
+
+  if (stat.size > ORIGINAL_MAX_BYTES) {
+    console.warn(`[email] Delivery photo skipped for ${orderCode} reason=original file too large size=${(stat.size / 1024 / 1024).toFixed(1)}MB`);
+    return null;
+  }
+
+  console.log(`[email] Compressing delivery photo for ${orderCode}`);
+
+  let compressed: Buffer;
+  try {
+    compressed = await sharp(photoPath)
+      .rotate()
+      .resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 68, mozjpeg: true })
+      .toBuffer();
+  } catch (err) {
+    console.warn(`[email] Delivery photo compression failed for ${orderCode}: ${String(err)}, sending without attachment`);
+    return null;
+  }
+
+  const originalKB   = Math.round(stat.size / 1024);
+  const compressedKB = Math.round(compressed.length / 1024);
+  console.log(`[email] Delivery photo compressed for ${orderCode} original=${originalKB}KB compressed=${compressedKB}KB`);
+
+  if (compressed.length > COMPRESSED_MAX_BYTES) {
+    console.warn(`[email] Delivery photo skipped for ${orderCode} reason=compressed file too large size=${compressedKB}KB`);
+    return null;
+  }
+
+  console.log(`[email] Delivery photo attached for ${orderCode}`);
+  return {
+    filename: `comprobante-entrega-${orderCode}.jpg`,
+    content: compressed,
+    contentType: 'image/jpeg',
+  };
+}
+
+// ─── Email 1: Internal — new stop notification (admin) ───────────────────────
 
 export async function sendNewStopNotification(stop: Stop): Promise<void> {
   const resend = getResendClient();
   if (!resend) return;
 
-  const to = config.NOTIFICATION_EMAIL ?? FALLBACK_NOTIFICATION_EMAIL;
-  const from = config.RESEND_FROM ?? 'LocalXpress <noreply@localxpress.app>';
-
+  const to       = config.NOTIFICATION_EMAIL ?? FALLBACK_NOTIFICATION_EMAIL;
+  const from     = config.RESEND_FROM ?? 'LocalXpress <noreply@localxpress.app>';
   const shopName = stop.shop_name ?? 'Cliente';
   const orderCode = stop.order_code ?? stop.id;
   const scheduled = formatDatetime(stop.scheduled_pickup_at);
@@ -54,6 +160,7 @@ export async function sendNewStopNotification(stop: Stop): Promise<void> {
     `Cliente: ${stop.client_name}`,
     stop.client_phone ? `Teléfono: ${stop.client_phone}` : null,
     stop.client_notes ? `Notas: ${stop.client_notes}` : null,
+    getEmailFooterText(),
   ].filter(Boolean).join('\n');
 
   const htmlBody = `
@@ -98,10 +205,7 @@ export async function sendNewStopNotification(stop: Stop): Promise<void> {
       <td style="padding:8px 0;font-style:italic;color:#52525b">${stop.client_notes}</td>
     </tr>` : ''}
   </table>
-
-  <p style="margin-top:32px;font-size:12px;color:#a1a1aa;border-top:1px solid #e4e4e7;padding-top:16px">
-    LocalXpress · Gestión logística de última milla
-  </p>
+  ${getEmailFooterHtml()}
 </body>
 </html>`;
 
@@ -109,82 +213,82 @@ export async function sendNewStopNotification(stop: Stop): Promise<void> {
   console.log(`[email] Notificación enviada a ${to} para pedido ${orderCode}`);
 }
 
-// ─── Individual order: delivery notification to customer ──────────────────────
+// ─── Email 2: Customer — payment confirmation after Stripe checkout ───────────
 
-function isIndividualOrder(stop: Stop): boolean {
-  return (
-    stop.order_type === 'individual' ||
-    stop.source === 'individual_web' ||
-    (stop.order_code?.startsWith('LXP-') ?? false)
-  );
+export async function sendPaymentConfirmationToCustomer(stop: Stop): Promise<void> {
+  const to = stop.customer_email;
+  if (!to || !to.includes('@')) return;
+
+  const resend = getResendClient();
+  if (!resend) return;
+
+  const from      = config.RESEND_FROM ?? 'LocalXpress <noreply@localxpress.app>';
+  const orderCode = stop.order_code ?? stop.id;
+  const scheduled = formatDatetime(stop.scheduled_pickup_at);
+
+  const subject = `Pedido LocalXpress confirmado · ${orderCode}`;
+
+  const textBody = [
+    `Hola,`,
+    ``,
+    `Hemos recibido correctamente tu solicitud de envío y el pago se ha confirmado con éxito.`,
+    `Nuestro equipo gestionará el servicio según la fecha y hora seleccionadas.`,
+    ``,
+    `Código de pedido: ${orderCode}`,
+    `Fecha del servicio: ${scheduled}`,
+    `Recogida: ${stop.pickup_address}`,
+    `Entrega: ${stop.delivery_address}`,
+    ``,
+    `Gracias por confiar en LocalXpress.`,
+    getEmailFooterText(),
+  ].join('\n');
+
+  const htmlBody = `
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#1a1a1a">
+  <div style="background:#eff6ff;border-radius:8px;padding:16px 20px;margin-bottom:24px">
+    <h1 style="margin:0;font-size:20px;color:#1d4ed8">✅ Pedido confirmado</h1>
+    <p style="margin:4px 0 0;color:#1e40af;font-size:14px">Pago recibido — tu envío está en marcha</p>
+  </div>
+
+  <p style="font-size:15px;color:#374151;margin:0 0 20px;">
+    Hemos recibido correctamente tu solicitud de envío y el pago se ha confirmado con éxito.<br>
+    Nuestro equipo gestionará el servicio según la fecha y hora seleccionadas.
+  </p>
+
+  <table style="width:100%;border-collapse:collapse">
+    <tr>
+      <td style="padding:8px 0;color:#71717a;font-size:13px;width:160px;vertical-align:top">Código de pedido</td>
+      <td style="padding:8px 0;font-weight:600;font-size:15px">${orderCode}</td>
+    </tr>
+    <tr>
+      <td style="padding:8px 0;color:#71717a;font-size:13px;vertical-align:top">Fecha del servicio</td>
+      <td style="padding:8px 0">${scheduled}</td>
+    </tr>
+    <tr style="border-top:1px solid #e4e4e7">
+      <td style="padding:8px 0;color:#71717a;font-size:13px;vertical-align:top">Recogida</td>
+      <td style="padding:8px 0">${stop.pickup_address}</td>
+    </tr>
+    <tr>
+      <td style="padding:8px 0;color:#71717a;font-size:13px;vertical-align:top">Entrega</td>
+      <td style="padding:8px 0">${stop.delivery_address}</td>
+    </tr>
+  </table>
+
+  <p style="margin-top:24px;font-size:14px;color:#52525b;">
+    Gracias por confiar en <strong>LocalXpress</strong>.
+  </p>
+  ${getEmailFooterHtml()}
+</body>
+</html>`;
+
+  await resend.emails.send({ from, to, subject, text: textBody, html: htmlBody });
+  console.log(`[email] Payment confirmation sent to ${to} for ${orderCode}`);
 }
 
-function resolveProofPhotoPath(proofUrl: string | null): string | null {
-  if (!proofUrl) return null;
-  // proofUrl can be /uploads/proofs/file.jpg or proofs/file.jpg
-  const relative = proofUrl.replace(/^\/uploads\//, '');
-  const storageDir = path.resolve(config.STORAGE_DIR);
-  return path.resolve(storageDir, relative);
-}
-
-// Compress proof photo into a Buffer suitable for email attachment.
-// Returns null if the photo cannot or should not be attached.
-async function compressProofPhoto(
-  orderCode: string,
-  proofUrl: string | null,
-): Promise<{ filename: string; content: Buffer; contentType: string } | null> {
-  const photoPath = resolveProofPhotoPath(proofUrl);
-  if (!photoPath) return null;
-
-  const ext = path.extname(photoPath).toLowerCase();
-  if (!ALLOWED_EXTENSIONS.has(ext)) {
-    console.warn(`[email] Delivery photo skipped for ${orderCode} reason=unsupported format ext=${ext}`);
-    return null;
-  }
-
-  let stat: fs.Stats;
-  try {
-    stat = fs.statSync(photoPath);
-  } catch {
-    console.warn(`[email] Delivery photo not found for ${orderCode}, sending without attachment`);
-    return null;
-  }
-
-  if (stat.size > ORIGINAL_MAX_BYTES) {
-    console.warn(`[email] Delivery photo skipped for ${orderCode} reason=original file too large size=${(stat.size / 1024 / 1024).toFixed(1)}MB`);
-    return null;
-  }
-
-  console.log(`[email] Compressing delivery photo for ${orderCode}`);
-
-  let compressed: Buffer;
-  try {
-    compressed = await sharp(photoPath)
-      .rotate()                                                       // auto-rotate from EXIF
-      .resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 68, mozjpeg: true })
-      .toBuffer();
-  } catch (err) {
-    console.warn(`[email] Delivery photo compression failed for ${orderCode}: ${String(err)}, sending without attachment`);
-    return null;
-  }
-
-  const originalKB   = Math.round(stat.size / 1024);
-  const compressedKB = Math.round(compressed.length / 1024);
-  console.log(`[email] Delivery photo compressed for ${orderCode} original=${originalKB}KB compressed=${compressedKB}KB`);
-
-  if (compressed.length > COMPRESSED_MAX_BYTES) {
-    console.warn(`[email] Delivery photo skipped for ${orderCode} reason=compressed file too large size=${compressedKB}KB`);
-    return null;
-  }
-
-  console.log(`[email] Delivery photo attached for ${orderCode}`);
-  return {
-    filename: `comprobante-entrega-${orderCode}.jpg`,
-    content: compressed,
-    contentType: 'image/jpeg',
-  };
-}
+// ─── Email 3: Customer — delivery notification for individual orders ──────────
 
 export async function sendIndividualDeliveryNotification(stop: Stop): Promise<void> {
   const orderCode = stop.order_code ?? stop.id;
@@ -208,16 +312,14 @@ export async function sendIndividualDeliveryNotification(stop: Stop): Promise<vo
   const resend = getResendClient();
   if (!resend) return;
 
-  const from = config.RESEND_FROM ?? 'LocalXpress <noreply@localxpress.app>';
+  const from        = config.RESEND_FROM ?? 'LocalXpress <noreply@localxpress.app>';
   const deliveredAt = stop.delivered_at ? formatDatetime(stop.delivered_at) : 'ahora';
+  const subject     = `Tu pedido LocalXpress ${orderCode} ha sido entregado`;
 
-  const subject = `Tu pedido LocalXpress ${orderCode} ha sido entregado`;
-
-  // ── Compress proof photo before building email ─────────────────────────────
+  // Compress proof photo (never blocks — returns null on any failure)
   type Attachment = { filename: string; content: Buffer; contentType: string };
   const attachment = await compressProofPhoto(orderCode, stop.proof_photo_url);
-
-  const hasPhoto = attachment !== null;
+  const hasPhoto   = attachment !== null;
 
   const textBody = [
     `Hola,`,
@@ -226,9 +328,11 @@ export async function sendIndividualDeliveryNotification(stop: Stop): Promise<vo
     ``,
     `Fecha de entrega: ${deliveredAt}`,
     `Dirección de entrega: ${stop.delivery_address}`,
-    hasPhoto ? `` : ``,
+    hasPhoto ? `\nAdjuntamos el comprobante de entrega.` : ``,
+    ``,
     `Gracias por confiar en LocalXpress.`,
-  ].filter((l) => l !== undefined).join('\n');
+    getEmailFooterText(),
+  ].join('\n');
 
   const htmlBody = `
 <!DOCTYPE html>
@@ -255,17 +359,12 @@ export async function sendIndividualDeliveryNotification(stop: Stop): Promise<vo
     </tr>
   </table>
 
-  ${hasPhoto
-    ? `<p style="margin-top:20px;font-size:13px;color:#52525b">Adjuntamos el comprobante de entrega.</p>`
-    : ''}
+  ${hasPhoto ? `<p style="margin-top:20px;font-size:13px;color:#52525b">Adjuntamos el comprobante de entrega.</p>` : ''}
 
   <p style="margin-top:${hasPhoto ? '12' : '28'}px;font-size:14px;color:#52525b">
     Gracias por confiar en <strong>LocalXpress</strong>.
   </p>
-
-  <p style="margin-top:32px;font-size:12px;color:#a1a1aa;border-top:1px solid #e4e4e7;padding-top:16px">
-    LocalXpress · Gestión logística de última milla en Barcelona
-  </p>
+  ${getEmailFooterHtml()}
 </body>
 </html>`;
 
