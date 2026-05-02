@@ -10,7 +10,7 @@ import {
   SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import type { Stop, DriverLocation } from '@/lib/supabase-types';
-import { MapPin, RefreshCw, Locate, AlertTriangle } from 'lucide-react';
+import { MapPin, RefreshCw, Locate, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminData } from '@/hooks/useAdminData';
@@ -54,6 +54,7 @@ export default function AdminMap() {
   // Dialog
   const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [showNoCoords, setShowNoCoords] = useState(false);
 
   // Driver locations come from useAdminData (still polling)
   const { driverLocations, drivers, fetchData: refreshAdmin } = useAdminData({ poll: false });
@@ -89,10 +90,20 @@ export default function AdminMap() {
   const handleGeocode = async () => {
     setGeocoding(true);
     try {
-      const result = await stopsApi.geocodeMissing();
+      // Pass the current date filter so geocoding targets only visible stops
+      const params =
+        dateMode === 'all'    ? { all: true } :
+        dateMode === 'today'  ? { date: todayStr() } :
+        dateMode === 'tomorrow' ? { date: tomorrowStr() } :
+        customDate ? { date: customDate } : {};
+
+      const result = await stopsApi.geocodeMissing(params);
+      const details = result.items?.length
+        ? result.items.map(i => `${i.order_code ?? '?'}: recogida=${i.pickup_geocoded ? '✓' : '✗'} entrega=${i.delivery_geocoded ? '✓' : '✗'}`).join('\n')
+        : undefined;
       toast({
-        title: 'Geocodificación completada',
-        description: `${result.updated} actualizados, ${result.failed} fallidos, ${result.remaining - result.updated} sin procesar.`,
+        title: `Geocodificación: ${result.updated} actualizados, ${result.failed} fallidos`,
+        description: details ?? `${result.processed} procesados`,
       });
       fetchStops();
     } catch (err: unknown) {
@@ -182,13 +193,36 @@ export default function AdminMap() {
           {stopsNoCoords.length > 0 && (
             <>
               <span>·</span>
-              <span className="flex items-center gap-1 text-amber-600">
+              <button
+                className="flex items-center gap-1 text-amber-600 hover:text-amber-700"
+                onClick={() => setShowNoCoords(v => !v)}
+              >
                 <AlertTriangle className="w-3 h-3" />
                 <span className="font-semibold">{stopsNoCoords.length}</span> sin coordenadas
-              </span>
+                {showNoCoords ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </button>
             </>
           )}
         </div>
+
+        {/* Expandable list of stops without coords */}
+        {showNoCoords && stopsNoCoords.length > 0 && (
+          <div className="mt-2 max-h-40 overflow-y-auto border rounded bg-amber-50 text-xs divide-y">
+            {stopsNoCoords.map((s) => (
+              <div key={s.id} className="px-3 py-1.5 flex flex-col gap-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-semibold text-amber-800">{s.order_code ?? s.id.slice(0, 8)}</span>
+                  <span className="text-muted-foreground">{s.client_name}</span>
+                </div>
+                <div className="text-muted-foreground">
+                  {!isValidCoord(s.pickup_lat, s.pickup_lng) && <span className="text-orange-600">📦 {s.pickup_address}</span>}
+                  {!isValidCoord(s.pickup_lat, s.pickup_lng) && !isValidCoord(s.delivery_lat, s.delivery_lng) && ' · '}
+                  {!isValidCoord(s.delivery_lat, s.delivery_lng) && <span className="text-emerald-700">🏠 {s.delivery_address}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ─── Map ─────────────────────────────────────────────────────────────── */}

@@ -93,6 +93,34 @@ router.post('/order', requireApiKey, async (req: Request, res: Response, next: N
       resolvedPriceCompany = Math.round((resolvedPrice - resolvedPriceDriver) * 100) / 100;
     }
 
+    // ── Fase 1 debug log for individual_web orders ───────────────────────────
+    if (source === 'individual_web') {
+      console.log(`[order] individual_web ${orderCode} coords incoming:`,
+        { pickup_lat: data.pickup_lat, pickup_lng: data.pickup_lng,
+          delivery_lat: data.delivery_lat, delivery_lng: data.delivery_lng });
+    }
+
+    // ── Fase 2: Auto-geocode missing coords before INSERT ─────────────────
+    let finalPickupLat  = data.pickup_lat  ?? null;
+    let finalPickupLng  = data.pickup_lng  ?? null;
+    let finalDeliveryLat = data.delivery_lat ?? null;
+    let finalDeliveryLng = data.delivery_lng ?? null;
+
+    if ((finalPickupLat == null || finalPickupLng == null) && data.pickup_address) {
+      try {
+        const coords = await geocodeAddress(data.pickup_address);
+        if (coords) { finalPickupLat = coords.lat; finalPickupLng = coords.lng; }
+        else console.warn(`[geocode] ZERO_RESULTS pickup for ${orderCode}: ${data.pickup_address}`);
+      } catch (err) { console.error(`[geocode] Failed pickup for ${orderCode}:`, err); }
+    }
+    if ((finalDeliveryLat == null || finalDeliveryLng == null) && data.delivery_address) {
+      try {
+        const coords = await geocodeAddress(data.delivery_address);
+        if (coords) { finalDeliveryLat = coords.lat; finalDeliveryLng = coords.lng; }
+        else console.warn(`[geocode] ZERO_RESULTS delivery for ${orderCode}: ${data.delivery_address}`);
+      } catch (err) { console.error(`[geocode] Failed delivery for ${orderCode}:`, err); }
+    }
+
     // ── Remaining scalar fields ──────────────────────────────────────────────
     const emailFrom    = data.email_from   ?? null;
     const emailSubject = data.email_subject ?? null;
@@ -120,11 +148,11 @@ router.post('/order', requireApiKey, async (req: Request, res: Response, next: N
       [
         orderCode,
         data.pickup_address,
-        data.pickup_lat  ?? null,
-        data.pickup_lng  ?? null,
+        finalPickupLat,
+        finalPickupLng,
         data.delivery_address,
-        data.delivery_lat ?? null,
-        data.delivery_lng ?? null,
+        finalDeliveryLat,
+        finalDeliveryLng,
         data.client_name,
         data.client_phone   ?? null,
         data.client_notes   ?? null,
@@ -302,60 +330,133 @@ router.post('/archive', requireAdmin, async (req: Request, res: Response, next: 
   }
 });
 
-// POST /api/stops/geocode-missing — admin: geocode up to 20 stops missing coordinates
+// POST /api/stops/geocode-missing — admin: geocode stops missing coordinates
+// Query params: date=YYYY-MM-DD | date_from+date_to | all=true (default: today)
 router.post('/geocode-missing', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
   try {
+    if (!process.env.GOOGLE_MAPS_API_KEY) {
+      return res.status(500).json({ error: 'GOOGLE_MAPS_API_KEY no configurada en el servidor' });
+    }
+
+    const conditions: string[] = [
+      `(pickup_lat IS NULL OR pickup_lng IS NULL OR delivery_lat IS NULL OR delivery_lng IS NULL)`,
+      `pickup_address IS NOT NULL AND delivery_address IS NOT NULL`,
+    ];
+    const params: unknown[] = [];
+    let idx = 1;
+
+    const { date, date_from, date_to, all } = req.query as Record<string, string | undefined>;
+
+    if (all === 'true') {
+      // no date filter
+    } else if (date) {
+      conditions.push(
+        `(scheduled_pickup_at::date = $${idx} OR (scheduled_pickup_at IS NULL AND created_at::date = $${idx}))`,
+      );
+      params.push(date); idx++;
+    } else if (date_from || date_to) {
+      if (date_from) { conditions.push(`COALESCE(scheduled_pickup_at, created_at) >= $${idx++}::date`); params.push(date_from); }
+      if (date_to)   { conditions.push(`COALESCE(scheduled_pickup_at, created_at) < ($${idx++}::date + interval '1 day')`); params.push(date_to); }
+    } else {
+      // default: today
+      const today = new Date().toISOString().slice(0, 10);
+      conditions.push(
+        `(scheduled_pickup_at::date = $${idx} OR (scheduled_pickup_at IS NULL AND created_at::date = $${idx}))`,
+      );
+      params.push(today); idx++;
+    }
+
+    const where = `WHERE ${conditions.join(' AND ')}`;
+
     const missing = await query<{
-      id: string; pickup_address: string; pickup_lat: number | null; pickup_lng: number | null;
+      id: string; order_code: string | null;
+      pickup_address: string; pickup_lat: number | null; pickup_lng: number | null;
       delivery_address: string; delivery_lat: number | null; delivery_lng: number | null;
     }>(
-      `SELECT id, pickup_address, pickup_lat, pickup_lng, delivery_address, delivery_lat, delivery_lng
-       FROM stops
-       WHERE (pickup_lat IS NULL OR delivery_lat IS NULL)
-         AND pickup_address IS NOT NULL AND delivery_address IS NOT NULL
+      `SELECT id, order_code, pickup_address, pickup_lat, pickup_lng, delivery_address, delivery_lat, delivery_lng
+       FROM stops ${where}
        ORDER BY created_at DESC
-       LIMIT 20`,
-      [],
+       LIMIT 50`,
+      params,
     );
 
-    let processed = 0, updated = 0, failed = 0;
+    console.log(`[geocode-missing] Found ${missing.length} stops to process`);
+
+    let updated = 0, failed = 0;
+    const items: {
+      order_code: string | null;
+      pickup_geocoded: boolean; delivery_geocoded: boolean;
+      pickup_error?: string; delivery_error?: string;
+    }[] = [];
 
     for (const stop of missing) {
-      processed++;
-      try {
-        const fields: string[] = [];
-        const vals: unknown[] = [];
-        let idx = 1;
+      const item: typeof items[0] = {
+        order_code: stop.order_code,
+        pickup_geocoded: false,
+        delivery_geocoded: false,
+      };
 
-        if (stop.pickup_lat == null || stop.pickup_lng == null) {
+      const fields: string[] = [];
+      const vals: unknown[] = [];
+      let fi = 1;
+
+      if (stop.pickup_lat == null || stop.pickup_lng == null) {
+        try {
           const coords = await geocodeAddress(stop.pickup_address);
           if (coords) {
-            fields.push(`pickup_lat = $${idx++}`, `pickup_lng = $${idx++}`);
+            fields.push(`pickup_lat = $${fi++}`, `pickup_lng = $${fi++}`);
             vals.push(coords.lat, coords.lng);
+            item.pickup_geocoded = true;
+          } else {
+            item.pickup_error = 'ZERO_RESULTS';
           }
+        } catch (err) {
+          item.pickup_error = String(err);
         }
-        if (stop.delivery_lat == null || stop.delivery_lng == null) {
+      } else {
+        item.pickup_geocoded = true; // already had coords
+      }
+
+      if (stop.delivery_lat == null || stop.delivery_lng == null) {
+        try {
           const coords = await geocodeAddress(stop.delivery_address);
           if (coords) {
-            fields.push(`delivery_lat = $${idx++}`, `delivery_lng = $${idx++}`);
+            fields.push(`delivery_lat = $${fi++}`, `delivery_lng = $${fi++}`);
             vals.push(coords.lat, coords.lng);
+            item.delivery_geocoded = true;
+          } else {
+            item.delivery_error = 'ZERO_RESULTS';
           }
+        } catch (err) {
+          item.delivery_error = String(err);
         }
+      } else {
+        item.delivery_geocoded = true;
+      }
 
-        if (fields.length > 0) {
+      if (fields.length > 0) {
+        try {
           vals.push(stop.id);
           await queryOne(
-            `UPDATE stops SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${idx}`,
+            `UPDATE stops SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${fi}`,
             vals,
           );
           updated++;
+        } catch (err) {
+          failed++;
+          item.pickup_geocoded = false;
+          item.delivery_geocoded = false;
+          item.pickup_error = String(err);
         }
-      } catch {
+      } else if (item.pickup_error || item.delivery_error) {
         failed++;
       }
+
+      items.push(item);
+      console.log(`[geocode-missing] ${stop.order_code}: pickup=${item.pickup_geocoded} delivery=${item.delivery_geocoded}`);
     }
 
-    ok(res, { processed, updated, failed, remaining: missing.length - updated });
+    ok(res, { processed: missing.length, updated, failed, remaining: missing.length - updated, items });
   } catch (err) {
     next(err);
   }

@@ -196,11 +196,18 @@ export const stopsApi = {
     return apiFetch<{ data: unknown[]; total: number; totalPages: number }>(`/api/stops?${q}`);
   },
 
-  geocodeMissing: () =>
-    apiFetch<{ processed: number; updated: number; failed: number; remaining: number }>(
-      '/api/stops/geocode-missing',
-      { method: 'POST' },
-    ),
+  geocodeMissing: (params?: { date?: string; date_from?: string; date_to?: string; all?: boolean }) => {
+    const q = new URLSearchParams();
+    if (params?.all)       q.set('all', 'true');
+    else if (params?.date) q.set('date', params.date);
+    else if (params?.date_from) q.set('date_from', params.date_from);
+    if (params?.date_to)   q.set('date_to', params.date_to!);
+    const qs = q.toString();
+    return apiFetch<{
+      processed: number; updated: number; failed: number; remaining: number;
+      items: { order_code: string | null; pickup_geocoded: boolean; delivery_geocoded: boolean; pickup_error?: string; delivery_error?: string }[];
+    }>(`/api/stops/geocode-missing${qs ? '?' + qs : ''}`, { method: 'POST' });
+  },
 
   create: (body: Record<string, unknown>) =>
     apiFetch<unknown>('/api/stops', { method: 'POST', body: JSON.stringify(body) }),
