@@ -98,7 +98,8 @@ async function archiveStops(dryRun = false): Promise<ArchiveResult> {
             source, email_from, email_subject,
             order_type, payment_status,
             stripe_checkout_session_id, stripe_payment_intent_id,
-            customer_email, customer_full_name, customer_phone)
+            customer_email, customer_full_name, customer_phone,
+            delivery_notified_at, delivery_notification_error)
          SELECT
            id, order_code,
            pickup_address, pickup_lat, pickup_lng,
@@ -115,7 +116,8 @@ async function archiveStops(dryRun = false): Promise<ArchiveResult> {
            COALESCE(source, 'app'), email_from, email_subject,
            COALESCE(order_type, 'business'), COALESCE(payment_status, 'unpaid'),
            stripe_checkout_session_id, stripe_payment_intent_id,
-           customer_email, customer_full_name, customer_phone
+           customer_email, customer_full_name, customer_phone,
+           delivery_notified_at, delivery_notification_error
          FROM stops
          WHERE created_at < $1
          ON CONFLICT (id) DO NOTHING`,

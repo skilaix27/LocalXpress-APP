@@ -7,7 +7,7 @@ import { AuthenticatedRequest, Stop } from '../types';
 import { ok, created, noContent, parsePagination } from '../utils/response';
 import { AppError } from '../middleware/errorHandler';
 import { archiveStops } from '../scripts/archive-stops';
-import { sendNewStopNotification } from '../services/email';
+import { sendNewStopNotification, sendIndividualDeliveryNotification } from '../services/email';
 import { geocodeAddress } from '../services/distance';
 
 const router = Router();
@@ -627,6 +627,15 @@ router.patch('/:id', async (req: Request, res: Response, next: NextFunction) => 
         [allowed.status, allowed.proof_photo_url ?? null, req.params.id]
       );
       ok(res, updated);
+
+      // Fire delivery notification in background — never block the driver response
+      if (
+        updated &&
+        allowed.status === 'delivered' &&
+        existing.status !== 'delivered'
+      ) {
+        fireDeliveryNotification(updated);
+      }
       return;
     }
 
@@ -663,10 +672,39 @@ router.patch('/:id', async (req: Request, res: Response, next: NextFunction) => 
     );
 
     ok(res, updated);
+
+    // Fire delivery notification in background — never block the admin response
+    if (
+      updated &&
+      data.status === 'delivered' &&
+      existing.status !== 'delivered'
+    ) {
+      fireDeliveryNotification(updated);
+    }
   } catch (err) {
     next(err);
   }
 });
+
+// Helper: send delivery notification and persist outcome — runs in background
+function fireDeliveryNotification(stop: Stop): void {
+  sendIndividualDeliveryNotification(stop)
+    .then(() => {
+      // Mark as notified
+      queryOne(
+        `UPDATE stops SET delivery_notified_at = NOW(), delivery_notification_error = NULL WHERE id = $1`,
+        [stop.id],
+      ).catch((err) => console.error(`[email] Failed to persist delivery_notified_at for ${stop.order_code}:`, err));
+    })
+    .catch((err: unknown) => {
+      const msg = String(err).slice(0, 500);
+      console.error(`[email] Delivery notification failed for ${stop.order_code}: ${msg}`);
+      queryOne(
+        `UPDATE stops SET delivery_notification_error = $1 WHERE id = $2`,
+        [msg, stop.id],
+      ).catch((e) => console.error(`[email] Failed to persist delivery_notification_error for ${stop.order_code}:`, e));
+    });
+}
 
 // DELETE /api/stops/:id
 router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {

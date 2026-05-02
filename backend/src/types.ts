@@ -71,6 +71,18 @@ export interface Stop {
   delivered_at: Date | null;
   created_at: Date;
   updated_at: Date;
+  // individual order delivery notification
+  delivery_notified_at: Date | null;
+  delivery_notification_error: string | null;
+  // extra fields from individual / B2B orders
+  source: string | null;
+  order_type: string | null;
+  customer_email: string | null;
+  customer_full_name: string | null;
+  customer_phone: string | null;
+  payment_status: string | null;
+  stripe_checkout_session_id: string | null;
+  stripe_payment_intent_id: string | null;
 }
 
 export interface DriverLocation {
