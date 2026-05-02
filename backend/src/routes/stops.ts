@@ -58,13 +58,16 @@ router.post('/order', requireApiKey, async (req: Request, res: Response, next: N
       orderCode = await generateOrderCode(data.scheduled_pickup_at ?? null, prefix);
     }
 
-    // ── Pricing: calculate from pricing_zones if distance_km is provided ────────
+    // ── Pricing: body values take priority; fallback to pricing_zones ────────────
+    // For individual_web paid orders, the app sends the Stripe-confirmed price →
+    // we must store it as-is, never override with zone calculation.
     const MARGIN_KM = 0.15;
-    let resolvedPrice: number | null = null;
-    let resolvedPriceDriver: number | null = null;
-    let resolvedPriceCompany: number | null = null;
+    let resolvedPrice: number | null = data.price ?? null;
+    let resolvedPriceDriver: number | null = data.price_driver ?? null;
+    let resolvedPriceCompany: number | null = data.price_company ?? null;
 
-    if (data.distance_km != null) {
+    if (resolvedPrice == null && data.distance_km != null) {
+      // Fallback: calculate from pricing_zones only when body did not send price
       const adjusted = data.distance_km + MARGIN_KM;
       const zone = await queryOne<{
         fixed_price: number | null;
@@ -88,12 +91,19 @@ router.post('/order', requireApiKey, async (req: Request, res: Response, next: N
       }
     }
 
-    if (resolvedPrice != null) {
+    // Derive driver/company split if not explicitly provided
+    if (resolvedPrice != null && resolvedPriceDriver == null) {
       resolvedPriceDriver  = Math.round(resolvedPrice * 0.70 * 100) / 100;
+      resolvedPriceCompany = Math.round((resolvedPrice - resolvedPriceDriver) * 100) / 100;
+    } else if (resolvedPrice != null && resolvedPriceDriver != null && resolvedPriceCompany == null) {
       resolvedPriceCompany = Math.round((resolvedPrice - resolvedPriceDriver) * 100) / 100;
     }
 
-    // ── Fase 1 debug log for individual_web orders ───────────────────────────
+    if (source === 'individual_web') {
+      console.log(`[order] ${orderCode} pricing: price=${resolvedPrice} driver=${resolvedPriceDriver} company=${resolvedPriceCompany} (body.price=${data.price ?? 'none'})`);
+    }
+
+    // ── Debug log for individual_web orders ──────────────────────────────────
     if (source === 'individual_web') {
       console.log(`[order] individual_web ${orderCode} coords incoming:`,
         { pickup_lat: data.pickup_lat, pickup_lng: data.pickup_lng,
