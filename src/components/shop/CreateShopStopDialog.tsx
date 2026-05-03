@@ -397,7 +397,6 @@ export function CreateShopStopDialog({ open, onOpenChange, onSuccess }: CreateSh
                 <span className="text-primary font-bold">{adjustDistance(routeDistance)} km</span>
                 <span className="font-medium">· {getDeliveryZone(routeDistance)}</span>
                 {price != null && <span className="font-bold text-primary">· {price} €</span>}
-                {driverPrice > 0 && <span className="text-muted-foreground text-xs">Rep. {driverPrice} €</span>}
               </div>
             );
           })()}
