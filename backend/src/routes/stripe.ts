@@ -4,46 +4,9 @@ import { queryOne } from '../db';
 import { config } from '../config';
 import { sendNewStopNotification, sendPaymentConfirmationToCustomer } from '../services/email';
 import { Stop } from '../types';
+import { generateOrderCode } from '../services/orderCode';
 
 const router = Router();
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const MONTH_LETTERS: Record<number, string> = {
-  1: 'E', 2: 'F', 3: 'M', 4: 'A', 5: 'MY',
-  6: 'JN', 7: 'JL', 8: 'AG', 9: 'S', 10: 'O', 11: 'N', 12: 'D',
-};
-
-async function generateOrderCode(referenceDate?: string | null): Promise<string> {
-  const date = referenceDate ? new Date(referenceDate) : new Date();
-  const dayCode = date.getDate() + 27;
-  const monthLetter = MONTH_LETTERS[date.getMonth() + 1];
-
-  // Stripe webhook always creates individual orders → LXP prefix
-  const prefix = 'LXP';
-
-  // Query max P-number across both LX- and LXP- codes so numbers never collide
-  const row = await queryOne<{ max_p: number }>(
-    `SELECT COALESCE(
-       MAX(CAST(SUBSTRING(order_code, '-P([0-9]+)$') AS INTEGER)),
-       79
-     ) AS max_p
-     FROM stops
-     WHERE order_code LIKE 'LX-D%-P%' OR order_code LIKE 'LXP-D%-P%'`,
-    [],
-  );
-
-  let currentMax = row?.max_p ?? 79;
-
-  for (let attempt = 0; attempt < 5; attempt++) {
-    currentMax += Math.floor(Math.random() * 5) + 1;
-    const code = `${prefix}-D${dayCode}${monthLetter}-P${currentMax}`;
-    const exists = await queryOne('SELECT 1 AS one FROM stops WHERE order_code = $1', [code]);
-    if (!exists) return code;
-  }
-
-  return `${prefix}-D${dayCode}${monthLetter}-P${currentMax + Math.floor(Math.random() * 20) + 10}`;
-}
 
 // ─── POST /api/stripe/webhook ─────────────────────────────────────────────────
 // Must be mounted with express.raw() middleware — see index.ts
@@ -117,7 +80,7 @@ async function handleSessionCompleted(session: any): Promise<void> {
   const delivery_lng    = m.delivery_lng    ? parseFloat(m.delivery_lng)    : null;
   const scheduled       = m.scheduled_pickup_at || null;
 
-  const orderCode = await generateOrderCode(scheduled);
+  const orderCode = await generateOrderCode(scheduled, 'LXP');
 
   const stop = await queryOne<Stop>(
     `INSERT INTO stops
