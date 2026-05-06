@@ -127,7 +127,9 @@ export function useAdminData({ poll = true }: { poll?: boolean } = {}) {
   const isExpiredOrDone = useCallback(
     (s: Stop) => {
       if (s.status === 'delivered') return true;
-      if (s.scheduled_pickup_at && s.status !== 'picked') {
+      // Pending stops are never expired — they still need action regardless of schedule date.
+      // Only assigned stops with a past scheduled date are considered expired.
+      if (s.scheduled_pickup_at && s.status === 'assigned') {
         const scheduledDate = new Date(s.scheduled_pickup_at);
         scheduledDate.setHours(23, 59, 59, 999);
         return scheduledDate < todayStart;
