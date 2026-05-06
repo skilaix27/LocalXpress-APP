@@ -124,6 +124,18 @@ export default function AdminDashboard() {
                 onStopClick={handleStopClick}
               />
             </CardContent>
+            {(() => {
+              const sinCoords = stops.filter(
+                (s) => s.status !== 'delivered' &&
+                       (s.pickup_lat == null || s.pickup_lng == null)
+              );
+              if (sinCoords.length === 0) return null;
+              return (
+                <p className="text-xs text-amber-600 text-center px-3 pb-3">
+                  {sinCoords.length} parada{sinCoords.length > 1 ? 's' : ''} sin coordenadas · no visible{sinCoords.length > 1 ? 's' : ''} en el mapa
+                </p>
+              );
+            })()}
           </Card>
         </div>
 
@@ -139,7 +151,7 @@ export default function AdminDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-2 max-h-[280px] overflow-y-auto space-y-2">
-              {stops.slice(0, 5).map((stop) => (
+              {stops.slice(0, 10).map((stop) => (
                 <StopCard key={stop.id} stop={stop} driver={getDriverById(stop.driver_id)} shopName={stop.shop_name} onClick={() => handleStopClick(stop)} />
               ))}
               {stops.length === 0 && (
