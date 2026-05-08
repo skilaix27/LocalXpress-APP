@@ -179,11 +179,13 @@ router.post('/order', requireApiKey, async (req: Request, res: Response, next: N
 
     res.status(201).json({ ok: true, stop });
     if (stop) {
-      // Internal notification always fires
-      sendNewStopNotification(stop).catch((err) => console.error('[email] Internal notification error:', err));
-      // Customer confirmation only for paid individual orders (guard inside the function)
-      if (isIndividual && paymentStatus === 'paid') {
-        sendPaymentConfirmationToCustomer(stop).catch((err) => console.error('[email] Payment confirmation error:', err));
+      if (source === 'individual_web' || orderType === 'individual') {
+        console.log(`[email] All emails suppressed for ${stop.order_code} — handled by lxp-ind`);
+      } else {
+        sendNewStopNotification(stop).catch((err) => console.error('[email] Internal notification error:', err));
+        if (isIndividual && paymentStatus === 'paid') {
+          sendPaymentConfirmationToCustomer(stop).catch((err) => console.error('[email] Payment confirmation error:', err));
+        }
       }
     }
   } catch (err) {
