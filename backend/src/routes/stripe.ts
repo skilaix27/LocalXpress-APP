@@ -129,14 +129,9 @@ async function handleSessionCompleted(session: any): Promise<void> {
   console.log(`[stripe/webhook] Stop created: ${stop?.order_code} (session ${sessionId})`);
 
   if (stop) {
-    // Internal admin notification
-    sendNewStopNotification(stop).catch((err) =>
-      console.error('[stripe/webhook] Internal email notification failed:', err),
-    );
-    // Customer payment confirmation
-    sendPaymentConfirmationToCustomer(stop).catch((err) =>
-      console.error('[stripe/webhook] Customer confirmation email failed:', err),
-    );
+    // Emails are intentionally skipped for individual_web orders:
+    // the lxp-ind app sends its own confirmation to the customer and admin.
+    console.log(`[stripe/webhook] Emails suppressed for individual_web stop ${stop.order_code}`);
   }
 }
 
