@@ -78,9 +78,33 @@ async function handleSessionCompleted(session: any): Promise<void> {
   const pickup_lng      = m.pickup_lng      ? parseFloat(m.pickup_lng)      : null;
   const delivery_lat    = m.delivery_lat    ? parseFloat(m.delivery_lat)    : null;
   const delivery_lng    = m.delivery_lng    ? parseFloat(m.delivery_lng)    : null;
-  const scheduled       = m.scheduled_pickup_at || null;
 
-  const orderCode = await generateOrderCode(scheduled, 'LXP');
+  // ── Scheduled time normalization (same logic as /order endpoint) ─────────
+  const scheduledTimeType = (m.scheduled_time_type as string) || null;
+  const scheduledTimeRaw  = (m.scheduled_time      as string) || null;
+
+  let finalScheduledTime: string | null;
+  let finalScheduledPickupAt: string | null;
+
+  if (scheduledTimeType === 'asap') {
+    finalScheduledTime     = 'Lo antes posible';
+    finalScheduledPickupAt = null;
+  } else if (scheduledTimeType === 'morning') {
+    finalScheduledTime     = scheduledTimeRaw ?? 'Mañana (10:00-14:00)';
+    finalScheduledPickupAt = null;
+  } else if (scheduledTimeType === 'afternoon') {
+    finalScheduledTime     = scheduledTimeRaw ?? 'Tarde (16:00-20:00)';
+    finalScheduledPickupAt = null;
+  } else if (scheduledTimeType === 'specific') {
+    finalScheduledTime     = scheduledTimeRaw;
+    finalScheduledPickupAt = m.scheduled_pickup_at || null;
+  } else {
+    // No type in metadata — backwards compatible
+    finalScheduledTime     = scheduledTimeRaw;
+    finalScheduledPickupAt = m.scheduled_pickup_at || null;
+  }
+
+  const orderCode = await generateOrderCode(finalScheduledPickupAt, 'LXP');
 
   const stop = await queryOne<Stop>(
     `INSERT INTO stops
@@ -88,18 +112,18 @@ async function handleSessionCompleted(session: any): Promise<void> {
         pickup_address, pickup_lat, pickup_lng,
         delivery_address, delivery_lat, delivery_lng,
         client_name, client_phone, client_notes,
-        package_size, scheduled_pickup_at,
+        package_size, scheduled_pickup_at, scheduled_time, scheduled_time_type,
         distance_km, price, price_driver, price_company,
         status, paid_by_client, paid_by_client_at,
         source, order_type, payment_status,
         stripe_checkout_session_id, stripe_payment_intent_id,
         customer_email, customer_full_name, customer_phone)
      VALUES
-       ($1, $2,$3,$4, $5,$6,$7, $8,$9,$10, $11,$12,
-        $13,$14,$15,$16,
+       ($1, $2,$3,$4, $5,$6,$7, $8,$9,$10, $11,$12,$13,$14,
+        $15,$16,$17,$18,
         'pending', true, NOW(),
         'individual_web','individual','paid',
-        $17,$18, $19,$20,$21)
+        $19,$20, $21,$22,$23)
      RETURNING *`,
     [
       orderCode,
@@ -113,7 +137,9 @@ async function handleSessionCompleted(session: any): Promise<void> {
       m.client_phone     || null,
       m.client_notes     || null,
       m.package_size     || 'medium',
-      scheduled          || null,
+      finalScheduledPickupAt,
+      finalScheduledTime,
+      scheduledTimeType,
       distance_km,
       price,
       price_driver,

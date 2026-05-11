@@ -128,6 +128,9 @@ export const createOrderApiSchema = z.object({
   stripe_payment_intent_id: z.string().max(255).optional().nullable(),
   // External order code accepted only for individual orders (must match LXP- format)
   order_code: z.string().max(64).optional().nullable(),
+  // Scheduled time slot (sent by lxp-ind)
+  scheduled_time: z.string().max(100).optional().nullable(),
+  scheduled_time_type: z.enum(['asap', 'morning', 'afternoon', 'specific']).optional().nullable(),
 });
 
 // ─── Driver locations ─────────────────────────────────────────────────────────

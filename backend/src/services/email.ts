@@ -32,6 +32,14 @@ export function formatEmailDate(dateStr: string | Date | null | undefined): stri
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+// Returns the correct human-readable scheduled time for a stop,
+// preferring the stored text label over a formatted timestamp.
+export function formatScheduledTime(stop: Stop): string {
+  if (stop.scheduled_time) return stop.scheduled_time;
+  if (stop.scheduled_pickup_at) return formatEmailDate(stop.scheduled_pickup_at);
+  return 'Sin fecha programada';
+}
+
 export function formatMoney(amount: number | null | undefined): string {
   if (amount == null) return '—';
   return `${amount.toFixed(2)} €`;
@@ -226,7 +234,7 @@ export async function sendNewStopNotification(stop: Stop): Promise<void> {
     { label: 'Tipo de pedido', value: typeLabel, bold: true },
     { label: 'Código', value: orderCode, bold: true },
     { label: 'Solicitado por', value: solicitadoPor },
-    { label: 'Fecha del servicio', value: formatEmailDate(stop.scheduled_pickup_at) },
+    { label: 'Fecha del servicio', value: formatScheduledTime(stop) },
     { label: 'Recogida', value: stop.pickup_address },
     { label: 'Entrega', value: stop.delivery_address },
     { label: 'Cliente final', value: stop.client_name },
@@ -241,7 +249,7 @@ export async function sendNewStopNotification(stop: Stop): Promise<void> {
     `Tipo:            ${typeLabel}`,
     `Código:          ${orderCode}`,
     `Solicitado por:  ${solicitadoPor}`,
-    `Fecha servicio:  ${formatEmailDate(stop.scheduled_pickup_at)}`,
+    `Fecha servicio:  ${formatScheduledTime(stop)}`,
     `Recogida:        ${stop.pickup_address}`,
     `Entrega:         ${stop.delivery_address}`,
     `Cliente:         ${stop.client_name}`,
@@ -293,7 +301,7 @@ export async function sendPaymentConfirmationToCustomer(stop: Stop): Promise<voi
 
   const from      = config.RESEND_FROM ?? 'LocalXpress <noreply@localxpress.app>';
   const subject   = `Pedido LocalXpress confirmado · ${orderCode}`;
-  const scheduled = formatEmailDate(stop.scheduled_pickup_at);
+  const scheduled = formatScheduledTime(stop);
 
   const rows: EmailRow[] = [
     { label: 'Código de pedido', value: orderCode, bold: true },

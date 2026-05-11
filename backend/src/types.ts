@@ -67,6 +67,8 @@ export interface Stop {
   proof_photo_url: string | null;
   shop_name: string | null;
   scheduled_pickup_at: Date | null;
+  scheduled_time: string | null;
+  scheduled_time_type: string | null;
   picked_at: Date | null;
   delivered_at: Date | null;
   created_at: Date;

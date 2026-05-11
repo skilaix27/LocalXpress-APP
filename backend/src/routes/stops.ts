@@ -129,20 +129,48 @@ router.post('/order', requireApiKey, async (req: Request, res: Response, next: N
     const paidByClient    = isPaidIndividual;
     const paidByClientAt  = isPaidIndividual ? new Date() : null;
 
+    // ── Scheduled time normalization (lxp-ind sends scheduled_time_type) ─────
+    // Rules: only "specific" gets a real timestamp; all other types → null
+    const scheduledTimeType = data.scheduled_time_type ?? null;
+    const scheduledTimeRaw  = data.scheduled_time      ?? null;
+
+    let finalScheduledTime: string | null;
+    let finalScheduledPickupAt: Date | null;
+
+    if (scheduledTimeType === 'asap') {
+      finalScheduledTime     = 'Lo antes posible';
+      finalScheduledPickupAt = null;
+    } else if (scheduledTimeType === 'morning') {
+      finalScheduledTime     = scheduledTimeRaw ?? 'Mañana (10:00-14:00)';
+      finalScheduledPickupAt = null;
+    } else if (scheduledTimeType === 'afternoon') {
+      finalScheduledTime     = scheduledTimeRaw ?? 'Tarde (16:00-20:00)';
+      finalScheduledPickupAt = null;
+    } else if (scheduledTimeType === 'specific') {
+      finalScheduledTime     = scheduledTimeRaw;
+      finalScheduledPickupAt = data.scheduled_pickup_at ? new Date(data.scheduled_pickup_at) : null;
+    } else {
+      // No type provided — backwards compatible behaviour
+      finalScheduledTime     = scheduledTimeRaw;
+      finalScheduledPickupAt = data.scheduled_pickup_at ? new Date(data.scheduled_pickup_at) : null;
+    }
+
     const stop = await queryOne<Stop>(
       `INSERT INTO stops
          (order_code,
           pickup_address, pickup_lat, pickup_lng,
           delivery_address, delivery_lat, delivery_lng,
           client_name, client_phone,
-          client_notes, package_size, shop_name, scheduled_pickup_at, status,
+          client_notes, package_size, shop_name,
+          scheduled_pickup_at, scheduled_time, scheduled_time_type,
+          status,
           distance_km, price, price_driver, price_company,
           source, email_from, email_subject,
           order_type, payment_status, paid_by_client, paid_by_client_at,
           customer_email, customer_full_name, customer_phone,
           stripe_checkout_session_id, stripe_payment_intent_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'pending',
-               $14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'pending',
+               $16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31)
        RETURNING *`,
       [
         orderCode,
@@ -157,7 +185,9 @@ router.post('/order', requireApiKey, async (req: Request, res: Response, next: N
         data.client_notes   ?? null,
         data.package_size   ?? 'medium',
         data.shop_name      ?? null,
-        data.scheduled_pickup_at ?? null,
+        finalScheduledPickupAt,
+        finalScheduledTime,
+        scheduledTimeType,
         data.distance_km    ?? null,
         resolvedPrice,
         resolvedPriceDriver,
