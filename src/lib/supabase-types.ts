@@ -51,6 +51,8 @@ export interface Stop {
   distance_km: number | null;
   shop_name: string | null;
   scheduled_pickup_at: string | null;
+  scheduled_time: string | null;
+  scheduled_time_type: string | null;
   package_size: PackageSize | null;
   price: number | null;
   price_driver: number | null;

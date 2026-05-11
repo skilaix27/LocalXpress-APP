@@ -307,7 +307,7 @@ const STOPS_SELECT_COLS = `
   COALESCE(dp.full_name, '') AS driver_name,
   s.distance_km, s.price, s.price_driver, s.price_company,
   s.paid_by_client, s.paid_to_driver,
-  s.created_at, s.scheduled_pickup_at, s.delivered_at,
+  s.created_at, s.scheduled_pickup_at, s.scheduled_time, s.scheduled_time_type, s.delivered_at,
   COALESCE(s.order_type, 'business') AS order_type,
   COALESCE(s.payment_status, 'unpaid') AS payment_status,
   COALESCE(s.source, 'app') AS source,

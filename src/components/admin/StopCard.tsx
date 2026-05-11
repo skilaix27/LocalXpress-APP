@@ -5,7 +5,8 @@ import type { Stop, Profile } from '@/lib/supabase-types';
 import { getDeliveryZone, adjustDistance, getDeliveryPrice } from '@/lib/delivery-zones';
 import { MapPin, User, Phone, Clock, ChevronRight, Route, Store, CalendarClock, Package } from 'lucide-react';
 import { getPackageSizeLabel } from '@/lib/package-size';
-import { formatDistanceToNow, format } from 'date-fns';
+import { getPickupDisplay } from '@/lib/stop-utils';
+import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 
@@ -61,10 +62,10 @@ export const StopCard = forwardRef<HTMLDivElement, StopCardProps>(
 
               {/* Meta */}
               <div className="flex items-center gap-2 sm:gap-4 text-[10px] sm:text-xs text-muted-foreground flex-wrap">
-                {stop.scheduled_pickup_at && (
+                {(stop.scheduled_time || stop.scheduled_pickup_at) && (
                   <span className="flex items-center gap-1 text-primary font-semibold">
                     <CalendarClock className="w-3 h-3" />
-                    {format(new Date(stop.scheduled_pickup_at), "d MMM · HH:mm", { locale: es })}
+                    {getPickupDisplay(stop, "d MMM · HH:mm")}
                   </span>
                 )}
                 {shopName && (

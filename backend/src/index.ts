@@ -34,7 +34,11 @@ if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 // ─── Security ─────────────────────────────────────────────────────────────────
 app.use(helmet());
 
-const allowedOrigins = config.CORS_ORIGIN.split(',').map((o) => o.trim());
+const allowedOrigins = [
+  ...config.CORS_ORIGIN.split(',').map((o) => o.trim()),
+  'https://localxpress.app',
+  'https://www.localxpress.app',
+];
 app.use(
   cors({
     origin: (origin, cb) => {

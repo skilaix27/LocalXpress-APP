@@ -10,8 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import type { Stop } from '@/lib/supabase-types';
 import { getPackageSizeLabel } from '@/lib/package-size';
 import { adjustDistance, getDeliveryZone, getDeliveryPrice } from '@/lib/delivery-zones';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { getPickupDisplay } from '@/lib/stop-utils';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -141,12 +140,12 @@ export function DriverStopDetailDialog({ stop, open, onOpenChange }: DriverStopD
         })()}
 
         {/* Schedule */}
-        {stop.scheduled_pickup_at && (
+        {(stop.scheduled_time || stop.scheduled_pickup_at) && (
           <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
             <Clock className="w-5 h-5 text-primary" />
             <div>
               <p className="text-[10px] font-bold text-muted-foreground tracking-wider">RECOGIDA PROGRAMADA</p>
-              <p className="text-sm font-semibold">{format(new Date(stop.scheduled_pickup_at), "EEEE d 'de' MMMM · HH:mm", { locale: es })}</p>
+              <p className="text-sm font-semibold">{getPickupDisplay(stop, "EEEE d 'de' MMMM · HH:mm")}</p>
             </div>
           </div>
         )}

@@ -1,6 +1,5 @@
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 import { motion } from 'framer-motion';
+import { getPickupDisplay } from '@/lib/stop-utils';
 import { MapPin, Clock, Package, ChevronRight, Store, CalendarClock, Route } from 'lucide-react';
 import { getPackageSizeLabel } from '@/lib/package-size';
 import { adjustDistance, getDeliveryZone, getDeliveryPrice } from '@/lib/delivery-zones';
@@ -54,10 +53,10 @@ function StopItem({ stop, index, onSelectStop }: { stop: Stop; index: number; on
                     {stop.shop_name}
                   </div>
                 )}
-                {stop.scheduled_pickup_at && (
+                {(stop.scheduled_time || stop.scheduled_pickup_at) && (
                   <div className="flex items-center gap-1 mt-0.5 text-xs text-primary font-medium">
                     <Clock className="w-3 h-3" />
-                    {format(new Date(stop.scheduled_pickup_at), "d MMM · HH:mm", { locale: es })}
+                    {getPickupDisplay(stop, "d MMM · HH:mm")}
                   </div>
                 )}
                 <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">

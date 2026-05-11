@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import type { Stop, Profile, StopStatus } from '@/lib/supabase-types';
 import { MapPin, User, Phone, FileText, Trash2, Truck, Clock, Camera, Receipt, Route, Store, CalendarClock, Pencil, Save, X, Package } from 'lucide-react';
 import { getPackageSizeLabel } from '@/lib/package-size';
+import { getPickupDisplay } from '@/lib/stop-utils';
 import { formatDistanceToNow, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { DeliveryReceipt } from './DeliveryReceipt';
@@ -252,10 +253,10 @@ export function StopDetailDialog({ stop, open, onOpenChange, drivers, onUpdate, 
           )}
 
           <div className="space-y-1 text-xs text-muted-foreground">
-            {stop.scheduled_pickup_at && (
+            {(stop.scheduled_time || stop.scheduled_pickup_at) && (
               <div className="flex items-center gap-2 text-primary font-semibold">
                 <CalendarClock className="w-3 h-3" />
-                Recogida programada: {format(new Date(stop.scheduled_pickup_at), 'dd/MM/yyyy HH:mm', { locale: es })}
+                Recogida programada: {getPickupDisplay(stop, 'dd/MM/yyyy HH:mm')}
               </div>
             )}
             <div className="flex items-center gap-2">
