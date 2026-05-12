@@ -114,6 +114,7 @@ function effectiveMargin(stop: SuperAdminStop): number | null {
 }
 
 function serviceDate(stop: SuperAdminStop): string {
+  if (stop.scheduled_time) return stop.scheduled_time;
   return fmtDate(stop.scheduled_pickup_at ?? stop.created_at);
 }
 

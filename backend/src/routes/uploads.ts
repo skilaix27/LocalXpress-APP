@@ -70,8 +70,8 @@ router.post('/proof/:stop_id', uploadLimiter, upload.single('photo'), async (req
     try {
       compressedBuffer = await sharp(req.file.buffer)
         .rotate()
-        .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: 78 })
+        .resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 70 })
         .toBuffer();
     } catch (sharpErr) {
       console.error('[uploads] sharp compression failed:', sharpErr);

@@ -331,6 +331,8 @@ export interface SuperAdminStop {
   paid_to_driver: boolean;
   created_at: string;
   scheduled_pickup_at: string | null;
+  scheduled_time: string | null;
+  scheduled_time_type: string | null;
   delivered_at: string | null;
   is_archived: boolean;
   order_type: string;

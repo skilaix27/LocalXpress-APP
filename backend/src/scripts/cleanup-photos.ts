@@ -3,7 +3,7 @@ import fs from 'fs';
 import { query, queryOne } from '../db';
 import { config } from '../config';
 
-const RETENTION_DAYS = 10;
+const RETENTION_DAYS = 20;
 
 interface CleanupResult {
   deletedFiles: number;
